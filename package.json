@@ -3,6 +3,12 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "start:api": "bun run --filter api start",
+    "start:web": "bun run --filter web dev",
+    "start:mobile": "bun run --filter mobile start"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
