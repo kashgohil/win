@@ -1,5 +1,5 @@
 {
-	"name": "@wingmnn/hero",
+	"name": "hero",
 	"private": true,
 	"type": "module",
 	"scripts": {
