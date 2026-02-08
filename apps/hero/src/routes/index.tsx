@@ -40,17 +40,6 @@ function useReveal(threshold = 0.12) {
 	return { ref, vis };
 }
 
-function useScrolled(px: number) {
-	const [past, setPast] = useState(false);
-	useEffect(() => {
-		const h = () => setPast(window.scrollY > px);
-		h();
-		window.addEventListener("scroll", h, { passive: true });
-		return () => window.removeEventListener("scroll", h);
-	}, [px]);
-	return past;
-}
-
 function useCounter(target: number, duration: number, go: boolean) {
 	const [v, setV] = useState(0);
 	useEffect(() => {
@@ -483,8 +472,6 @@ function ChatDemo({ active }: { active: boolean }) {
 /* ─── component ─── */
 
 function HomePage() {
-	const showNav = useScrolled(400);
-
 	const { ref: chatRef, vis: chatVis } = useReveal(0.1);
 	const { ref: modRef, vis: modVis } = useReveal(0.05);
 	const { ref: weekRef, vis: weekVis } = useReveal(0.05);
@@ -549,40 +536,6 @@ function HomePage() {
 
 	return (
 		<main>
-			{/* ── nav ── */}
-			<nav
-				className={`fixed inset-x-0 top-0 z-100 bg-cream/92 backdrop-blur-md border-b border-grey-4 [transition:transform_0.4s_cubic-bezier(.22,1,.36,1),opacity_0.3s_ease] ${showNav ? "translate-y-0 opacity-100 pointer-events-auto" : "-translate-y-full opacity-0 pointer-events-none"}`}
-			>
-				<div className="max-w-[1200px] mx-auto px-(--page-px) flex items-center justify-between h-[52px]">
-					<a
-						href="#top"
-						className="font-display text-[1.15rem] text-ink no-underline tracking-[0.03em] lowercase"
-					>
-						wingmnn
-					</a>
-					<div className="flex items-center gap-7">
-						<a
-							href="#how"
-							className="max-sm:hidden font-mono text-[11px] text-grey-2 no-underline tracking-[0.02em] transition-colors duration-150 hover:text-ink"
-						>
-							How it works
-						</a>
-						<a
-							href="#modules"
-							className="max-sm:hidden font-mono text-[11px] text-grey-2 no-underline tracking-[0.02em] transition-colors duration-150 hover:text-ink"
-						>
-							Modules
-						</a>
-						<a
-							href="#join"
-							className="font-mono text-[11px] font-semibold text-white bg-ink py-[7px] px-[18px] no-underline rounded transition-colors duration-150 hover:bg-[#333]"
-						>
-							Get early access
-						</a>
-					</div>
-				</div>
-			</nav>
-
 			{/* ── S1: hero ── */}
 			<section
 				id="top"
@@ -657,70 +610,70 @@ function HomePage() {
 								);
 							})}
 							{(phase === "summary" || phase === "done") && (
-								<div className="nf-summary absolute z-15 top-9 left-0 right-0 bg-white/4 border border-white/7 rounded-xl p-5 origin-top-left animate-[nfSummaryIn_0.7s_cubic-bezier(.22,1,.36,1)]">
+								<div className="absolute z-15 top-9 left-0 right-0 bg-white/4 border border-white/7 rounded-xl p-5 origin-top-left animate-[nfSummaryIn_0.7s_cubic-bezier(.22,1,.36,1)]">
 									<div className="font-mono text-[10px] font-semibold text-cream/35 tracking-[0.06em] uppercase mb-4">
 										Today&apos;s briefing
 									</div>
 									<div className="flex flex-col gap-2.5">
 										<div className="nf-summary-row flex items-center gap-2.5 font-body text-[12.5px] leading-[1.4] text-cream/60">
 											<Mail size={13} className="text-cream/30 shrink-0" />
-											<span>
-												3 boss emails &mdash;{" "}
-												<em className="not-italic text-green-400/90 bg-green-500/10 px-1.5 py-0.5 rounded">
+											<div className="flex flex-1 items-center justify-between">
+												3 boss emails
+												<em className="not-italic self-end text-green-400/90 bg-green-500/10 px-1.5 py-0.5 rounded">
 													reply drafted
 												</em>
-											</span>
+											</div>
 										</div>
 										<div className="nf-summary-row flex items-center gap-2.5 font-body text-[12.5px] leading-[1.4] text-cream/60">
 											<Calendar size={13} className="text-cream/30 shrink-0" />
-											<span>
-												Dentist conflicts with flight &mdash;{" "}
+											<div className="flex flex-1 items-center justify-between">
+												Dentist conflicts with flight
 												<em className="not-italic text-green-400/90 bg-green-500/10 px-1.5 py-0.5 rounded">
 													rescheduled
 												</em>
-											</span>
+											</div>
 										</div>
 										<div className="nf-summary-row flex items-center gap-2.5 font-body text-[12.5px] leading-[1.4] text-cream/60">
 											<CreditCard
 												size={13}
 												className="text-cream/30 shrink-0"
 											/>
-											<span>
-												Card payment &mdash;{" "}
+											<div className="flex flex-1 items-center justify-between">
+												Card payment
 												<em className="not-italic text-amber-400/90 bg-amber-500/10 px-1.5 py-0.5 rounded">
 													auto-scheduled
 												</em>
-											</span>
+											</div>
 										</div>
 										<div className="nf-summary-row flex items-center gap-2.5 font-body text-[12.5px] leading-[1.4] text-cream/60">
 											<Plane size={13} className="text-cream/30 shrink-0" />
-											<span>
-												NYC&rarr;TYO dropped $180 &mdash;{" "}
+											<div className="flex flex-1 items-center justify-between">
+												NYC&rarr;TYO dropped $180
 												<em className="not-italic text-green-400/90 bg-green-500/10 px-1.5 py-0.5 rounded">
 													price locked
 												</em>
-											</span>
+											</div>
 										</div>
 										<div className="nf-summary-row flex items-center gap-2.5 font-body text-[12.5px] leading-[1.4] text-cream/60">
 											<DollarSign
 												size={13}
 												className="text-cream/30 shrink-0"
 											/>
-											<span>
-												$89 Amex charge &mdash;{" "}
+											<div className="flex flex-1 items-center justify-between">
+												$89 Amex charge
 												<em className="not-italic text-red-400/90 bg-red-500/10 px-1.5 py-0.5 rounded">
 													flagged for review
 												</em>
-											</span>
+											</div>
 										</div>
 										<div className="nf-summary-row flex items-center gap-2.5 font-body text-[12.5px] leading-[1.4] text-cream/60">
 											<Bell size={13} className="text-cream/30 shrink-0" />
-											<span>
-												Overdue task &mdash;{" "}
+											<div className="flex flex-1 items-center justify-between">
+												Overdue task
 												<em className="not-italic text-amber-400/90 bg-amber-500/10 px-1.5 py-0.5 rounded">
 													reminder sent
 												</em>
-											</span>
+											</div>
 										</div>
 									</div>
 									<div className="h-px bg-white/6 my-3.5" />
@@ -728,16 +681,25 @@ function HomePage() {
 										Actions ready
 									</div>
 									<div className="flex flex-col gap-2">
-										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/60 bg-white/[0.03] px-2.5 py-1.5 rounded-md border border-white/[0.05]">
-											<ArrowRight size={11} className="text-accent-amber shrink-0" />
+										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/60 bg-white/3 px-2.5 py-1.5 rounded-md border border-white/5">
+											<ArrowRight
+												size={11}
+												className="text-accent-amber shrink-0"
+											/>
 											<span>Review and send 3 drafted replies</span>
 										</div>
-										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/60 bg-white/[0.03] px-2.5 py-1.5 rounded-md border border-white/[0.05]">
-											<ArrowRight size={11} className="text-accent-amber shrink-0" />
+										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/60 bg-white/3 px-2.5 py-1.5 rounded-md border border-white/5">
+											<ArrowRight
+												size={11}
+												className="text-accent-amber shrink-0"
+											/>
 											<span>Confirm dentist moved to Feb 25</span>
 										</div>
-										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/60 bg-white/[0.03] px-2.5 py-1.5 rounded-md border border-white/[0.05]">
-											<ArrowRight size={11} className="text-accent-amber shrink-0" />
+										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/60 bg-white/3 px-2.5 py-1.5 rounded-md border border-white/5">
+											<ArrowRight
+												size={11}
+												className="text-accent-amber shrink-0"
+											/>
 											<span>Approve or dispute $89 charge</span>
 										</div>
 									</div>
@@ -1248,84 +1210,6 @@ function HomePage() {
 				</div>
 			</section>
 
-			{/* ── footer ── */}
-			<footer className="pt-[72px] px-(--page-px) pb-10 bg-ink text-cream">
-				<div className="max-w-[1200px] mx-auto mb-12 grid grid-cols-[1.4fr_1fr] max-md:grid-cols-1 gap-20 max-md:gap-12 items-start">
-					<div className="max-w-[380px]">
-						<div className="font-display text-[1.8rem] text-cream tracking-[0.03em] lowercase mb-4">
-							wingmnn
-						</div>
-						<p className="font-serif text-base leading-[1.7] text-cream/45">
-							A single intelligence that learns how you operate — then operates
-							for you. Built with care in Brooklyn, NY.
-						</p>
-					</div>
-					<div className="grid grid-cols-3 max-[500px]:grid-cols-1 gap-8 max-[500px]:gap-8">
-						<div>
-							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
-								Product
-							</h4>
-							<a
-								href="#how"
-								className="block font-serif text-[0.92rem] text-cream/55 no-underline leading-8 cursor-pointer transition-colors duration-150 hover:text-cream"
-							>
-								How it works
-							</a>
-							<a
-								href="#modules"
-								className="block font-serif text-[0.92rem] text-cream/55 no-underline leading-8 cursor-pointer transition-colors duration-150 hover:text-cream"
-							>
-								Modules
-							</a>
-							<a
-								href="#join"
-								className="block font-serif text-[0.92rem] text-cream/55 no-underline leading-8 cursor-pointer transition-colors duration-150 hover:text-cream"
-							>
-								Get early access
-							</a>
-						</div>
-						<div>
-							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
-								Company
-							</h4>
-							<span className="block font-serif text-[0.92rem] text-cream/55 leading-8 cursor-pointer transition-colors duration-150 hover:text-cream">
-								About
-							</span>
-							<span className="block font-serif text-[0.92rem] text-cream/55 leading-8 cursor-pointer transition-colors duration-150 hover:text-cream">
-								Blog
-							</span>
-							<span className="block font-serif text-[0.92rem] text-cream/55 leading-8 cursor-pointer transition-colors duration-150 hover:text-cream">
-								Careers
-							</span>
-						</div>
-						<div>
-							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
-								Connect
-							</h4>
-							<span className="block font-serif text-[0.92rem] text-cream/55 leading-8 cursor-pointer transition-colors duration-150 hover:text-cream">
-								Twitter
-							</span>
-							<span className="block font-serif text-[0.92rem] text-cream/55 leading-8 cursor-pointer transition-colors duration-150 hover:text-cream">
-								LinkedIn
-							</span>
-							<span className="block font-serif text-[0.92rem] text-cream/55 leading-8 cursor-pointer transition-colors duration-150 hover:text-cream">
-								hello@wingmnn.com
-							</span>
-						</div>
-					</div>
-				</div>
-				<div className="max-w-[1200px] mx-auto pt-6 border-t border-white/8 font-mono text-xs text-cream/25 flex max-[500px]:flex-col justify-between max-[500px]:items-start items-center gap-3 max-[500px]:gap-3">
-					<span>&copy; {new Date().getFullYear()} Wingmnn Systems Inc.</span>
-					<div className="flex gap-5">
-						<span className="font-mono text-xs text-cream/30 cursor-pointer transition-colors duration-150 hover:text-cream/60">
-							Privacy
-						</span>
-						<span className="font-mono text-xs text-cream/30 cursor-pointer transition-colors duration-150 hover:text-cream/60">
-							Terms
-						</span>
-					</div>
-				</div>
-			</footer>
 		</main>
 	);
 }
