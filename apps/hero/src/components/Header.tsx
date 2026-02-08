@@ -27,7 +27,7 @@ export default function Header() {
 					<Logo className="size-4 shrink-0" />
 					wingmnn
 				</a>
-				<div className="flex items-center gap-7">
+				<nav aria-label="Main navigation" className="flex items-center gap-7">
 					<a
 						href="#how"
 						className="max-sm:hidden font-mono text-[11px] text-grey-2 no-underline tracking-[0.02em] transition-colors duration-150 hover:text-ink"
@@ -41,12 +41,24 @@ export default function Header() {
 						Modules
 					</a>
 					<a
+						href="/about"
+						className="max-sm:hidden font-mono text-[11px] text-grey-2 no-underline tracking-[0.02em] transition-colors duration-150 hover:text-ink"
+					>
+						About
+					</a>
+					<a
+						href="/use-cases/founders"
+						className="max-sm:hidden font-mono text-[11px] text-grey-2 no-underline tracking-[0.02em] transition-colors duration-150 hover:text-ink"
+					>
+						Use cases
+					</a>
+					<a
 						href="#join"
 						className="font-mono text-[11px] font-semibold text-white bg-ink py-[7px] px-[18px] no-underline rounded transition-colors duration-150 hover:bg-[#333]"
 					>
 						Get early access
 					</a>
-				</div>
+				</nav>
 			</div>
 		</header>
 	);
