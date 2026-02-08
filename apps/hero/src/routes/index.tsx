@@ -6,6 +6,7 @@ import {
 	CheckCircle,
 	CreditCard,
 	DollarSign,
+	Image,
 	Mail,
 	MessageSquare,
 	Mic,
@@ -55,6 +56,31 @@ function useCounter(target: number, duration: number, go: boolean) {
 		return () => cancelAnimationFrame(raf);
 	}, [target, duration, go]);
 	return v;
+}
+
+/* ─── image placeholder ─── */
+
+function ImagePlaceholder({
+	label,
+	className = "",
+	dark = false,
+}: { label: string; className?: string; dark?: boolean }) {
+	return (
+		<div
+			className={`flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed ${dark ? "border-white/12 bg-white/3" : "border-grey-4 bg-[#f5f3ee]"} ${className}`}
+		>
+			<Image
+				size={28}
+				strokeWidth={1.2}
+				className={dark ? "text-cream/20" : "text-grey-3/50"}
+			/>
+			<span
+				className={`font-mono text-[11px] tracking-[0.02em] ${dark ? "text-cream/25" : "text-grey-3"}`}
+			>
+				{label}
+			</span>
+		</div>
+	);
 }
 
 /* ─── data ─── */
@@ -811,8 +837,21 @@ function HomePage() {
 				</div>
 			</section>
 
+			{/* ── Product screenshot placeholder ── */}
+			<section className="py-[60px] px-(--page-px) border-t border-grey-4">
+				<div className="max-w-[1200px] mx-auto">
+					<ImagePlaceholder
+						label="Product screenshot — dashboard overview"
+						className="h-[400px] w-full"
+					/>
+				</div>
+			</section>
+
 			{/* ── S2: the feeling ── */}
-			<section className="py-[100px] px-(--page-px) border-t border-grey-4">
+			<section
+				aria-label="The problem you already know"
+				className="py-[100px] px-(--page-px) border-t border-grey-4"
+			>
 				<div className="max-w-[1200px] mx-auto grid grid-cols-[280px_1fr] max-md:grid-cols-1 gap-[60px] max-md:gap-5">
 					<div>
 						<p className="font-mono text-[11px] font-medium text-grey-3 tracking-[0.04em] sticky top-[120px] max-md:static">
@@ -861,9 +900,9 @@ function HomePage() {
 									01
 								</span>
 								<div>
-									<h4 className="font-serif font-semibold text-[1.05rem] text-ink mb-1">
+									<h3 className="font-serif font-semibold text-[1.05rem] text-ink mb-1">
 										Type it
-									</h4>
+									</h3>
 									<p className="font-serif text-[0.9rem] leading-[1.7] text-grey-2 max-w-[380px]">
 										Ask questions, give instructions, think out loud. Wingmnn
 										understands intent, not keywords — so you never have to
@@ -876,9 +915,9 @@ function HomePage() {
 									02
 								</span>
 								<div>
-									<h4 className="font-serif font-semibold text-[1.05rem] text-ink mb-1">
+									<h3 className="font-serif font-semibold text-[1.05rem] text-ink mb-1">
 										Say it
-									</h4>
+									</h3>
 									<p className="font-serif text-[0.9rem] leading-[1.7] text-grey-2 max-w-[380px]">
 										Voice-first on mobile. Talk to it like you'd talk to a
 										person sitting next to you. It transcribes, understands
@@ -891,9 +930,9 @@ function HomePage() {
 									03
 								</span>
 								<div>
-									<h4 className="font-serif font-semibold text-[1.05rem] text-ink mb-1">
+									<h3 className="font-serif font-semibold text-[1.05rem] text-ink mb-1">
 										Teach it
-									</h4>
+									</h3>
 									<p className="font-serif text-[0.9rem] leading-[1.7] text-grey-2 max-w-[380px]">
 										Show it how you like things done — once. Your preferences
 										are saved and applied automatically from that point forward.
@@ -1000,6 +1039,18 @@ function HomePage() {
 						</div>
 					))}
 				</div>
+				<div className="max-w-[1200px] mx-auto mt-14 grid grid-cols-2 max-md:grid-cols-1 gap-6">
+					<ImagePlaceholder
+						label="Lifestyle photo — person using Wingmnn"
+						className="h-[280px]"
+						dark
+					/>
+					<ImagePlaceholder
+						label="Product screenshot — weekly review"
+						className="h-[280px]"
+						dark
+					/>
+				</div>
 			</section>
 
 			{/* ── S6: promise ── */}
@@ -1069,10 +1120,27 @@ function HomePage() {
 						</div>
 					))}
 				</div>
+				<div className="max-w-[1200px] mx-auto mt-10 grid grid-cols-3 max-md:grid-cols-1 gap-6">
+					<ImagePlaceholder
+						label="Desktop mockup"
+						className="h-[240px]"
+					/>
+					<ImagePlaceholder
+						label="iPhone mockup"
+						className="h-[240px]"
+					/>
+					<ImagePlaceholder
+						label="Android mockup"
+						className="h-[240px]"
+					/>
+				</div>
 			</section>
 
 			{/* ── S8: numbers ── */}
-			<section className="py-20 px-(--page-px) border-t border-grey-4 text-center">
+			<section
+				aria-label="Wingmnn by the numbers"
+				className="py-20 px-(--page-px) border-t border-grey-4 text-center"
+			>
 				<div
 					ref={numRef}
 					className={`max-w-[800px] mx-auto mb-6 grid grid-cols-3 gap-10 transition-[opacity,transform] duration-500 ease-out ${numVis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}
@@ -1153,6 +1221,17 @@ function HomePage() {
 				</div>
 			</section>
 
+			{/* ── Brand illustration placeholder ── */}
+			<section className="py-[80px] px-(--page-px) bg-ink">
+				<div className="max-w-[1200px] mx-auto">
+					<ImagePlaceholder
+						label="Brand illustration — bringing it all together"
+						className="h-[300px] w-full"
+						dark
+					/>
+				</div>
+			</section>
+
 			{/* ── S10: CTA ── */}
 			<section id="join" className="py-[120px] px-(--page-px) bg-ink">
 				<div className="max-w-[620px] mx-auto text-center">
@@ -1185,7 +1264,7 @@ function HomePage() {
 									<input
 										type="email"
 										placeholder="you@email.com"
-										className={`w-full font-mono text-[13px] py-3.5 px-[18px] border border-grey-1 max-[500px]:border-r max-[500px]:rounded-[5px] border-r-0 rounded-l-[5px] rounded-r-none bg-[#2a2a2a] text-cream outline-none transition-colors duration-150 placeholder:text-[#666] focus:border-accent-red ${formErr ? "border-accent-red" : ""}`}
+										className={`w-full font-mono text-[13px] h-12.5 px-[18px] border border-grey-1 max-[500px]:border-r max-[500px]:rounded-[5px] border-r-0 rounded-l-[5px] rounded-r-none bg-[#2a2a2a] text-cream outline-none transition-colors duration-150 placeholder:text-[#666] focus:border-accent-red ${formErr ? "border-accent-red" : ""}`}
 										value={email}
 										onChange={(e) => {
 											setEmail(e.target.value);
@@ -1200,7 +1279,7 @@ function HomePage() {
 								</div>
 								<button
 									type="submit"
-									className="inline-flex items-center gap-2 font-mono text-xs font-semibold text-white bg-accent-red py-3.5 px-6 border border-accent-red rounded-r-[5px] max-[500px]:rounded-[5px] max-[500px]:justify-center rounded-l-none cursor-pointer transition-colors duration-200 whitespace-nowrap hover:bg-red-dark"
+									className="inline-flex items-center gap-2 font-mono text-xs font-semibold text-white bg-accent-red py-4 h-12.5 px-6 border border-accent-red rounded-r-[5px] max-[500px]:rounded-[5px] max-[500px]:justify-center rounded-l-none cursor-pointer transition-colors duration-200 whitespace-nowrap hover:bg-red-dark"
 								>
 									Get early access <ArrowRight size={15} />
 								</button>
@@ -1209,7 +1288,6 @@ function HomePage() {
 					)}
 				</div>
 			</section>
-
 		</main>
 	);
 }
