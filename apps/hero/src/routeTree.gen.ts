@@ -11,10 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as HelpRouteImport } from './routes/help'
+import { Route as EarlyAccessRouteImport } from './routes/early-access'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ToolsIndexRouteImport } from './routes/tools/index'
+import { Route as ModulesIndexRouteImport } from './routes/modules/index'
 import { Route as UseCasesFreelancersRouteImport } from './routes/use-cases/freelancers'
 import { Route as UseCasesFoundersRouteImport } from './routes/use-cases/founders'
 import { Route as UseCasesExecutivesRouteImport } from './routes/use-cases/executives'
@@ -22,6 +28,16 @@ import { Route as UseCasesBusyParentsRouteImport } from './routes/use-cases/busy
 import { Route as ToolsSubscriptionCalculatorRouteImport } from './routes/tools/subscription-calculator'
 import { Route as ToolsNotificationAuditRouteImport } from './routes/tools/notification-audit'
 import { Route as ToolsMeetingCostCalculatorRouteImport } from './routes/tools/meeting-cost-calculator'
+import { Route as ModulesWellnessRouteImport } from './routes/modules/wellness'
+import { Route as ModulesTravelRouteImport } from './routes/modules/travel'
+import { Route as ModulesScheduleRouteImport } from './routes/modules/schedule'
+import { Route as ModulesProjectsRouteImport } from './routes/modules/projects'
+import { Route as ModulesNotesRouteImport } from './routes/modules/notes'
+import { Route as ModulesMessagesRouteImport } from './routes/modules/messages'
+import { Route as ModulesJournalRouteImport } from './routes/modules/journal'
+import { Route as ModulesInboxRouteImport } from './routes/modules/inbox'
+import { Route as ModulesFinancesRouteImport } from './routes/modules/finances'
+import { Route as ModulesFeedRouteImport } from './routes/modules/feed'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -33,9 +49,34 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IntegrationsRoute = IntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HowItWorksRoute = HowItWorksRouteImport.update({
   id: '/how-it-works',
   path: '/how-it-works',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EarlyAccessRoute = EarlyAccessRouteImport.update({
+  id: '/early-access',
+  path: '/early-access',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogRoute = BlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -51,6 +92,11 @@ const IndexRoute = IndexRouteImport.update({
 const ToolsIndexRoute = ToolsIndexRouteImport.update({
   id: '/tools/',
   path: '/tools/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesIndexRoute = ModulesIndexRouteImport.update({
+  id: '/modules/',
+  path: '/modules/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UseCasesFreelancersRoute = UseCasesFreelancersRouteImport.update({
@@ -90,13 +136,78 @@ const ToolsMeetingCostCalculatorRoute =
     path: '/tools/meeting-cost-calculator',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ModulesWellnessRoute = ModulesWellnessRouteImport.update({
+  id: '/modules/wellness',
+  path: '/modules/wellness',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesTravelRoute = ModulesTravelRouteImport.update({
+  id: '/modules/travel',
+  path: '/modules/travel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesScheduleRoute = ModulesScheduleRouteImport.update({
+  id: '/modules/schedule',
+  path: '/modules/schedule',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesProjectsRoute = ModulesProjectsRouteImport.update({
+  id: '/modules/projects',
+  path: '/modules/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesNotesRoute = ModulesNotesRouteImport.update({
+  id: '/modules/notes',
+  path: '/modules/notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesMessagesRoute = ModulesMessagesRouteImport.update({
+  id: '/modules/messages',
+  path: '/modules/messages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesJournalRoute = ModulesJournalRouteImport.update({
+  id: '/modules/journal',
+  path: '/modules/journal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesInboxRoute = ModulesInboxRouteImport.update({
+  id: '/modules/inbox',
+  path: '/modules/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesFinancesRoute = ModulesFinancesRouteImport.update({
+  id: '/modules/finances',
+  path: '/modules/finances',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModulesFeedRoute = ModulesFeedRouteImport.update({
+  id: '/modules/feed',
+  path: '/modules/feed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/blog': typeof BlogRoute
+  '/contact': typeof ContactRoute
+  '/early-access': typeof EarlyAccessRoute
+  '/help': typeof HelpRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/integrations': typeof IntegrationsRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/modules/feed': typeof ModulesFeedRoute
+  '/modules/finances': typeof ModulesFinancesRoute
+  '/modules/inbox': typeof ModulesInboxRoute
+  '/modules/journal': typeof ModulesJournalRoute
+  '/modules/messages': typeof ModulesMessagesRoute
+  '/modules/notes': typeof ModulesNotesRoute
+  '/modules/projects': typeof ModulesProjectsRoute
+  '/modules/schedule': typeof ModulesScheduleRoute
+  '/modules/travel': typeof ModulesTravelRoute
+  '/modules/wellness': typeof ModulesWellnessRoute
   '/tools/meeting-cost-calculator': typeof ToolsMeetingCostCalculatorRoute
   '/tools/notification-audit': typeof ToolsNotificationAuditRoute
   '/tools/subscription-calculator': typeof ToolsSubscriptionCalculatorRoute
@@ -104,14 +215,30 @@ export interface FileRoutesByFullPath {
   '/use-cases/executives': typeof UseCasesExecutivesRoute
   '/use-cases/founders': typeof UseCasesFoundersRoute
   '/use-cases/freelancers': typeof UseCasesFreelancersRoute
+  '/modules/': typeof ModulesIndexRoute
   '/tools/': typeof ToolsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/blog': typeof BlogRoute
+  '/contact': typeof ContactRoute
+  '/early-access': typeof EarlyAccessRoute
+  '/help': typeof HelpRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/integrations': typeof IntegrationsRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/modules/feed': typeof ModulesFeedRoute
+  '/modules/finances': typeof ModulesFinancesRoute
+  '/modules/inbox': typeof ModulesInboxRoute
+  '/modules/journal': typeof ModulesJournalRoute
+  '/modules/messages': typeof ModulesMessagesRoute
+  '/modules/notes': typeof ModulesNotesRoute
+  '/modules/projects': typeof ModulesProjectsRoute
+  '/modules/schedule': typeof ModulesScheduleRoute
+  '/modules/travel': typeof ModulesTravelRoute
+  '/modules/wellness': typeof ModulesWellnessRoute
   '/tools/meeting-cost-calculator': typeof ToolsMeetingCostCalculatorRoute
   '/tools/notification-audit': typeof ToolsNotificationAuditRoute
   '/tools/subscription-calculator': typeof ToolsSubscriptionCalculatorRoute
@@ -119,15 +246,31 @@ export interface FileRoutesByTo {
   '/use-cases/executives': typeof UseCasesExecutivesRoute
   '/use-cases/founders': typeof UseCasesFoundersRoute
   '/use-cases/freelancers': typeof UseCasesFreelancersRoute
+  '/modules': typeof ModulesIndexRoute
   '/tools': typeof ToolsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/blog': typeof BlogRoute
+  '/contact': typeof ContactRoute
+  '/early-access': typeof EarlyAccessRoute
+  '/help': typeof HelpRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/integrations': typeof IntegrationsRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/modules/feed': typeof ModulesFeedRoute
+  '/modules/finances': typeof ModulesFinancesRoute
+  '/modules/inbox': typeof ModulesInboxRoute
+  '/modules/journal': typeof ModulesJournalRoute
+  '/modules/messages': typeof ModulesMessagesRoute
+  '/modules/notes': typeof ModulesNotesRoute
+  '/modules/projects': typeof ModulesProjectsRoute
+  '/modules/schedule': typeof ModulesScheduleRoute
+  '/modules/travel': typeof ModulesTravelRoute
+  '/modules/wellness': typeof ModulesWellnessRoute
   '/tools/meeting-cost-calculator': typeof ToolsMeetingCostCalculatorRoute
   '/tools/notification-audit': typeof ToolsNotificationAuditRoute
   '/tools/subscription-calculator': typeof ToolsSubscriptionCalculatorRoute
@@ -135,6 +278,7 @@ export interface FileRoutesById {
   '/use-cases/executives': typeof UseCasesExecutivesRoute
   '/use-cases/founders': typeof UseCasesFoundersRoute
   '/use-cases/freelancers': typeof UseCasesFreelancersRoute
+  '/modules/': typeof ModulesIndexRoute
   '/tools/': typeof ToolsIndexRoute
 }
 export interface FileRouteTypes {
@@ -142,9 +286,24 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/blog'
+    | '/contact'
+    | '/early-access'
+    | '/help'
     | '/how-it-works'
+    | '/integrations'
     | '/privacy'
     | '/terms'
+    | '/modules/feed'
+    | '/modules/finances'
+    | '/modules/inbox'
+    | '/modules/journal'
+    | '/modules/messages'
+    | '/modules/notes'
+    | '/modules/projects'
+    | '/modules/schedule'
+    | '/modules/travel'
+    | '/modules/wellness'
     | '/tools/meeting-cost-calculator'
     | '/tools/notification-audit'
     | '/tools/subscription-calculator'
@@ -152,14 +311,30 @@ export interface FileRouteTypes {
     | '/use-cases/executives'
     | '/use-cases/founders'
     | '/use-cases/freelancers'
+    | '/modules/'
     | '/tools/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
+    | '/blog'
+    | '/contact'
+    | '/early-access'
+    | '/help'
     | '/how-it-works'
+    | '/integrations'
     | '/privacy'
     | '/terms'
+    | '/modules/feed'
+    | '/modules/finances'
+    | '/modules/inbox'
+    | '/modules/journal'
+    | '/modules/messages'
+    | '/modules/notes'
+    | '/modules/projects'
+    | '/modules/schedule'
+    | '/modules/travel'
+    | '/modules/wellness'
     | '/tools/meeting-cost-calculator'
     | '/tools/notification-audit'
     | '/tools/subscription-calculator'
@@ -167,14 +342,30 @@ export interface FileRouteTypes {
     | '/use-cases/executives'
     | '/use-cases/founders'
     | '/use-cases/freelancers'
+    | '/modules'
     | '/tools'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/blog'
+    | '/contact'
+    | '/early-access'
+    | '/help'
     | '/how-it-works'
+    | '/integrations'
     | '/privacy'
     | '/terms'
+    | '/modules/feed'
+    | '/modules/finances'
+    | '/modules/inbox'
+    | '/modules/journal'
+    | '/modules/messages'
+    | '/modules/notes'
+    | '/modules/projects'
+    | '/modules/schedule'
+    | '/modules/travel'
+    | '/modules/wellness'
     | '/tools/meeting-cost-calculator'
     | '/tools/notification-audit'
     | '/tools/subscription-calculator'
@@ -182,15 +373,31 @@ export interface FileRouteTypes {
     | '/use-cases/executives'
     | '/use-cases/founders'
     | '/use-cases/freelancers'
+    | '/modules/'
     | '/tools/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  BlogRoute: typeof BlogRoute
+  ContactRoute: typeof ContactRoute
+  EarlyAccessRoute: typeof EarlyAccessRoute
+  HelpRoute: typeof HelpRoute
   HowItWorksRoute: typeof HowItWorksRoute
+  IntegrationsRoute: typeof IntegrationsRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
+  ModulesFeedRoute: typeof ModulesFeedRoute
+  ModulesFinancesRoute: typeof ModulesFinancesRoute
+  ModulesInboxRoute: typeof ModulesInboxRoute
+  ModulesJournalRoute: typeof ModulesJournalRoute
+  ModulesMessagesRoute: typeof ModulesMessagesRoute
+  ModulesNotesRoute: typeof ModulesNotesRoute
+  ModulesProjectsRoute: typeof ModulesProjectsRoute
+  ModulesScheduleRoute: typeof ModulesScheduleRoute
+  ModulesTravelRoute: typeof ModulesTravelRoute
+  ModulesWellnessRoute: typeof ModulesWellnessRoute
   ToolsMeetingCostCalculatorRoute: typeof ToolsMeetingCostCalculatorRoute
   ToolsNotificationAuditRoute: typeof ToolsNotificationAuditRoute
   ToolsSubscriptionCalculatorRoute: typeof ToolsSubscriptionCalculatorRoute
@@ -198,6 +405,7 @@ export interface RootRouteChildren {
   UseCasesExecutivesRoute: typeof UseCasesExecutivesRoute
   UseCasesFoundersRoute: typeof UseCasesFoundersRoute
   UseCasesFreelancersRoute: typeof UseCasesFreelancersRoute
+  ModulesIndexRoute: typeof ModulesIndexRoute
   ToolsIndexRoute: typeof ToolsIndexRoute
 }
 
@@ -217,11 +425,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/integrations': {
+      id: '/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof IntegrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/how-it-works': {
       id: '/how-it-works'
       path: '/how-it-works'
       fullPath: '/how-it-works'
       preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/early-access': {
+      id: '/early-access'
+      path: '/early-access'
+      fullPath: '/early-access'
+      preLoaderRoute: typeof EarlyAccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -243,6 +486,13 @@ declare module '@tanstack/react-router' {
       path: '/tools'
       fullPath: '/tools/'
       preLoaderRoute: typeof ToolsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/': {
+      id: '/modules/'
+      path: '/modules'
+      fullPath: '/modules/'
+      preLoaderRoute: typeof ModulesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/use-cases/freelancers': {
@@ -294,15 +544,100 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsMeetingCostCalculatorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/modules/wellness': {
+      id: '/modules/wellness'
+      path: '/modules/wellness'
+      fullPath: '/modules/wellness'
+      preLoaderRoute: typeof ModulesWellnessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/travel': {
+      id: '/modules/travel'
+      path: '/modules/travel'
+      fullPath: '/modules/travel'
+      preLoaderRoute: typeof ModulesTravelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/schedule': {
+      id: '/modules/schedule'
+      path: '/modules/schedule'
+      fullPath: '/modules/schedule'
+      preLoaderRoute: typeof ModulesScheduleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/projects': {
+      id: '/modules/projects'
+      path: '/modules/projects'
+      fullPath: '/modules/projects'
+      preLoaderRoute: typeof ModulesProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/notes': {
+      id: '/modules/notes'
+      path: '/modules/notes'
+      fullPath: '/modules/notes'
+      preLoaderRoute: typeof ModulesNotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/messages': {
+      id: '/modules/messages'
+      path: '/modules/messages'
+      fullPath: '/modules/messages'
+      preLoaderRoute: typeof ModulesMessagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/journal': {
+      id: '/modules/journal'
+      path: '/modules/journal'
+      fullPath: '/modules/journal'
+      preLoaderRoute: typeof ModulesJournalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/inbox': {
+      id: '/modules/inbox'
+      path: '/modules/inbox'
+      fullPath: '/modules/inbox'
+      preLoaderRoute: typeof ModulesInboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/finances': {
+      id: '/modules/finances'
+      path: '/modules/finances'
+      fullPath: '/modules/finances'
+      preLoaderRoute: typeof ModulesFinancesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modules/feed': {
+      id: '/modules/feed'
+      path: '/modules/feed'
+      fullPath: '/modules/feed'
+      preLoaderRoute: typeof ModulesFeedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  BlogRoute: BlogRoute,
+  ContactRoute: ContactRoute,
+  EarlyAccessRoute: EarlyAccessRoute,
+  HelpRoute: HelpRoute,
   HowItWorksRoute: HowItWorksRoute,
+  IntegrationsRoute: IntegrationsRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
+  ModulesFeedRoute: ModulesFeedRoute,
+  ModulesFinancesRoute: ModulesFinancesRoute,
+  ModulesInboxRoute: ModulesInboxRoute,
+  ModulesJournalRoute: ModulesJournalRoute,
+  ModulesMessagesRoute: ModulesMessagesRoute,
+  ModulesNotesRoute: ModulesNotesRoute,
+  ModulesProjectsRoute: ModulesProjectsRoute,
+  ModulesScheduleRoute: ModulesScheduleRoute,
+  ModulesTravelRoute: ModulesTravelRoute,
+  ModulesWellnessRoute: ModulesWellnessRoute,
   ToolsMeetingCostCalculatorRoute: ToolsMeetingCostCalculatorRoute,
   ToolsNotificationAuditRoute: ToolsNotificationAuditRoute,
   ToolsSubscriptionCalculatorRoute: ToolsSubscriptionCalculatorRoute,
@@ -310,6 +645,7 @@ const rootRouteChildren: RootRouteChildren = {
   UseCasesExecutivesRoute: UseCasesExecutivesRoute,
   UseCasesFoundersRoute: UseCasesFoundersRoute,
   UseCasesFreelancersRoute: UseCasesFreelancersRoute,
+  ModulesIndexRoute: ModulesIndexRoute,
   ToolsIndexRoute: ToolsIndexRoute,
 }
 export const routeTree = rootRouteImport
