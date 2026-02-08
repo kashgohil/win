@@ -98,3 +98,187 @@ body > header {
 		margin: 0;
 	}
 }
+
+/* ===== Notification pills & hero animations (from index) ===== */
+.nf-pill {
+	position: absolute;
+	left: var(--ox);
+	top: var(--oy);
+	transform: translate(var(--dx), var(--dy)) rotate(var(--dr));
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 14px;
+	background: rgba(255, 255, 255, 0.07);
+	backdrop-filter: blur(14px);
+	-webkit-backdrop-filter: blur(14px);
+	border-radius: 20px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+	white-space: nowrap;
+	animation: nfPopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+	transition:
+		transform 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+		opacity 0.5s ease,
+		box-shadow 0.6s ease;
+}
+.nf-pill--org {
+	transform: translate(0, 0) rotate(0deg);
+	box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
+}
+.nf-pill--merge {
+	transform: translate(calc(40px - var(--ox)), calc(10px - var(--oy))) scale(0);
+	opacity: 0;
+	pointer-events: none;
+	transition:
+		transform 0.7s cubic-bezier(0.6, 0, 0.1, 1) calc(var(--i) * 40ms),
+		opacity 0.35s ease calc(var(--i) * 40ms + 120ms);
+}
+
+.nf-summary-row {
+	animation: nfRowIn 0.4s ease both;
+}
+.nf-summary-row:nth-child(1) {
+	animation-delay: 0.1s;
+}
+.nf-summary-row:nth-child(2) {
+	animation-delay: 0.16s;
+}
+.nf-summary-row:nth-child(3) {
+	animation-delay: 0.22s;
+}
+.nf-summary-row:nth-child(4) {
+	animation-delay: 0.28s;
+}
+.nf-summary-row:nth-child(5) {
+	animation-delay: 0.34s;
+}
+.nf-summary-row:nth-child(6) {
+	animation-delay: 0.4s;
+}
+.nf-summary-action {
+	animation: nfRowIn 0.4s ease both;
+}
+.nf-summary-action:nth-child(1) {
+	animation-delay: 0.48s;
+}
+.nf-summary-action:nth-child(2) {
+	animation-delay: 0.56s;
+}
+.nf-summary-action:nth-child(3) {
+	animation-delay: 0.64s;
+}
+
+@keyframes nfPopIn {
+	from {
+		opacity: 0;
+		scale: 0.7;
+	}
+	to {
+		opacity: 1;
+		scale: 1;
+	}
+}
+@keyframes nfFadeUp {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+@keyframes nfAbsorb {
+	0% {
+		text-shadow: 0 0 0 transparent;
+		transform: scale(1);
+	}
+	40% {
+		text-shadow: 0 0 28px rgba(244, 241, 235, 0.35);
+		transform: scale(1.1);
+	}
+	100% {
+		text-shadow: 0 0 0 transparent;
+		transform: scale(1);
+	}
+}
+@keyframes nfSummaryIn {
+	from {
+		opacity: 0;
+		transform: translateY(-16px) scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+@keyframes nfRowIn {
+	from {
+		opacity: 0;
+		transform: translateX(-8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+@keyframes tickerScroll {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(-50%);
+	}
+}
+
+@keyframes cdBounce {
+	0%,
+	60%,
+	100% {
+		transform: translateY(0);
+		opacity: 0.3;
+	}
+	30% {
+		transform: translateY(-4px);
+		opacity: 0.8;
+	}
+}
+@keyframes cdMsgIn {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+@keyframes cdFadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+@keyframes cdBlink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+}
+@keyframes cdPulse {
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.4;
+		transform: scale(1.3);
+	}
+}
