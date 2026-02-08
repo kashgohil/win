@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
 	Briefcase,
@@ -14,20 +14,17 @@ import {
 } from "lucide-react";
 import { useId, useState } from "react";
 
+import { seo } from "@/lib/seo";
+
 export const Route = createFileRoute("/tools/notification-audit")({
 	component: NotificationAudit,
-	head: () => ({
-		meta: [
-			{
-				title: "Notification Audit — How Much Noise Are You Drowning In? | Wingmnn",
-			},
-			{
-				name: "description",
-				content:
-					"Audit your daily notifications across every app. See how many actually matter, how many hours you lose, and where the noise is coming from. Free tool from Wingmnn.",
-			},
-		],
-	}),
+	head: () =>
+		seo({
+			title: "Notification Audit — How Much Noise Are You Drowning In? | Wingmnn",
+			description:
+				"Audit your daily notifications across every app. See how many actually matter, how many hours you lose, and where the noise is coming from. Free tool from Wingmnn.",
+			path: "/tools/notification-audit",
+		}),
 });
 
 /* ─── data ─── */
@@ -373,12 +370,13 @@ function NotificationAudit() {
 						— filtering noise, surfacing what matters, and letting you start
 						each day with clarity instead of chaos.
 					</p>
-						<a
-							href="/#join"
+						<Link
+							to="/"
+							hash="join"
 							className="inline-flex items-center gap-2.5 font-mono font-semibold text-sm text-white py-3.5 px-7 rounded-md transition-colors duration-200 bg-accent-red hover:bg-red-dark no-underline"
 						>
 							Get early access <ArrowRight size={16} />
-						</a>
+						</Link>
 					</div>
 				</section>
 

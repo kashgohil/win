@@ -1,7 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 
-export const Route = createFileRoute("/terms")({ component: TermsPage });
+import { seo } from "@/lib/seo";
+
+export const Route = createFileRoute("/terms")({
+	component: TermsPage,
+	head: () =>
+		seo({
+			title: "Terms of Service — Wingmnn",
+			description:
+				"Terms of Service for Wingmnn. Read about our policies on data usage, account management, and user responsibilities.",
+			path: "/terms",
+		}),
+});
 
 /* ─── component ─── */
 
@@ -132,12 +143,12 @@ function TermsPage() {
 							You own your data. We don't claim any rights to the content you
 							create, the information you connect, or the preferences you set.
 							Our{" "}
-							<a
-								href="/privacy"
+							<Link
+								to="/privacy"
 								className="text-accent-red no-underline hover:underline"
 							>
 								Privacy Policy
-							</a>{" "}
+							</Link>{" "}
 							explains exactly what we collect and why.
 						</p>
 						<p className="font-serif text-[1.05rem] leading-[1.8] text-grey-2">

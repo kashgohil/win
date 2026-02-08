@@ -1,18 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
+
+import { seo } from "@/lib/seo";
 
 export const Route = createFileRoute("/use-cases/founders")({
 	component: FoundersPage,
-	head: () => ({
-		meta: [
-			{ title: "Wingmnn for Founders — Your AI Chief of Staff" },
-			{
-				name: "description",
-				content:
-					"Wingmnn connects your inbox, schedule, projects, and finances into one intelligence — so you can focus on building, not administrating.",
-			},
-		],
-	}),
+	head: () =>
+		seo({
+			title: "Wingmnn for Founders — Your AI Chief of Staff",
+			description:
+				"Wingmnn connects your inbox, schedule, projects, and finances into one intelligence — so you can focus on building, not administrating.",
+			path: "/use-cases/founders",
+		}),
 });
 
 /* ─── data ─── */
@@ -177,12 +176,13 @@ function FoundersPage() {
 						Early access is rolling out now. Drop your email and we'll let you
 						know when it's your turn.
 					</p>
-					<a
-						href="/#join"
+					<Link
+						to="/"
+						hash="join"
 						className="inline-flex items-center gap-2.5 font-mono font-semibold text-sm text-white py-3.5 px-7 rounded-md transition-colors duration-200 bg-accent-red hover:bg-red-dark no-underline"
 					>
 						Get early access <ArrowRight size={16} />
-					</a>
+					</Link>
 				</div>
 			</section>
 		</main>

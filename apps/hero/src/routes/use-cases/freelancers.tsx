@@ -1,18 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
+
+import { seo } from "@/lib/seo";
 
 export const Route = createFileRoute("/use-cases/freelancers")({
 	component: FreelancersPage,
-	head: () => ({
-		meta: [
-			{ title: "Wingmnn for Freelancers — Your Back Office" },
-			{
-				name: "description",
-				content:
-					"Wingmnn handles invoicing reminders, schedule juggling, project tracking, and client communication — so you can focus on the work you're actually hired to do.",
-			},
-		],
-	}),
+	head: () =>
+		seo({
+			title: "Wingmnn for Freelancers — Your Back Office",
+			description:
+				"Wingmnn handles invoicing reminders, schedule juggling, project tracking, and client communication — so you can focus on the work you're actually hired to do.",
+			path: "/use-cases/freelancers",
+		}),
 });
 
 /* ─── data ─── */
@@ -176,12 +175,13 @@ function FreelancersPage() {
 						Early access is rolling out now. Drop your email and we'll let you
 						know when it's your turn.
 					</p>
-					<a
-						href="/#join"
+					<Link
+						to="/"
+						hash="join"
 						className="inline-flex items-center gap-2.5 font-mono font-semibold text-sm text-white py-3.5 px-7 rounded-md transition-colors duration-200 bg-accent-red hover:bg-red-dark no-underline"
 					>
 						Get early access <ArrowRight size={16} />
-					</a>
+					</Link>
 				</div>
 			</section>
 		</main>

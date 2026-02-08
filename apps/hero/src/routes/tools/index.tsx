@@ -1,18 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Calculator, Bell, CreditCard } from "lucide-react";
+
+import { seo } from "@/lib/seo";
 
 export const Route = createFileRoute("/tools/")({
 	component: ToolsIndexPage,
-	head: () => ({
-		meta: [
-			{ title: "Free Tools — Wingmnn" },
-			{
-				name: "description",
-				content:
-					"Free tools from Wingmnn to help you understand where your time and money go — no account required.",
-			},
-		],
-	}),
+	head: () =>
+		seo({
+			title: "Free Tools — Wingmnn",
+			description:
+				"Free tools from Wingmnn to help you understand where your time and money go — no account required.",
+			path: "/tools",
+		}),
 });
 
 /* ─── data ─── */
@@ -83,12 +82,12 @@ function ToolsIndexPage() {
 									<p className="font-serif text-[0.92rem] leading-[1.75] text-grey-2 flex-1 mb-6">
 										{t.desc}
 									</p>
-									<a
-										href={t.href}
-										className="inline-flex items-center gap-2 font-mono text-[12px] font-semibold text-accent-red no-underline tracking-[0.02em] transition-colors duration-150 hover:text-red-dark"
-									>
-										Try it <ArrowRight size={14} />
-									</a>
+								<Link
+									to={t.href}
+									className="inline-flex items-center gap-2 font-mono text-[12px] font-semibold text-accent-red no-underline tracking-[0.02em] transition-colors duration-150 hover:text-red-dark"
+								>
+									Try it <ArrowRight size={14} />
+								</Link>
 								</div>
 							);
 						})}
@@ -106,12 +105,13 @@ function ToolsIndexPage() {
 						These tools scratch the surface. Wingmnn connects all your
 						systems into one intelligence that works for you.
 					</p>
-					<a
-						href="/#join"
+					<Link
+						to="/"
+						hash="join"
 						className="inline-flex items-center gap-2.5 font-mono font-semibold text-sm text-white py-3.5 px-7 rounded-md transition-colors duration-200 bg-accent-red hover:bg-red-dark no-underline"
 					>
 						Get early access <ArrowRight size={16} />
-					</a>
+					</Link>
 				</div>
 			</section>
 		</main>

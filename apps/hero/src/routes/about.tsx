@@ -1,7 +1,28 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 
-export const Route = createFileRoute("/about")({ component: AboutPage });
+import { seo } from "@/lib/seo";
+
+export const Route = createFileRoute("/about")({
+	component: AboutPage,
+	head: () =>
+		seo({
+			title: "About — Wingmnn",
+			description:
+				"Wingmnn is a single intelligence that connects your email, calendar, finances, travel, projects, and wellness. Built in Brooklyn by a small, focused team.",
+			path: "/about",
+			jsonLd: [
+				{
+					"@context": "https://schema.org",
+					"@type": "AboutPage",
+					name: "About Wingmnn",
+					url: "https://wingmnn.com/about",
+					description:
+						"Wingmnn is a single intelligence that connects your email, calendar, finances, travel, projects, and wellness. Built in Brooklyn by a small, focused team.",
+				},
+			],
+		}),
+});
 
 /* ─── data ─── */
 
@@ -178,12 +199,13 @@ function AboutPage() {
 						Early access is rolling out now. We'll let you know when it's your
 						turn.
 					</p>
-					<a
-						href="/#join"
+					<Link
+						to="/"
+						hash="join"
 						className="inline-flex items-center gap-2.5 font-mono font-semibold text-sm text-white py-3.5 px-7 rounded-md transition-colors duration-200 bg-accent-red hover:bg-red-dark no-underline"
 					>
 						Get early access <ArrowRight size={16} />
-					</a>
+					</Link>
 				</div>
 			</section>
 		</main>

@@ -1,8 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
+
+import { seo } from "@/lib/seo";
 
 export const Route = createFileRoute("/how-it-works")({
 	component: HowItWorksPage,
+	head: () =>
+		seo({
+			title: "How It Works — Wingmnn",
+			description:
+				"Connect your accounts, let Wingmnn learn your patterns, and watch it act on your behalf. 10 modules, one intelligence across every domain of your life.",
+			path: "/how-it-works",
+		}),
 });
 
 /* ─── data ─── */
@@ -269,12 +278,13 @@ function HowItWorksPage() {
 						Early access is rolling out now. Drop your email and we'll let you
 						know when it's your turn.
 					</p>
-					<a
-						href="/#join"
+					<Link
+						to="/"
+						hash="join"
 						className="inline-flex items-center gap-2.5 font-mono font-semibold text-sm text-white py-3.5 px-7 rounded-md transition-colors duration-200 bg-accent-red hover:bg-red-dark no-underline"
 					>
 						Get early access <ArrowRight size={16} />
-					</a>
+					</Link>
 				</div>
 			</section>
 		</main>

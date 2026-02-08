@@ -1,21 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Minus, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { seo } from "@/lib/seo";
+
 export const Route = createFileRoute("/tools/subscription-calculator")({
 	component: SubscriptionCalculator,
-	head: () => ({
-		meta: [
-			{
-				title: "Subscription Calculator — How Much Are You Spending? | Wingmnn",
-			},
-			{
-				name: "description",
-				content:
-					"Add up every subscription you pay for, see your real monthly and annual totals, and find hidden waste. Free tool from Wingmnn.",
-			},
-		],
-	}),
+	head: () =>
+		seo({
+			title: "Subscription Calculator — How Much Are You Spending? | Wingmnn",
+			description:
+				"Add up every subscription you pay for, see your real monthly and annual totals, and find hidden waste. Free tool from Wingmnn.",
+			path: "/tools/subscription-calculator",
+		}),
 });
 
 /* ─── hooks ─── */
@@ -409,12 +406,13 @@ function SubscriptionCalculator() {
 						— flagging price increases, forgotten trials, and duplicate charges
 						before they hit your account.
 					</p>
-					<a
-						href="/#join"
+					<Link
+						to="/"
+						hash="join"
 						className="inline-flex items-center gap-2.5 font-mono font-semibold text-sm text-white py-3.5 px-7 rounded-md transition-colors duration-200 bg-accent-red hover:bg-red-dark no-underline"
 					>
 						Get early access <ArrowRight size={16} />
-					</a>
+					</Link>
 				</div>
 			</section>
 		</main>

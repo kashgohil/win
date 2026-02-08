@@ -1,21 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Minus, Plus } from "lucide-react";
 import { useId, useState } from "react";
 
+import { seo } from "@/lib/seo";
+
 export const Route = createFileRoute("/tools/meeting-cost-calculator")({
 	component: MeetingCostCalculator,
-	head: () => ({
-		meta: [
-			{
-				title: "Meeting Cost Calculator — What Do Meetings Really Cost? | Wingmnn",
-			},
-			{
-				name: "description",
-				content:
-					"Calculate the true cost of your meetings based on attendees, salaries, duration, and frequency. See annual impact in dollars and hours. Free tool from Wingmnn.",
-			},
-		],
-	}),
+	head: () =>
+		seo({
+			title: "Meeting Cost Calculator — What Do Meetings Really Cost? | Wingmnn",
+			description:
+				"Calculate the true cost of your meetings based on attendees, salaries, duration, and frequency. See annual impact in dollars and hours. Free tool from Wingmnn.",
+			path: "/tools/meeting-cost-calculator",
+		}),
 });
 
 /* ─── helpers ─── */
@@ -355,12 +352,13 @@ function MeetingCostCalculator() {
 						time sinks, and suggests optimizations — so your calendar works for
 						you instead of against you.
 					</p>
-					<a
-						href="/#join"
+					<Link
+						to="/"
+						hash="join"
 						className="inline-flex items-center gap-2.5 font-mono font-semibold text-sm text-white py-3.5 px-7 rounded-md transition-colors duration-200 bg-accent-red hover:bg-red-dark no-underline"
 					>
 						Get early access <ArrowRight size={16} />
-					</a>
+					</Link>
 				</div>
 			</section>
 		</main>

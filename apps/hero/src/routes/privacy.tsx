@@ -1,7 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 
-export const Route = createFileRoute("/privacy")({ component: PrivacyPage });
+import { seo } from "@/lib/seo";
+
+export const Route = createFileRoute("/privacy")({
+	component: PrivacyPage,
+	head: () =>
+		seo({
+			title: "Privacy — Wingmnn",
+			description:
+				"Your data is yours. We don't train on it, sell it, or share it. Full encryption, SOC 2 compliance, and one-click deletion.",
+			path: "/privacy",
+		}),
+});
 
 /* ─── data ─── */
 

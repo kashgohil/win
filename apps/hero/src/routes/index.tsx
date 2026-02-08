@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
 	Bell,
@@ -16,7 +16,77 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export const Route = createFileRoute("/")({ component: HomePage });
+import { seo } from "@/lib/seo";
+
+const faqEntries = [
+	{
+		q: "What happens to my data if I cancel?",
+		a: "Everything is exported to you in standard formats within 24 hours. After 30 days, all data is permanently deleted. No copies. No archives.",
+	},
+	{
+		q: "Do I have to connect everything?",
+		a: "No. Every module is independent. Connect only what you want. More connections mean better intelligence, but none are required.",
+	},
+	{
+		q: "How is this different from [insert app]?",
+		a: "Most tools solve one domain. Wingmnn is one intelligence across all of them. Your calendar knows about your finances. Your inbox knows about your projects. That cross-domain awareness is the whole point.",
+	},
+	{
+		q: "Is my financial data safe?",
+		a: "Financial connections are read-only through Plaid. We can't move money. Everything is encrypted at rest and in transit. We're SOC 2 Type II compliant.",
+	},
+	{
+		q: 'What does "digital twin" actually mean?',
+		a: "A persistent model of your preferences, patterns, and priorities. Not a chatbot you re-explain things to. Wingmnn remembers context and acts on your behalf — like a chief of staff who's been with you for years.",
+	},
+	{
+		q: "How much does it cost?",
+		a: "Pricing announced at launch. Straightforward monthly subscription. No per-module fees, no usage caps. The business model is your subscription, not your data.",
+	},
+];
+
+export const Route = createFileRoute("/")({
+	component: HomePage,
+	head: () =>
+		seo({
+			title: "wingmnn — your digital twin",
+			description:
+				"The personal assistant that manages your mail, projects, money, messages, feeds, journal, notes, travel, calendar, and wellness.",
+			path: "/",
+			jsonLd: [
+				{
+					"@context": "https://schema.org",
+					"@type": "WebPage",
+					name: "wingmnn — your digital twin",
+					url: "https://wingmnn.com",
+					description:
+						"The personal assistant that manages your mail, projects, money, messages, feeds, journal, notes, travel, calendar, and wellness.",
+					about: {
+						"@type": "SoftwareApplication",
+						name: "Wingmnn",
+						applicationCategory: "ProductivityApplication",
+						operatingSystem: "Web, iOS, Android",
+						offers: {
+							"@type": "Offer",
+							availability: "https://schema.org/PreOrder",
+						},
+					},
+				},
+				{
+					"@context": "https://schema.org",
+					"@type": "FAQPage",
+					mainEntity: faqEntries.map((f) => ({
+						"@type": "Question",
+						name: f.q,
+						acceptedAnswer: {
+							"@type": "Answer",
+							text: f.a,
+						},
+					})),
+				},
+			],
+		}),
+});
 
 /* ─── hooks ─── */
 
@@ -267,32 +337,7 @@ const scatterOffsets = [
 	{ x: 19, y: 42, r: 8 },
 ];
 
-const faqItems = [
-	{
-		q: "What happens to my data if I cancel?",
-		a: "Everything is exported to you in standard formats within 24 hours. After 30 days, all data is permanently deleted. No copies. No archives.",
-	},
-	{
-		q: "Do I have to connect everything?",
-		a: "No. Every module is independent. Connect only what you want. More connections mean better intelligence, but none are required.",
-	},
-	{
-		q: "How is this different from [insert app]?",
-		a: "Most tools solve one domain. Wingmnn is one intelligence across all of them. Your calendar knows about your finances. Your inbox knows about your projects. That cross-domain awareness is the whole point.",
-	},
-	{
-		q: "Is my financial data safe?",
-		a: "Financial connections are read-only through Plaid. We can't move money. Everything is encrypted at rest and in transit. We're SOC 2 Type II compliant.",
-	},
-	{
-		q: 'What does "digital twin" actually mean?',
-		a: "A persistent model of your preferences, patterns, and priorities. Not a chatbot you re-explain things to. Wingmnn remembers context and acts on your behalf — like a chief of staff who's been with you for years.",
-	},
-	{
-		q: "How much does it cost?",
-		a: "Pricing announced at launch. Straightforward monthly subscription. No per-module fees, no usage caps. The business model is your subscription, not your data.",
-	},
-];
+const faqItems = faqEntries;
 
 /* ─── chat demo ─── */
 
@@ -580,12 +625,13 @@ function HomePage() {
 							projects, and wellness — it learns how you operate, then operates
 							for you.
 						</p>
-						<a
-							href="#join"
+						<Link
+							to="/"
+							hash="join"
 							className="inline-flex items-center gap-2.5 font-mono font-semibold text-sm text-white py-3.5 px-7 rounded-md transition-colors duration-200 bg-accent-red hover:bg-red-dark hover:-translate-y-px"
 						>
 							Get early access <ArrowRight size={16} />
-						</a>
+						</Link>
 					</div>
 					<div className="flex justify-end items-center max-[900px]:justify-center">
 						<div className="nf-stage relative w-[380px] h-[420px] max-[900px]:w-[340px] max-[900px]:h-[380px] max-[500px]:w-[300px] max-[500px]:h-[360px] max-[500px]:scale-[0.88] max-[500px]:origin-top">
