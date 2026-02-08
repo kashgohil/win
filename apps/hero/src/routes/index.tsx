@@ -662,47 +662,64 @@ function HomePage() {
 										Today&apos;s briefing
 									</div>
 									<div className="flex flex-col gap-2.5">
-										<div className="nf-summary-row flex items-center gap-2.5 font-serif text-[12.5px] leading-[1.4] text-cream/60">
+										<div className="nf-summary-row flex items-center gap-2.5 font-body text-[12.5px] leading-[1.4] text-cream/60">
 											<Mail size={13} className="text-cream/30 shrink-0" />
 											<span>
-												3 boss emails &mdash; <em>reply drafted</em>
+												3 boss emails &mdash;{" "}
+												<em className="not-italic text-green-400/90 bg-green-500/10 px-1.5 py-0.5 rounded">
+													reply drafted
+												</em>
 											</span>
 										</div>
-										<div className="nf-summary-row flex items-center gap-2.5 font-serif text-[12.5px] leading-[1.4] text-cream/60">
+										<div className="nf-summary-row flex items-center gap-2.5 font-body text-[12.5px] leading-[1.4] text-cream/60">
 											<Calendar size={13} className="text-cream/30 shrink-0" />
 											<span>
 												Dentist conflicts with flight &mdash;{" "}
-												<em>rescheduled</em>
+												<em className="not-italic text-green-400/90 bg-green-500/10 px-1.5 py-0.5 rounded">
+													rescheduled
+												</em>
 											</span>
 										</div>
-										<div className="nf-summary-row flex items-center gap-2.5 font-serif text-[12.5px] leading-[1.4] text-cream/60">
+										<div className="nf-summary-row flex items-center gap-2.5 font-body text-[12.5px] leading-[1.4] text-cream/60">
 											<CreditCard
 												size={13}
 												className="text-cream/30 shrink-0"
 											/>
 											<span>
-												Card payment &mdash; <em>auto-scheduled</em>
+												Card payment &mdash;{" "}
+												<em className="not-italic text-amber-400/90 bg-amber-500/10 px-1.5 py-0.5 rounded">
+													auto-scheduled
+												</em>
 											</span>
 										</div>
-										<div className="nf-summary-row flex items-center gap-2.5 font-serif text-[12.5px] leading-[1.4] text-cream/60">
+										<div className="nf-summary-row flex items-center gap-2.5 font-body text-[12.5px] leading-[1.4] text-cream/60">
 											<Plane size={13} className="text-cream/30 shrink-0" />
 											<span>
-												NYC&rarr;TYO dropped $180 &mdash; <em>price locked</em>
+												NYC&rarr;TYO dropped $180 &mdash;{" "}
+												<em className="not-italic text-green-400/90 bg-green-500/10 px-1.5 py-0.5 rounded">
+													price locked
+												</em>
 											</span>
 										</div>
-										<div className="nf-summary-row flex items-center gap-2.5 font-serif text-[12.5px] leading-[1.4] text-cream/60">
+										<div className="nf-summary-row flex items-center gap-2.5 font-body text-[12.5px] leading-[1.4] text-cream/60">
 											<DollarSign
 												size={13}
 												className="text-cream/30 shrink-0"
 											/>
 											<span>
-												$89 Amex charge &mdash; <em>flagged for review</em>
+												$89 Amex charge &mdash;{" "}
+												<em className="not-italic text-red-400/90 bg-red-500/10 px-1.5 py-0.5 rounded">
+													flagged for review
+												</em>
 											</span>
 										</div>
-										<div className="nf-summary-row flex items-center gap-2.5 font-serif text-[12.5px] leading-[1.4] text-cream/60">
+										<div className="nf-summary-row flex items-center gap-2.5 font-body text-[12.5px] leading-[1.4] text-cream/60">
 											<Bell size={13} className="text-cream/30 shrink-0" />
 											<span>
-												Overdue task &mdash; <em>reminder sent</em>
+												Overdue task &mdash;{" "}
+												<em className="not-italic text-amber-400/90 bg-amber-500/10 px-1.5 py-0.5 rounded">
+													reminder sent
+												</em>
 											</span>
 										</div>
 									</div>
@@ -711,16 +728,16 @@ function HomePage() {
 										Actions ready
 									</div>
 									<div className="flex flex-col gap-2">
-										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/45">
-											<ArrowRight size={11} />
+										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/60 bg-white/[0.03] px-2.5 py-1.5 rounded-md border border-white/[0.05]">
+											<ArrowRight size={11} className="text-accent-amber shrink-0" />
 											<span>Review and send 3 drafted replies</span>
 										</div>
-										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/45">
-											<ArrowRight size={11} />
+										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/60 bg-white/[0.03] px-2.5 py-1.5 rounded-md border border-white/[0.05]">
+											<ArrowRight size={11} className="text-accent-amber shrink-0" />
 											<span>Confirm dentist moved to Feb 25</span>
 										</div>
-										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/45">
-											<ArrowRight size={11} />
+										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/60 bg-white/[0.03] px-2.5 py-1.5 rounded-md border border-white/[0.05]">
+											<ArrowRight size={11} className="text-accent-amber shrink-0" />
 											<span>Approve or dispute $89 charge</span>
 										</div>
 									</div>
