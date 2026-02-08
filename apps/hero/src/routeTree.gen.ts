@@ -9,38 +9,228 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ToolsIndexRouteImport } from './routes/tools/index'
+import { Route as UseCasesFreelancersRouteImport } from './routes/use-cases/freelancers'
+import { Route as UseCasesFoundersRouteImport } from './routes/use-cases/founders'
+import { Route as UseCasesExecutivesRouteImport } from './routes/use-cases/executives'
+import { Route as UseCasesBusyParentsRouteImport } from './routes/use-cases/busy-parents'
+import { Route as ToolsSubscriptionCalculatorRouteImport } from './routes/tools/subscription-calculator'
+import { Route as ToolsNotificationAuditRouteImport } from './routes/tools/notification-audit'
+import { Route as ToolsMeetingCostCalculatorRouteImport } from './routes/tools/meeting-cost-calculator'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowItWorksRoute = HowItWorksRouteImport.update({
+  id: '/how-it-works',
+  path: '/how-it-works',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsIndexRoute = ToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UseCasesFreelancersRoute = UseCasesFreelancersRouteImport.update({
+  id: '/use-cases/freelancers',
+  path: '/use-cases/freelancers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UseCasesFoundersRoute = UseCasesFoundersRouteImport.update({
+  id: '/use-cases/founders',
+  path: '/use-cases/founders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UseCasesExecutivesRoute = UseCasesExecutivesRouteImport.update({
+  id: '/use-cases/executives',
+  path: '/use-cases/executives',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UseCasesBusyParentsRoute = UseCasesBusyParentsRouteImport.update({
+  id: '/use-cases/busy-parents',
+  path: '/use-cases/busy-parents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsSubscriptionCalculatorRoute =
+  ToolsSubscriptionCalculatorRouteImport.update({
+    id: '/tools/subscription-calculator',
+    path: '/tools/subscription-calculator',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ToolsNotificationAuditRoute = ToolsNotificationAuditRouteImport.update({
+  id: '/tools/notification-audit',
+  path: '/tools/notification-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsMeetingCostCalculatorRoute =
+  ToolsMeetingCostCalculatorRouteImport.update({
+    id: '/tools/meeting-cost-calculator',
+    path: '/tools/meeting-cost-calculator',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
+  '/tools/meeting-cost-calculator': typeof ToolsMeetingCostCalculatorRoute
+  '/tools/notification-audit': typeof ToolsNotificationAuditRoute
+  '/tools/subscription-calculator': typeof ToolsSubscriptionCalculatorRoute
+  '/use-cases/busy-parents': typeof UseCasesBusyParentsRoute
+  '/use-cases/executives': typeof UseCasesExecutivesRoute
+  '/use-cases/founders': typeof UseCasesFoundersRoute
+  '/use-cases/freelancers': typeof UseCasesFreelancersRoute
+  '/tools/': typeof ToolsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
+  '/tools/meeting-cost-calculator': typeof ToolsMeetingCostCalculatorRoute
+  '/tools/notification-audit': typeof ToolsNotificationAuditRoute
+  '/tools/subscription-calculator': typeof ToolsSubscriptionCalculatorRoute
+  '/use-cases/busy-parents': typeof UseCasesBusyParentsRoute
+  '/use-cases/executives': typeof UseCasesExecutivesRoute
+  '/use-cases/founders': typeof UseCasesFoundersRoute
+  '/use-cases/freelancers': typeof UseCasesFreelancersRoute
+  '/tools': typeof ToolsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
+  '/tools/meeting-cost-calculator': typeof ToolsMeetingCostCalculatorRoute
+  '/tools/notification-audit': typeof ToolsNotificationAuditRoute
+  '/tools/subscription-calculator': typeof ToolsSubscriptionCalculatorRoute
+  '/use-cases/busy-parents': typeof UseCasesBusyParentsRoute
+  '/use-cases/executives': typeof UseCasesExecutivesRoute
+  '/use-cases/founders': typeof UseCasesFoundersRoute
+  '/use-cases/freelancers': typeof UseCasesFreelancersRoute
+  '/tools/': typeof ToolsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/how-it-works'
+    | '/privacy'
+    | '/terms'
+    | '/tools/meeting-cost-calculator'
+    | '/tools/notification-audit'
+    | '/tools/subscription-calculator'
+    | '/use-cases/busy-parents'
+    | '/use-cases/executives'
+    | '/use-cases/founders'
+    | '/use-cases/freelancers'
+    | '/tools/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/about'
+    | '/how-it-works'
+    | '/privacy'
+    | '/terms'
+    | '/tools/meeting-cost-calculator'
+    | '/tools/notification-audit'
+    | '/tools/subscription-calculator'
+    | '/use-cases/busy-parents'
+    | '/use-cases/executives'
+    | '/use-cases/founders'
+    | '/use-cases/freelancers'
+    | '/tools'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/how-it-works'
+    | '/privacy'
+    | '/terms'
+    | '/tools/meeting-cost-calculator'
+    | '/tools/notification-audit'
+    | '/tools/subscription-calculator'
+    | '/use-cases/busy-parents'
+    | '/use-cases/executives'
+    | '/use-cases/founders'
+    | '/use-cases/freelancers'
+    | '/tools/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  HowItWorksRoute: typeof HowItWorksRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
+  ToolsMeetingCostCalculatorRoute: typeof ToolsMeetingCostCalculatorRoute
+  ToolsNotificationAuditRoute: typeof ToolsNotificationAuditRoute
+  ToolsSubscriptionCalculatorRoute: typeof ToolsSubscriptionCalculatorRoute
+  UseCasesBusyParentsRoute: typeof UseCasesBusyParentsRoute
+  UseCasesExecutivesRoute: typeof UseCasesExecutivesRoute
+  UseCasesFoundersRoute: typeof UseCasesFoundersRoute
+  UseCasesFreelancersRoute: typeof UseCasesFreelancersRoute
+  ToolsIndexRoute: typeof ToolsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +238,79 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/': {
+      id: '/tools/'
+      path: '/tools'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof ToolsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/use-cases/freelancers': {
+      id: '/use-cases/freelancers'
+      path: '/use-cases/freelancers'
+      fullPath: '/use-cases/freelancers'
+      preLoaderRoute: typeof UseCasesFreelancersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/use-cases/founders': {
+      id: '/use-cases/founders'
+      path: '/use-cases/founders'
+      fullPath: '/use-cases/founders'
+      preLoaderRoute: typeof UseCasesFoundersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/use-cases/executives': {
+      id: '/use-cases/executives'
+      path: '/use-cases/executives'
+      fullPath: '/use-cases/executives'
+      preLoaderRoute: typeof UseCasesExecutivesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/use-cases/busy-parents': {
+      id: '/use-cases/busy-parents'
+      path: '/use-cases/busy-parents'
+      fullPath: '/use-cases/busy-parents'
+      preLoaderRoute: typeof UseCasesBusyParentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/subscription-calculator': {
+      id: '/tools/subscription-calculator'
+      path: '/tools/subscription-calculator'
+      fullPath: '/tools/subscription-calculator'
+      preLoaderRoute: typeof ToolsSubscriptionCalculatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/notification-audit': {
+      id: '/tools/notification-audit'
+      path: '/tools/notification-audit'
+      fullPath: '/tools/notification-audit'
+      preLoaderRoute: typeof ToolsNotificationAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/meeting-cost-calculator': {
+      id: '/tools/meeting-cost-calculator'
+      path: '/tools/meeting-cost-calculator'
+      fullPath: '/tools/meeting-cost-calculator'
+      preLoaderRoute: typeof ToolsMeetingCostCalculatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  HowItWorksRoute: HowItWorksRoute,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
+  ToolsMeetingCostCalculatorRoute: ToolsMeetingCostCalculatorRoute,
+  ToolsNotificationAuditRoute: ToolsNotificationAuditRoute,
+  ToolsSubscriptionCalculatorRoute: ToolsSubscriptionCalculatorRoute,
+  UseCasesBusyParentsRoute: UseCasesBusyParentsRoute,
+  UseCasesExecutivesRoute: UseCasesExecutivesRoute,
+  UseCasesFoundersRoute: UseCasesFoundersRoute,
+  UseCasesFreelancersRoute: UseCasesFreelancersRoute,
+  ToolsIndexRoute: ToolsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
