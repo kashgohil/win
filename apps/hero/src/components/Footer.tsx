@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Linkedin, Mail, Twitter } from "lucide-react";
+import { useState } from "react";
 import CookieSettings from "./CookieSettings";
 import Logo from "./Logo";
 
@@ -31,14 +32,16 @@ export default function Footer() {
 							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
 								Product
 							</h4>
-							<a href="/how-it-works" className={linkCls}>
+							<Link to="/how-it-works" className={linkCls}>
 								How it works
-							</a>
-							<a href="#modules" className={linkCls}>
+							</Link>
+							<Link to="/modules" className={linkCls}>
 								Modules
-							</a>
+							</Link>
 							<span className={placeholderCls}>Pricing</span>
-							<span className={placeholderCls}>Integrations</span>
+							<Link to="/integrations" className={linkCls}>
+								Integrations
+							</Link>
 						</div>
 
 						{/* Use Cases */}
@@ -46,18 +49,18 @@ export default function Footer() {
 							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
 								Use Cases
 							</h4>
-							<a href="/use-cases/founders" className={linkCls}>
+							<Link to="/use-cases/founders" className={linkCls}>
 								For Founders
-							</a>
-							<a href="/use-cases/freelancers" className={linkCls}>
+							</Link>
+							<Link to="/use-cases/freelancers" className={linkCls}>
 								For Freelancers
-							</a>
-							<a href="/use-cases/busy-parents" className={linkCls}>
+							</Link>
+							<Link to="/use-cases/busy-parents" className={linkCls}>
 								For Busy Parents
-							</a>
-							<a href="/use-cases/executives" className={linkCls}>
+							</Link>
+							<Link to="/use-cases/executives" className={linkCls}>
 								For Executives
-							</a>
+							</Link>
 						</div>
 
 						{/* Resources */}
@@ -65,12 +68,16 @@ export default function Footer() {
 							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
 								Resources
 							</h4>
-							<span className={placeholderCls}>Blog</span>
-							<span className={placeholderCls}>Help Center</span>
+							<Link to="/blog" className={linkCls}>
+								Blog
+							</Link>
+							<Link to="/help" className={linkCls}>
+								Help Center
+							</Link>
 							<span className={placeholderCls}>Changelog</span>
-							<a href="/tools" className={linkCls}>
+							<Link to="/tools" className={linkCls}>
 								Free Tools
-							</a>
+							</Link>
 						</div>
 
 						{/* Company */}
@@ -78,11 +85,13 @@ export default function Footer() {
 							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
 								Company
 							</h4>
-							<a href="/about" className={linkCls}>
+							<Link to="/about" className={linkCls}>
 								About
-							</a>
+							</Link>
 							<span className={placeholderCls}>Careers</span>
-							<span className={placeholderCls}>Contact</span>
+							<Link to="/contact" className={linkCls}>
+								Contact
+							</Link>
 						</div>
 
 						{/* Legal */}
@@ -90,12 +99,12 @@ export default function Footer() {
 							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
 								Legal
 							</h4>
-							<a href="/privacy" className={linkCls}>
+							<Link to="/privacy" className={linkCls}>
 								Privacy
-							</a>
-							<a href="/terms" className={linkCls}>
+							</Link>
+							<Link to="/terms" className={linkCls}>
 								Terms
-							</a>
+							</Link>
 							<button
 								type="button"
 								onClick={() => setCookieOpen(true)}
@@ -109,29 +118,45 @@ export default function Footer() {
 				<div className="max-w-[1200px] mx-auto pt-6 border-t border-white/8 font-mono text-xs text-cream/25 flex max-[500px]:flex-col justify-between max-[500px]:items-start items-center gap-3 max-[500px]:gap-3">
 					<span>&copy; {new Date().getFullYear()} Wingmnn Systems Inc.</span>
 					<div className="flex items-center gap-5">
-						<a
-							href="/privacy"
+						<Link
+							to="/privacy"
 							className="font-mono text-xs text-cream/30 no-underline cursor-pointer transition-colors duration-150 hover:text-cream/60"
 						>
 							Privacy
-						</a>
-						<a
-							href="/terms"
+						</Link>
+						<Link
+							to="/terms"
 							className="font-mono text-xs text-cream/30 no-underline cursor-pointer transition-colors duration-150 hover:text-cream/60"
 						>
 							Terms
-						</a>
+						</Link>
 						<span className="w-px h-3 bg-white/10" />
 						<div className="flex items-center gap-3.5">
-							<span className="text-cream/30 cursor-pointer transition-colors duration-150 hover:text-cream/60">
+							<a
+								href="https://x.com/wingmnn"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-cream/30 transition-colors duration-150 hover:text-cream/60"
+								aria-label="Twitter"
+							>
 								<Twitter size={14} />
-							</span>
-							<span className="text-cream/30 cursor-pointer transition-colors duration-150 hover:text-cream/60">
+							</a>
+							<a
+								href="https://linkedin.com/company/wingmnn"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-cream/30 transition-colors duration-150 hover:text-cream/60"
+								aria-label="LinkedIn"
+							>
 								<Linkedin size={14} />
-							</span>
-							<span className="text-cream/30 cursor-pointer transition-colors duration-150 hover:text-cream/60">
+							</a>
+							<a
+								href="mailto:hello@wingmnn.com"
+								className="text-cream/30 transition-colors duration-150 hover:text-cream/60"
+								aria-label="Email"
+							>
 								<Mail size={14} />
-							</span>
+							</a>
 						</div>
 					</div>
 				</div>
