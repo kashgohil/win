@@ -373,39 +373,58 @@ function ChatDemo({ active }: { active: boolean }) {
 	}, [count, wmTyping]);
 
 	return (
-		<div className="cd-window">
-			<div className="cd-header">
-				<div className="cd-header-dot" />
-				<span className="cd-header-name">wingmnn</span>
-				<span className="cd-header-status">online</span>
+		<div className="w-[520px] h-[580px] max-[900px]:w-full max-[900px]:max-w-[520px] max-[900px]:h-[540px] max-[500px]:h-[480px] bg-ink rounded-2xl flex flex-col overflow-hidden border border-white/6 shadow-[0_24px_80px_rgba(0,0,0,0.12)]">
+			<div className="flex items-center gap-2 py-3.5 px-5 shrink-0 border-b border-white/6">
+				<div className="w-2 h-2 rounded-full bg-green-500" />
+				<span className="font-display text-sm text-cream/70 tracking-[0.02em] lowercase">
+					wingmnn
+				</span>
+				<span className="font-mono text-[10px] text-green-500/50 tracking-[0.02em]">
+					online
+				</span>
 			</div>
-			<div className="cd-messages" ref={messagesRef}>
-				<div className="cd-messages-inner">
+			<div
+				className="flex-1 overflow-y-auto px-5 scroll-smooth [&::-webkit-scrollbar]:w-0"
+				ref={messagesRef}
+			>
+				<div className="min-h-full flex flex-col justify-end py-3">
 					{chatGroups.map((g, gi) => {
 						if (count < g.start + 1) return null;
 						return (
-							<div key={gi} className="cd-group">
-								<div className="cd-cap">{g.label}</div>
+							<div
+								key={gi}
+								className="flex flex-col gap-4 pb-1 animate-[cdFadeIn_0.3s_ease]"
+							>
+								<div className="font-mono text-[10px] font-medium text-cream/20 tracking-widest uppercase text-center pt-4 pb-1 animate-[cdFadeIn_0.4s_ease]">
+									{g.label}
+								</div>
 								{chatConvo
 									.slice(g.start, Math.min(count, g.end))
 									.map((msg, i) => {
 										const idx = g.start + i;
+										const isYou = msg.from === "you";
 										return (
 											<div
 												key={idx}
-												className={`cd-msg cd-msg--${msg.from}${msg.remember ? " cd-msg--remember" : ""}`}
+												className={`flex flex-col gap-1 animate-[cdMsgIn_0.4s_cubic-bezier(.22,1,.36,1)] ${isYou ? "items-end" : "items-start"}`}
 											>
-												<div className="cd-meta">
-													<span className="cd-who">
-														{msg.from === "you" ? "You" : "Wingmnn"}
+												<div className="flex items-center gap-1.5">
+													<span
+														className={`font-mono text-[10px] font-medium tracking-[0.06em] uppercase ${isYou ? "text-grey-3" : "text-accent-red/80"}`}
+													>
+														{isYou ? "You" : "Wingmnn"}
 													</span>
 													{msg.mode === "voice" && (
-														<Mic size={11} className="cd-mode-icon" />
+														<Mic size={11} className="text-grey-3" />
 													)}
 												</div>
-												<p className="cd-text">{msg.text}</p>
+												<p
+													className={`font-serif text-[0.92rem] leading-[1.7] m-0 max-w-[420px] py-3 px-4 rounded-xl ${isYou ? "bg-[#2a2a2a] text-[#e0ddd6] rounded-br-sm" : "bg-[#1e1e1e] text-[#c8c4bc] rounded-bl-sm"} ${msg.remember ? "border border-green-500/15" : ""}`}
+												>
+													{msg.text}
+												</p>
 												{msg.remember && (
-													<span className="cd-remember-tag">
+													<span className="font-mono text-[10px] text-green-500/60 tracking-[0.02em] mt-1">
 														Preference saved
 													</span>
 												)}
@@ -416,38 +435,44 @@ function ChatDemo({ active }: { active: boolean }) {
 						);
 					})}
 					{wmTyping && (
-						<div className="cd-msg cd-msg--wm cd-typing-row">
-							<span className="cd-who">Wingmnn</span>
-							<div className="cd-typing">
-								<span className="cd-dot" />
-								<span className="cd-dot" />
-								<span className="cd-dot" />
+						<div className="flex flex-col gap-1 items-start animate-[cdFadeIn_0.3s_ease]">
+							<span className="font-mono text-[10px] font-medium tracking-[0.06em] uppercase text-accent-red/80">
+								Wingmnn
+							</span>
+							<div className="flex gap-[5px] py-3.5 px-[18px] bg-[#1e1e1e] rounded-xl rounded-bl-sm">
+								<span className="w-1.5 h-1.5 rounded-full bg-cream/25 animate-[cdBounce_1.2s_infinite_ease-in-out]" />
+								<span className="w-1.5 h-1.5 rounded-full bg-cream/25 animate-[cdBounce_1.2s_infinite_ease-in-out] [animation-delay:0.15s]" />
+								<span className="w-1.5 h-1.5 rounded-full bg-cream/25 animate-[cdBounce_1.2s_infinite_ease-in-out] [animation-delay:0.3s]" />
 							</div>
 						</div>
 					)}
 				</div>
 			</div>
-			<div className="cd-input-bar">
+			<div className="flex items-end justify-between gap-3 py-3.5 px-5 shrink-0 border-t border-white/6 bg-white/2">
 				{inputMode === "voice" ? (
 					<>
-						<div className="cd-voice-ind">
-							<span className="cd-voice-dot" />
-							<span className="cd-voice-label">Listening...</span>
+						<div className="flex items-center gap-2.5">
+							<span className="w-2 h-2 rounded-full bg-accent-red animate-[cdPulse_1s_ease-in-out_infinite]" />
+							<span className="font-mono text-xs leading-normal text-cream/40 tracking-[0.01em]">
+								Listening...
+							</span>
 						</div>
-						<Mic size={16} className="cd-input-mic cd-input-mic--active" />
+						<Mic size={16} className="text-accent-red shrink-0 mb-px" />
 					</>
 				) : inputMode === "typing" ? (
 					<>
-						<span className="cd-input-text">
+						<span className="font-mono text-xs leading-normal text-cream/70 tracking-[0.01em] flex-1 min-w-0 wrap-break-word">
 							{inputText}
-							<span className="cd-cursor" />
+							<span className="inline-block w-[1.5px] h-3.5 bg-cream/50 ml-px shrink-0 animate-[cdBlink_0.7s_step-end_infinite]" />
 						</span>
-						<Mic size={16} className="cd-input-mic" />
+						<Mic size={16} className="text-cream/15 shrink-0 mb-px" />
 					</>
 				) : (
 					<>
-						<span className="cd-input-placeholder">Message wingmnn...</span>
-						<Mic size={16} className="cd-input-mic" />
+						<span className="font-mono text-xs leading-normal text-cream/20 tracking-[0.01em]">
+							Message wingmnn...
+						</span>
+						<Mic size={16} className="text-cream/15 shrink-0 mb-px" />
 					</>
 				)}
 			</div>
@@ -524,22 +549,34 @@ function HomePage() {
 
 	return (
 		<main>
-			<style>{styles}</style>
-
 			{/* ── nav ── */}
-			<nav className={`nav ${showNav ? "nav--show" : ""}`}>
-				<div className="nav-inner">
-					<a href="#top" className="nav-logo">
+			<nav
+				className={`fixed inset-x-0 top-0 z-100 bg-cream/92 backdrop-blur-md border-b border-grey-4 [transition:transform_0.4s_cubic-bezier(.22,1,.36,1),opacity_0.3s_ease] ${showNav ? "translate-y-0 opacity-100 pointer-events-auto" : "-translate-y-full opacity-0 pointer-events-none"}`}
+			>
+				<div className="max-w-[1200px] mx-auto px-(--page-px) flex items-center justify-between h-[52px]">
+					<a
+						href="#top"
+						className="font-display text-[1.15rem] text-ink no-underline tracking-[0.03em] lowercase"
+					>
 						wingmnn
 					</a>
-					<div className="nav-right">
-						<a href="#how" className="nav-link hide-mobile">
+					<div className="flex items-center gap-7">
+						<a
+							href="#how"
+							className="max-sm:hidden font-mono text-[11px] text-grey-2 no-underline tracking-[0.02em] transition-colors duration-150 hover:text-ink"
+						>
 							How it works
 						</a>
-						<a href="#modules" className="nav-link hide-mobile">
+						<a
+							href="#modules"
+							className="max-sm:hidden font-mono text-[11px] text-grey-2 no-underline tracking-[0.02em] transition-colors duration-150 hover:text-ink"
+						>
 							Modules
 						</a>
-						<a href="#join" className="nav-cta">
+						<a
+							href="#join"
+							className="font-mono text-[11px] font-semibold text-white bg-ink py-[7px] px-[18px] no-underline rounded transition-colors duration-150 hover:bg-[#333]"
+						>
 							Get early access
 						</a>
 					</div>
@@ -547,12 +584,19 @@ function HomePage() {
 			</nav>
 
 			{/* ── S1: hero ── */}
-			<section id="top" className="hero">
-				<div className="hero-content">
-					<div className="hero-left">
-						<p className="hero-kicker">Your digital twin</p>
-						<h1 className="hero-h1">wingmnn</h1>
-						<p className="hero-sub">
+			<section
+				id="top"
+				className="min-h-screen flex flex-col justify-center items-center bg-ink relative overflow-hidden pt-20 max-[500px]:pt-[60px] px-(--page-px)"
+			>
+				<div className="grid grid-cols-2 max-[900px]:grid-cols-1 gap-12 max-[900px]:gap-8 max-w-[1200px] w-full mt-auto mx-auto items-center relative z-1">
+					<div className="text-left max-[900px]:text-center">
+						<p className="font-mono text-xs text-accent-red tracking-[0.08em] mb-7 uppercase">
+							Your digital twin
+						</p>
+						<h1 className="font-display text-[clamp(4rem,10vw,8rem)] leading-[0.88] text-cream mb-7 tracking-[0.02em] lowercase max-[900px]:text-center">
+							wingmnn
+						</h1>
+						<p className="font-serif text-[clamp(1.05rem,1.5vw,1.2rem)] leading-[1.8] text-cream/50 max-w-[520px] mb-10 max-[900px]:mx-auto">
 							One intelligence across your email, calendar, finances, travel,
 							projects, and wellness — it learns how you operate, then operates
 							for you.
@@ -564,16 +608,23 @@ function HomePage() {
 							Get early access <ArrowRight size={16} />
 						</a>
 					</div>
-					<div className="hero-right">
-						<div className={`nf-stage nf-stage--${phase}`}>
+					<div className="flex justify-end items-center max-[900px]:justify-center">
+						<div className="nf-stage relative w-[380px] h-[420px] max-[900px]:w-[340px] max-[900px]:h-[380px] max-[500px]:w-[300px] max-[500px]:h-[360px] max-[500px]:scale-[0.88] max-[500px]:origin-top">
 							{phase !== "scatter" && (
-								<div
-									className={`nf-wm${phase === "merge" ? " nf-wm--absorb" : ""}${phase === "done" ? " nf-wm--done" : ""}`}
-								>
-									<CheckCircle size={16} className="nf-wm-check" />
-									<span className="nf-wm-text">wingmnn</span>
+								<div className="absolute top-1 left-0 z-20 flex items-center animate-[nfFadeUp_0.5s_cubic-bezier(.22,1,.36,1)]">
+									<CheckCircle
+										size={16}
+										className={`text-green-500 shrink-0 overflow-hidden [transition:max-width_0.5s_cubic-bezier(.22,1,.36,1),opacity_0.4s_ease,margin-right_0.5s_cubic-bezier(.22,1,.36,1)] ${phase === "done" ? "max-w-6 opacity-100 mr-2" : "max-w-0 opacity-0 mr-0"}`}
+									/>
+									<span
+										className={`font-display text-[16px] tracking-[0.02em] lowercase transition-colors duration-400 ${phase === "done" ? "text-cream/75" : "text-cream/50"} ${phase === "merge" ? "animate-[nfAbsorb_0.8s_ease]" : ""}`}
+									>
+										wingmnn
+									</span>
 									{phase === "done" && (
-										<span className="nf-wm-status">all caught up</span>
+										<span className="font-mono text-[10px] text-green-500/60 tracking-[0.02em] ml-2 animate-[nfFadeUp_0.4s_ease_0.15s_both]">
+											all caught up
+										</span>
 									)}
 								</div>
 							)}
@@ -596,65 +647,79 @@ function HomePage() {
 										}
 									>
 										<Icon size={14} color={n.color} />
-										<span className="nf-pill-text">{n.text}</span>
-										{n.urgent && <span className="nf-pill-dot" />}
+										<span className="font-mono text-[11px] text-cream/70 tracking-[0.01em]">
+											{n.text}
+										</span>
+										{n.urgent && (
+											<span className="w-1.5 h-1.5 rounded-full bg-accent-red shrink-0 shadow-[0_0_6px_rgba(192,57,43,0.5)]" />
+										)}
 									</div>
 								);
 							})}
 							{(phase === "summary" || phase === "done") && (
-								<div className="nf-summary">
-									<div className="nf-summary-head">Today&apos;s briefing</div>
-									<div className="nf-summary-items">
-										<div className="nf-summary-row">
-											<Mail size={13} className="nf-si" />
+								<div className="nf-summary absolute z-15 top-9 left-0 right-0 bg-white/4 border border-white/7 rounded-xl p-5 origin-top-left animate-[nfSummaryIn_0.7s_cubic-bezier(.22,1,.36,1)]">
+									<div className="font-mono text-[10px] font-semibold text-cream/35 tracking-[0.06em] uppercase mb-4">
+										Today&apos;s briefing
+									</div>
+									<div className="flex flex-col gap-2.5">
+										<div className="nf-summary-row flex items-center gap-2.5 font-serif text-[12.5px] leading-[1.4] text-cream/60">
+											<Mail size={13} className="text-cream/30 shrink-0" />
 											<span>
 												3 boss emails &mdash; <em>reply drafted</em>
 											</span>
 										</div>
-										<div className="nf-summary-row">
-											<Calendar size={13} className="nf-si" />
+										<div className="nf-summary-row flex items-center gap-2.5 font-serif text-[12.5px] leading-[1.4] text-cream/60">
+											<Calendar size={13} className="text-cream/30 shrink-0" />
 											<span>
 												Dentist conflicts with flight &mdash;{" "}
 												<em>rescheduled</em>
 											</span>
 										</div>
-										<div className="nf-summary-row">
-											<CreditCard size={13} className="nf-si" />
+										<div className="nf-summary-row flex items-center gap-2.5 font-serif text-[12.5px] leading-[1.4] text-cream/60">
+											<CreditCard
+												size={13}
+												className="text-cream/30 shrink-0"
+											/>
 											<span>
 												Card payment &mdash; <em>auto-scheduled</em>
 											</span>
 										</div>
-										<div className="nf-summary-row">
-											<Plane size={13} className="nf-si" />
+										<div className="nf-summary-row flex items-center gap-2.5 font-serif text-[12.5px] leading-[1.4] text-cream/60">
+											<Plane size={13} className="text-cream/30 shrink-0" />
 											<span>
 												NYC&rarr;TYO dropped $180 &mdash; <em>price locked</em>
 											</span>
 										</div>
-										<div className="nf-summary-row">
-											<DollarSign size={13} className="nf-si" />
+										<div className="nf-summary-row flex items-center gap-2.5 font-serif text-[12.5px] leading-[1.4] text-cream/60">
+											<DollarSign
+												size={13}
+												className="text-cream/30 shrink-0"
+											/>
 											<span>
 												$89 Amex charge &mdash; <em>flagged for review</em>
 											</span>
 										</div>
-										<div className="nf-summary-row">
-											<Bell size={13} className="nf-si" />
+										<div className="nf-summary-row flex items-center gap-2.5 font-serif text-[12.5px] leading-[1.4] text-cream/60">
+											<Bell size={13} className="text-cream/30 shrink-0" />
 											<span>
 												Overdue task &mdash; <em>reminder sent</em>
 											</span>
 										</div>
 									</div>
-									<div className="nf-summary-divider" />
-									<div className="nf-summary-actions-head">Actions ready</div>
-									<div className="nf-summary-actions">
-										<div className="nf-summary-action">
+									<div className="h-px bg-white/6 my-3.5" />
+									<div className="font-mono text-[10px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-2.5">
+										Actions ready
+									</div>
+									<div className="flex flex-col gap-2">
+										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/45">
 											<ArrowRight size={11} />
 											<span>Review and send 3 drafted replies</span>
 										</div>
-										<div className="nf-summary-action">
+										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/45">
 											<ArrowRight size={11} />
 											<span>Confirm dentist moved to Feb 25</span>
 										</div>
-										<div className="nf-summary-action">
+										<div className="nf-summary-action flex items-center gap-2 font-mono text-[11px] text-cream/45">
 											<ArrowRight size={11} />
 											<span>Approve or dispute $89 charge</span>
 										</div>
@@ -664,94 +729,128 @@ function HomePage() {
 						</div>
 					</div>
 				</div>
-				<div className="hero-ticker-wrap">
-					<div className="hero-ticker">
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--green">MAIL</span> 3
-							drafts auto-written, awaiting review
+				<div className="hero-ticker-wrap w-screen mt-auto pt-16 max-[500px]:pt-12 overflow-hidden relative mask-[linear-gradient(to_right,transparent,black_10%,black_90%,transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+					<div className="flex gap-6 whitespace-nowrap pb-7 animate-[tickerScroll_40s_linear_infinite]">
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-green-500/15 text-green-500">
+								MAIL
+							</span>{" "}
+							3 drafts auto-written, awaiting review
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--blue">CAL</span>{" "}
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-blue-500/15 text-blue-400">
+								CAL
+							</span>{" "}
 							Dentist rescheduled — conflict with Tokyo flight
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--yellow">FIN</span>{" "}
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-yellow-400/15 text-yellow-400">
+								FIN
+							</span>{" "}
 							Rent posted, $4,821 liquid, no anomalies
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--blue">PROJ</span>{" "}
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-blue-500/15 text-blue-400">
+								PROJ
+							</span>{" "}
 							Acme deadline in 3 days — on track
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--purple">WELL</span>{" "}
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-violet-400/15 text-violet-400">
+								WELL
+							</span>{" "}
 							7.2h sleep, 6,400 steps, lunch skipped
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--green">TRVL</span>{" "}
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-green-500/15 text-green-500">
+								TRVL
+							</span>{" "}
 							NRT→JFK confirmed, boarding pass stored
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--grey">JRNL</span>{" "}
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-white/8 text-cream/40">
+								JRNL
+							</span>{" "}
 							Evening prompt ready
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--green">MSG</span> 2
-							threads need you, 11 handled
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-green-500/15 text-green-500">
+								MSG
+							</span>{" "}
+							2 threads need you, 11 handled
 						</div>
 						{/* duplicate set for seamless loop */}
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--green">MAIL</span> 3
-							drafts auto-written, awaiting review
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-green-500/15 text-green-500">
+								MAIL
+							</span>{" "}
+							3 drafts auto-written, awaiting review
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--blue">CAL</span>{" "}
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-blue-500/15 text-blue-400">
+								CAL
+							</span>{" "}
 							Dentist rescheduled — conflict with Tokyo flight
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--yellow">FIN</span>{" "}
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-yellow-400/15 text-yellow-400">
+								FIN
+							</span>{" "}
 							Rent posted, $4,821 liquid, no anomalies
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--blue">PROJ</span>{" "}
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-blue-500/15 text-blue-400">
+								PROJ
+							</span>{" "}
 							Acme deadline in 3 days — on track
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--purple">WELL</span>{" "}
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-violet-400/15 text-violet-400">
+								WELL
+							</span>{" "}
 							7.2h sleep, 6,400 steps, lunch skipped
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--green">TRVL</span>{" "}
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-green-500/15 text-green-500">
+								TRVL
+							</span>{" "}
 							NRT→JFK confirmed, boarding pass stored
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--grey">JRNL</span>{" "}
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-white/8 text-cream/40">
+								JRNL
+							</span>{" "}
 							Evening prompt ready
 						</div>
-						<div className="hero-tick">
-							<span className="hero-tick-tag hero-tick-tag--green">MSG</span> 2
-							threads need you, 11 handled
+						<div className="inline-flex items-center gap-2.5 font-mono text-xs text-cream/35 shrink-0 tracking-[0.01em]">
+							<span className="text-[9px] font-semibold py-0.5 px-[7px] rounded-sm tracking-[0.04em] bg-green-500/15 text-green-500">
+								MSG
+							</span>{" "}
+							2 threads need you, 11 handled
 						</div>
 					</div>
 				</div>
 			</section>
 
 			{/* ── S2: the feeling ── */}
-			<section className="feel">
-				<div className="feel-inner">
-					<div className="feel-left">
-						<p className="feel-label">The problem you already know</p>
+			<section className="py-[100px] px-(--page-px) border-t border-grey-4">
+				<div className="max-w-[1200px] mx-auto grid grid-cols-[280px_1fr] max-md:grid-cols-1 gap-[60px] max-md:gap-5">
+					<div>
+						<p className="font-mono text-[11px] font-medium text-grey-3 tracking-[0.04em] sticky top-[120px] max-md:static">
+							The problem you already know
+						</p>
 					</div>
-					<div className="feel-right">
-						<p className="feel-text">
+					<div>
+						<p className="font-serif text-[clamp(1.1rem,1.5vw,1.3rem)] leading-[1.85] text-grey-1 mb-5 max-w-[600px]">
 							Ten apps. Twenty tabs. A hundred notifications a day. Your mail
 							doesn't talk to your calendar. Your calendar doesn't know about
 							your flights. Your finances live in a spreadsheet you last opened
 							in March.
 						</p>
-						<p className="feel-text">
+						<p className="font-serif text-[clamp(1.1rem,1.5vw,1.3rem)] leading-[1.85] text-grey-1 mb-5 max-w-[600px]">
 							You are the integration layer for your own life.
 						</p>
-						<p className="feel-text feel-text--bold">
+						<p className="font-serif text-[clamp(1.2rem,1.6vw,1.4rem)] leading-[1.85] text-ink font-semibold max-w-[600px]">
 							Nobody else is going to fix that.
 						</p>
 					</div>
@@ -759,47 +858,64 @@ function HomePage() {
 			</section>
 
 			{/* ── S3: conversation preview ── */}
-			<section className="chat-section">
-				<div ref={chatRef} className="chat-layout">
-					<div className="chat-left">
-						<p className="section-label">What it actually feels like</p>
-						<h2 className="section-h2">
+			<section className="py-[100px] px-(--page-px) border-t border-grey-4">
+				<div
+					ref={chatRef}
+					className="max-w-[1200px] mx-auto grid grid-cols-[1fr_520px] max-[900px]:grid-cols-1 gap-16 max-[900px]:gap-10 items-center"
+				>
+					<div>
+						<p className="font-mono text-[11px] text-accent-red tracking-[0.04em] mb-3">
+							What it actually feels like
+						</p>
+						<h2 className="font-serif font-bold text-[clamp(2rem,4vw,3.2rem)] leading-[1.15] text-ink">
 							Interact with it like
 							<br />a person.
 						</h2>
-						<p className="chat-sub">
+						<p className="font-serif text-[1.05rem] leading-[1.8] text-grey-2 max-w-[440px] mt-4">
 							No commands to memorize. No menus to navigate. Just say what you
 							need — by typing, speaking, or showing it once how you want things
 							done.
 						</p>
-						<div className="chat-feats">
-							<div className="chat-feat">
-								<span className="chat-feat-num">01</span>
+						<div className="flex flex-col gap-7 mt-11">
+							<div className="flex gap-4 items-start">
+								<span className="font-mono text-[11px] font-semibold text-accent-red tracking-[0.02em] min-w-6 pt-0.5">
+									01
+								</span>
 								<div>
-									<h4 className="chat-feat-title">Type it</h4>
-									<p className="chat-feat-desc">
+									<h4 className="font-serif font-semibold text-[1.05rem] text-ink mb-1">
+										Type it
+									</h4>
+									<p className="font-serif text-[0.9rem] leading-[1.7] text-grey-2 max-w-[380px]">
 										Ask questions, give instructions, think out loud. Wingmnn
 										understands intent, not keywords — so you never have to
 										learn a syntax.
 									</p>
 								</div>
 							</div>
-							<div className="chat-feat">
-								<span className="chat-feat-num">02</span>
+							<div className="flex gap-4 items-start">
+								<span className="font-mono text-[11px] font-semibold text-accent-red tracking-[0.02em] min-w-6 pt-0.5">
+									02
+								</span>
 								<div>
-									<h4 className="chat-feat-title">Say it</h4>
-									<p className="chat-feat-desc">
+									<h4 className="font-serif font-semibold text-[1.05rem] text-ink mb-1">
+										Say it
+									</h4>
+									<p className="font-serif text-[0.9rem] leading-[1.7] text-grey-2 max-w-[380px]">
 										Voice-first on mobile. Talk to it like you'd talk to a
 										person sitting next to you. It transcribes, understands
 										context, and acts.
 									</p>
 								</div>
 							</div>
-							<div className="chat-feat">
-								<span className="chat-feat-num">03</span>
+							<div className="flex gap-4 items-start">
+								<span className="font-mono text-[11px] font-semibold text-accent-red tracking-[0.02em] min-w-6 pt-0.5">
+									03
+								</span>
 								<div>
-									<h4 className="chat-feat-title">Teach it</h4>
-									<p className="chat-feat-desc">
+									<h4 className="font-serif font-semibold text-[1.05rem] text-ink mb-1">
+										Teach it
+									</h4>
+									<p className="font-serif text-[0.9rem] leading-[1.7] text-grey-2 max-w-[380px]">
 										Show it how you like things done — once. Your preferences
 										are saved and applied automatically from that point forward.
 										It gets sharper the more you use it.
@@ -808,65 +924,99 @@ function HomePage() {
 							</div>
 						</div>
 					</div>
-					<div className="chat-right">
+					<div>
 						<ChatDemo active={chatVis} />
 					</div>
 				</div>
 			</section>
 
 			{/* ── S4: modules ── */}
-			<section id="modules" className="mod-section">
-				<div className="mod-header">
-					<p className="section-label">10 modules, one brain</p>
-					<h2 className="section-h2">
+			<section
+				id="modules"
+				className="py-[100px] px-(--page-px) border-t border-grey-4"
+			>
+				<div className="max-w-[1200px] mx-auto mb-12">
+					<p className="font-mono text-[11px] text-accent-red tracking-[0.04em] mb-3">
+						10 modules, one brain
+					</p>
+					<h2 className="font-serif font-bold text-[clamp(2rem,4vw,3.2rem)] leading-[1.15] text-ink">
 						Everything it keeps
 						<br />
 						track of for you.
 					</h2>
 				</div>
-				<div ref={modRef} className={`mod-grid ${modVis ? "vis" : ""}`}>
-					{modules.map((m, i) => (
-						<div
-							key={m.id}
-							className="mod-card"
-							style={{ transitionDelay: `${i * 0.04}s` }}
-						>
-							<div className="mod-top">
-								<span className="mod-id">{m.id}</span>
-								<span
-									className={`mod-badge mod-badge--${m.status.toLowerCase()}`}
-								>
-									{m.status}
-								</span>
+				<div
+					ref={modRef}
+					className="max-w-[1200px] mx-auto grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-px bg-grey-4 border border-grey-4"
+				>
+					{modules.map((m, i) => {
+						const s = m.status.toLowerCase();
+						const badgeColor =
+							s === "live"
+								? "bg-green-500 text-[#052e16]"
+								: s === "watching" || s === "tracking"
+									? "bg-yellow-400 text-[#422006]"
+									: "bg-[#e5e2dc] text-[#666]";
+						return (
+							<div
+								key={m.id}
+								className={`bg-cream p-6 transition-[opacity,transform,background-color] duration-300 ease-out hover:bg-[#eeebe4] ${modVis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1.5"}`}
+								style={{ transitionDelay: `${i * 0.04}s` }}
+							>
+								<div className="flex items-center justify-between mb-2.5">
+									<span className="font-mono text-[10px] font-semibold text-grey-3 tracking-[0.06em]">
+										{m.id}
+									</span>
+									<span
+										className={`font-mono text-[9px] font-semibold py-0.5 px-2 tracking-[0.04em] ${badgeColor}`}
+									>
+										{m.status}
+									</span>
+								</div>
+								<h3 className="font-serif font-semibold text-[1.15rem] text-ink mb-1.5">
+									{m.name}
+								</h3>
+								<p className="font-serif text-[0.88rem] leading-[1.65] text-grey-2">
+									{m.desc}
+								</p>
 							</div>
-							<h3 className="mod-name">{m.name}</h3>
-							<p className="mod-desc">{m.desc}</p>
-						</div>
-					))}
+						);
+					})}
 				</div>
 			</section>
 
 			{/* ── S5: your first week ── */}
-			<section id="how" className="week-section">
-				<div className="week-header">
-					<p className="section-label">Your first week</p>
-					<h2 className="section-h2">
+			<section
+				id="how"
+				className="py-[100px] px-(--page-px) border-t border-grey-4 bg-ink text-cream"
+			>
+				<div className="max-w-[1200px] mx-auto mb-14">
+					<p className="font-mono text-[11px] text-accent-red/70 tracking-[0.04em] mb-3">
+						Your first week
+					</p>
+					<h2 className="font-serif font-bold text-[clamp(2rem,4vw,3.2rem)] leading-[1.15] text-cream">
 						By Sunday, you'll wonder
 						<br />
 						how you lived without it.
 					</h2>
 				</div>
-				<div ref={weekRef} className={`week-list ${weekVis ? "vis" : ""}`}>
+				<div ref={weekRef} className="max-w-[1200px] mx-auto grid grid-cols-1">
 					{yourWeek.map((d, i) => (
 						<div
 							key={d.day}
-							className="week-row"
+							className={`grid grid-cols-[80px_1fr] max-sm:grid-cols-1 gap-8 max-sm:gap-1.5 py-7 border-b border-white/7 last:border-b-0 transition-[opacity,transform] duration-350 ease-out ${weekVis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1.5"}`}
 							style={{ transitionDelay: `${i * 0.06}s` }}
 						>
-							<div className="week-day">{d.day}</div>
-							<div className="week-content">
-								<h3 className="week-title">{d.title}</h3>
-								<p className="week-body">{d.body}</p>
+							<div className="font-mono text-xs font-medium text-accent-red tracking-[0.04em] pt-[3px]">
+								{d.day}
+							</div>
+							<div>
+								<h3 className="font-serif font-semibold text-[1.1rem] text-cream mb-1.5">
+									{d.title}
+								</h3>
+								<p className="font-serif text-[0.92rem] leading-[1.7] text-cream/55">
+									{d.body}
+								</p>
 							</div>
 						</div>
 					))}
@@ -874,16 +1024,19 @@ function HomePage() {
 			</section>
 
 			{/* ── S6: promise ── */}
-			<section className="promise">
-				<div ref={promRef} className={`promise-inner ${promVis ? "vis" : ""}`}>
-					<h2 className="promise-h2">
+			<section className="py-[120px] px-(--page-px) border-t border-grey-4">
+				<div
+					ref={promRef}
+					className={`max-w-[700px] mx-auto text-center transition-[opacity,transform] duration-600 ease-out ${promVis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
+				>
+					<h2 className="font-serif font-bold text-[clamp(1.8rem,3.5vw,2.8rem)] leading-[1.3] text-ink mb-7">
 						Your data is yours.
 						<br />
-						<span className="promise-dim">
+						<span className="text-grey-2 font-normal">
 							We don't train on it. We don't sell it. We don't share it.
 						</span>
 					</h2>
-					<p className="promise-body">
+					<p className="font-serif text-base leading-[1.85] text-grey-2">
 						Encrypted at rest. Encrypted in transit. Granular permissions per
 						module. Revoke anything, anytime. Export everything. Delete your
 						account in one click and it's actually gone. Our business model is
@@ -893,84 +1046,127 @@ function HomePage() {
 			</section>
 
 			{/* ── S7: platforms ── */}
-			<section className="plat-section">
-				<div ref={trustRef} className={`plat-grid ${trustVis ? "vis" : ""}`}>
-					<div className="plat-card">
-						<h3 className="plat-name">Web</h3>
-						<p className="plat-desc">
-							Full interface in your browser. No install required.
-						</p>
-						<span className="plat-tag plat-tag--live">At launch</span>
-					</div>
-					<div className="plat-card">
-						<h3 className="plat-name">Mobile</h3>
-						<p className="plat-desc">
-							iOS &amp; Android. Voice-first. Push notifications.
-						</p>
-						<span className="plat-tag plat-tag--live">At launch</span>
-					</div>
-					<div className="plat-card">
-						<h3 className="plat-name">API</h3>
-						<p className="plat-desc">
-							Build on your twin. REST endpoints for every module.
-						</p>
-						<span className="plat-tag plat-tag--soon">Coming Q3</span>
-					</div>
+			<section className="px-(--page-px) pb-[100px]">
+				<div
+					ref={trustRef}
+					className="max-w-[1200px] mx-auto grid grid-cols-3 max-md:grid-cols-1 gap-px bg-grey-4 border border-grey-4"
+				>
+					{[
+						{
+							name: "Web",
+							desc: "Full interface in your browser. No install required.",
+							tag: "At launch",
+							live: true,
+						},
+						{
+							name: "Mobile",
+							desc: "iOS & Android. Voice-first. Push notifications.",
+							tag: "At launch",
+							live: true,
+						},
+						{
+							name: "API",
+							desc: "Build on your twin. REST endpoints for every module.",
+							tag: "Coming Q3",
+							live: false,
+						},
+					].map((p, i) => (
+						<div
+							key={p.name}
+							className={`bg-cream py-8 px-7 flex flex-col transition-[opacity,transform] duration-400 ease-out ${trustVis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1.5"}`}
+							style={{ transitionDelay: `${i * 0.06}s` }}
+						>
+							<h3 className="font-serif font-bold text-[1.3rem] text-ink mb-2">
+								{p.name}
+							</h3>
+							<p className="font-serif text-[0.9rem] leading-[1.65] text-grey-2 flex-1 mb-4">
+								{p.desc}
+							</p>
+							<span
+								className={`font-mono text-[10px] font-semibold tracking-[0.04em] py-[3px] px-2.5 self-start ${p.live ? "bg-green-500 text-[#052e16]" : "bg-grey-4 text-grey-2"}`}
+							>
+								{p.tag}
+							</span>
+						</div>
+					))}
 				</div>
 			</section>
 
 			{/* ── S8: numbers ── */}
-			<section className="nums-section">
-				<div ref={numRef} className={`nums-inner ${numVis ? "vis" : ""}`}>
-					<div className="num-block">
-						<div className="num-val">
+			<section className="py-20 px-(--page-px) border-t border-grey-4 text-center">
+				<div
+					ref={numRef}
+					className={`max-w-[800px] mx-auto mb-6 grid grid-cols-3 gap-10 transition-[opacity,transform] duration-500 ease-out ${numVis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}
+				>
+					<div>
+						<div className="font-display text-[clamp(2.5rem,5vw,4rem)] text-ink leading-none">
 							{numVis ? waitlist.toLocaleString() : "0"}
 						</div>
-						<div className="num-label">on the waitlist</div>
+						<div className="font-mono text-[11px] text-grey-3 mt-2 tracking-[0.02em]">
+							on the waitlist
+						</div>
 					</div>
-					<div className="num-block">
-						<div className="num-val">10</div>
-						<div className="num-label">modules at launch</div>
+					<div>
+						<div className="font-display text-[clamp(2.5rem,5vw,4rem)] text-ink leading-none">
+							10
+						</div>
+						<div className="font-mono text-[11px] text-grey-3 mt-2 tracking-[0.02em]">
+							modules at launch
+						</div>
 					</div>
-					<div className="num-block">
-						<div className="num-val">99.9%</div>
-						<div className="num-label">uptime target</div>
+					<div>
+						<div className="font-display text-[clamp(2.5rem,5vw,4rem)] text-ink leading-none">
+							99.9%
+						</div>
+						<div className="font-mono text-[11px] text-grey-3 mt-2 tracking-[0.02em]">
+							uptime target
+						</div>
 					</div>
 				</div>
-				<p className="nums-note">
+				<p className="font-mono text-[11px] text-grey-3 tracking-[0.03em]">
 					Built in Brooklyn. Backed by operators, not observers.
 				</p>
 			</section>
 
 			{/* ── S9: FAQ ── */}
-			<section className="faq-section">
-				<div className="faq-header">
-					<p className="section-label">Questions</p>
-					<h2 className="section-h2">Things people ask us.</h2>
+			<section className="py-[100px] px-(--page-px) border-t border-grey-4">
+				<div className="max-w-[1200px] mx-auto mb-10">
+					<p className="font-mono text-[11px] text-accent-red tracking-[0.04em] mb-3">
+						Questions
+					</p>
+					<h2 className="font-serif font-bold text-[clamp(2rem,4vw,3.2rem)] leading-[1.15] text-ink">
+						Things people ask us.
+					</h2>
 				</div>
-				<div ref={faqRef} className={`faq-list ${faqVis ? "vis" : ""}`}>
+				<div ref={faqRef} className="max-w-[720px] mx-auto">
 					{faqItems.map((item, i) => {
 						const open = openFaq === i;
 						return (
 							<div
 								key={i}
-								className="faq-item"
+								className={`border-b border-grey-4 last:border-b-0 transition-[opacity,transform] duration-300 ease-out ${faqVis ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}
 								style={{ transitionDelay: `${i * 0.04}s` }}
 							>
 								<button
 									type="button"
-									className="faq-trigger"
+									className="w-full flex items-center justify-between gap-4 py-5 bg-transparent border-none cursor-pointer text-left font-inherit group"
 									onClick={() => setOpenFaq(open ? null : i)}
 									aria-expanded={open}
 								>
-									<span className="faq-q">{item.q}</span>
+									<span className="font-serif text-[1.05rem] font-semibold text-grey-1 transition-colors duration-150 group-hover:text-ink">
+										{item.q}
+									</span>
 									<Plus
 										size={18}
-										className={`faq-icon ${open ? "faq-icon--open" : ""}`}
+										className={`shrink-0 text-grey-3 transition-[transform,color] duration-300 ease-[cubic-bezier(.22,1,.36,1)] ${open ? "rotate-45 text-accent-red" : ""}`}
 									/>
 								</button>
-								<div className={`faq-body ${open ? "faq-body--open" : ""}`}>
-									<p className="faq-a">{item.a}</p>
+								<div
+									className={`overflow-hidden transition-[max-height] duration-400 ease-[cubic-bezier(.22,1,.36,1)] ${open ? "max-h-[300px]" : "max-h-0"}`}
+								>
+									<p className="font-serif text-[0.92rem] leading-[1.75] text-grey-2 pb-5">
+										{item.a}
+									</p>
 								</div>
 							</div>
 						);
@@ -979,41 +1175,54 @@ function HomePage() {
 			</section>
 
 			{/* ── S10: CTA ── */}
-			<section id="join" className="cta-section">
-				<div className="cta-inner">
+			<section id="join" className="py-[120px] px-(--page-px) bg-ink">
+				<div className="max-w-[620px] mx-auto text-center">
 					{submitted ? (
-						<div className="cta-done">
-							<h2 className="cta-done-h">You're in.</h2>
-							<p className="cta-done-sub">
+						<div className="py-5">
+							<h2 className="font-serif font-bold text-[2.5rem] text-cream mb-3">
+								You're in.
+							</h2>
+							<p className="font-serif text-[1.05rem] leading-[1.7] text-cream/50">
 								We'll let you know when your account is ready.
 							</p>
 						</div>
 					) : (
 						<>
-							<h2 className="cta-h2">
+							<h2 className="font-serif font-bold text-[clamp(2rem,4vw,3rem)] leading-[1.2] text-cream mb-4">
 								Stop managing your life
 								<br />
 								and start living it.
 							</h2>
-							<p className="cta-sub">
+							<p className="font-serif text-base leading-[1.7] text-cream/50 mb-9">
 								Early access is rolling out now. Drop your email and we'll let
 								you know when it's your turn.
 							</p>
-							<form onSubmit={handleSubmit} className="cta-form" noValidate>
-								<div className="cta-input-wrap">
+							<form
+								onSubmit={handleSubmit}
+								className="flex max-[500px]:flex-col gap-0 max-[500px]:gap-2.5 max-w-[480px] mx-auto items-start"
+								noValidate
+							>
+								<div className="flex-1 flex flex-col">
 									<input
 										type="email"
 										placeholder="you@email.com"
-										className={`cta-input ${formErr ? "cta-input--err" : ""}`}
+										className={`w-full font-mono text-[13px] py-3.5 px-[18px] border border-grey-1 max-[500px]:border-r max-[500px]:rounded-[5px] border-r-0 rounded-l-[5px] rounded-r-none bg-[#2a2a2a] text-cream outline-none transition-colors duration-150 placeholder:text-[#666] focus:border-accent-red ${formErr ? "border-accent-red" : ""}`}
 										value={email}
 										onChange={(e) => {
 											setEmail(e.target.value);
 											if (formErr) setFormErr("");
 										}}
 									/>
-									{formErr && <span className="cta-err">{formErr}</span>}
+									{formErr && (
+										<span className="font-mono text-[10px] text-accent-red text-left mt-1.5">
+											{formErr}
+										</span>
+									)}
 								</div>
-								<button type="submit" className="cta-btn">
+								<button
+									type="submit"
+									className="inline-flex items-center gap-2 font-mono text-xs font-semibold text-white bg-accent-red py-3.5 px-6 border border-accent-red rounded-r-[5px] max-[500px]:rounded-[5px] max-[500px]:justify-center rounded-l-none cursor-pointer transition-colors duration-200 whitespace-nowrap hover:bg-red-dark"
+								>
 									Get early access <ArrowRight size={15} />
 								</button>
 							</form>
@@ -1023,909 +1232,83 @@ function HomePage() {
 			</section>
 
 			{/* ── footer ── */}
-			<footer className="foot">
-				<div className="foot-top">
-					<div className="foot-brand">
-						<div className="foot-logo">wingmnn</div>
-						<p className="foot-tagline">
+			<footer className="pt-[72px] px-(--page-px) pb-10 bg-ink text-cream">
+				<div className="max-w-[1200px] mx-auto mb-12 grid grid-cols-[1.4fr_1fr] max-md:grid-cols-1 gap-20 max-md:gap-12 items-start">
+					<div className="max-w-[380px]">
+						<div className="font-display text-[1.8rem] text-cream tracking-[0.03em] lowercase mb-4">
+							wingmnn
+						</div>
+						<p className="font-serif text-base leading-[1.7] text-cream/45">
 							A single intelligence that learns how you operate — then operates
 							for you. Built with care in Brooklyn, NY.
 						</p>
 					</div>
-					<div className="foot-nav">
-						<div className="foot-col">
-							<h4 className="foot-heading">Product</h4>
-							<a href="#how" className="foot-link">
+					<div className="grid grid-cols-3 max-[500px]:grid-cols-1 gap-8 max-[500px]:gap-8">
+						<div>
+							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
+								Product
+							</h4>
+							<a
+								href="#how"
+								className="block font-serif text-[0.92rem] text-cream/55 no-underline leading-8 cursor-pointer transition-colors duration-150 hover:text-cream"
+							>
 								How it works
 							</a>
-							<a href="#modules" className="foot-link">
+							<a
+								href="#modules"
+								className="block font-serif text-[0.92rem] text-cream/55 no-underline leading-8 cursor-pointer transition-colors duration-150 hover:text-cream"
+							>
 								Modules
 							</a>
-							<a href="#join" className="foot-link">
+							<a
+								href="#join"
+								className="block font-serif text-[0.92rem] text-cream/55 no-underline leading-8 cursor-pointer transition-colors duration-150 hover:text-cream"
+							>
 								Get early access
 							</a>
 						</div>
-						<div className="foot-col">
-							<h4 className="foot-heading">Company</h4>
-							<span className="foot-link">About</span>
-							<span className="foot-link">Blog</span>
-							<span className="foot-link">Careers</span>
+						<div>
+							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
+								Company
+							</h4>
+							<span className="block font-serif text-[0.92rem] text-cream/55 leading-8 cursor-pointer transition-colors duration-150 hover:text-cream">
+								About
+							</span>
+							<span className="block font-serif text-[0.92rem] text-cream/55 leading-8 cursor-pointer transition-colors duration-150 hover:text-cream">
+								Blog
+							</span>
+							<span className="block font-serif text-[0.92rem] text-cream/55 leading-8 cursor-pointer transition-colors duration-150 hover:text-cream">
+								Careers
+							</span>
 						</div>
-						<div className="foot-col">
-							<h4 className="foot-heading">Connect</h4>
-							<span className="foot-link">Twitter</span>
-							<span className="foot-link">LinkedIn</span>
-							<span className="foot-link">hello@wingmnn.com</span>
+						<div>
+							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
+								Connect
+							</h4>
+							<span className="block font-serif text-[0.92rem] text-cream/55 leading-8 cursor-pointer transition-colors duration-150 hover:text-cream">
+								Twitter
+							</span>
+							<span className="block font-serif text-[0.92rem] text-cream/55 leading-8 cursor-pointer transition-colors duration-150 hover:text-cream">
+								LinkedIn
+							</span>
+							<span className="block font-serif text-[0.92rem] text-cream/55 leading-8 cursor-pointer transition-colors duration-150 hover:text-cream">
+								hello@wingmnn.com
+							</span>
 						</div>
 					</div>
 				</div>
-				<div className="foot-bottom">
+				<div className="max-w-[1200px] mx-auto pt-6 border-t border-white/8 font-mono text-xs text-cream/25 flex max-[500px]:flex-col justify-between max-[500px]:items-start items-center gap-3 max-[500px]:gap-3">
 					<span>&copy; {new Date().getFullYear()} Wingmnn Systems Inc.</span>
-					<div className="foot-legal">
-						<span className="foot-link-sm">Privacy</span>
-						<span className="foot-link-sm">Terms</span>
+					<div className="flex gap-5">
+						<span className="font-mono text-xs text-cream/30 cursor-pointer transition-colors duration-150 hover:text-cream/60">
+							Privacy
+						</span>
+						<span className="font-mono text-xs text-cream/30 cursor-pointer transition-colors duration-150 hover:text-cream/60">
+							Terms
+						</span>
 					</div>
 				</div>
 			</footer>
 		</main>
 	);
 }
-
-/* ─── styles ─── */
-
-const styles = /* css */ `
-:root {
-	--cream: #f4f1eb;
-	--ink: #1a1a1a;
-	--red: #c0392b;
-	--red-dark: #a33225;
-	--grey-1: #444;
-	--grey-2: #777;
-	--grey-3: #aaa;
-	--grey-4: #d4d0c8;
-	--mono: 'IBM Plex Mono', monospace;
-	--serif: 'Source Serif 4', Georgia, serif;
-	--display: 'Anton', sans-serif;
-	--page-px: clamp(24px, 5vw, 80px);
-}
-
-/* ── nav ── */
-.nav {
-	position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-	background: rgba(244,241,235,0.92);
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
-	border-bottom: 1px solid var(--grey-4);
-	transform: translateY(-100%); opacity: 0;
-	transition: transform 0.4s cubic-bezier(.22,1,.36,1), opacity 0.3s ease;
-	pointer-events: none;
-}
-.nav--show { transform: translateY(0); opacity: 1; pointer-events: auto; }
-.nav-inner {
-	max-width: 1200px; margin: 0 auto; padding: 0 var(--page-px);
-	display: flex; align-items: center; justify-content: space-between; height: 52px;
-}
-.nav-logo {
-	font-family: var(--display); font-size: 1.15rem; color: var(--ink);
-	text-decoration: none; letter-spacing: 0.03em; text-transform: lowercase;
-}
-.nav-right { display: flex; align-items: center; gap: 28px; }
-.nav-link {
-	font-family: var(--mono); font-size: 11px; color: var(--grey-2);
-	text-decoration: none; letter-spacing: 0.02em;
-	transition: color 0.15s;
-}
-.nav-link:hover { color: var(--ink); }
-.nav-cta {
-	font-family: var(--mono); font-size: 11px; font-weight: 600;
-	color: #fff; background: var(--ink); padding: 7px 18px;
-	text-decoration: none; border-radius: 4px; transition: background 0.15s;
-}
-.nav-cta:hover { background: #333; }
-@media (max-width: 640px) {
-	.hide-mobile { display: none; }
-}
-
-/* ── hero ── */
-.hero {
-	min-height: 100vh; display: flex; flex-direction: column;
-	justify-content: center; align-items: center;
-	background: var(--ink); position: relative; overflow: hidden;
-	padding: 80px var(--page-px) 0;
-}
-.hero-content {
-	display: grid; grid-template-columns: 1fr 1fr; gap: 48px;
-	max-width: 1200px; width: 100%; margin: auto auto 0;
-	align-items: center; position: relative; z-index: 1;
-}
-.hero-kicker {
-	font-family: var(--mono); font-size: 12px; color: var(--red);
-	letter-spacing: 0.08em; margin-bottom: 28px;
-	text-transform: uppercase;
-}
-.hero-h1 {
-	font-family: var(--display);
-	font-size: clamp(4rem, 10vw, 8rem); line-height: 0.88;
-	color: var(--cream); margin: 0 0 28px;
-	letter-spacing: 0.02em; text-transform: lowercase;
-}
-.hero-sub {
-	font-family: var(--serif); font-size: clamp(1.05rem, 1.5vw, 1.2rem);
-	line-height: 1.8; color: rgba(244,241,235,0.5);
-	max-width: 520px; margin: 0 0 40px;
-}
-.hero-btn {
-	display: inline-flex; align-items: center; gap: 10px;
-	font-family: var(--mono); font-size: 13px; font-weight: 600;
-	color: #fff; background: var(--red); padding: 14px 28px;
-	text-decoration: none; border-radius: 5px;
-	transition: background 0.2s, transform 0.15s;
-}
-.hero-btn:hover { background: var(--red-dark); transform: translateY(-1px); }
-
-/* notification scatter → organize → summary */
-.hero-left { text-align: left; }
-.hero-right { display: flex; justify-content: flex-end; align-items: center; }
-
-.nf-stage { position: relative; width: 380px; height: 420px; }
-
-/* wingmnn label */
-.nf-wm {
-	position: absolute; top: 4px; left: 0; z-index: 20;
-	display: flex; align-items: center;
-	animation: nfFadeUp 0.5s cubic-bezier(.22,1,.36,1);
-}
-.nf-wm-text {
-	font-family: var(--display); font-size: 16px;
-	color: rgba(244,241,235,0.5); letter-spacing: 0.02em;
-	text-transform: lowercase; transition: color 0.4s ease;
-}
-.nf-wm--done .nf-wm-text { color: rgba(244,241,235,0.75); }
-.nf-wm--absorb .nf-wm-text {
-	animation: nfAbsorb 0.8s ease;
-}
-.nf-wm-check {
-	color: #22c55e; flex-shrink: 0; overflow: hidden;
-	max-width: 0; opacity: 0; margin-right: 0;
-	transition: max-width 0.5s cubic-bezier(.22,1,.36,1),
-	            opacity 0.4s ease,
-	            margin-right 0.5s cubic-bezier(.22,1,.36,1);
-}
-.nf-wm--done .nf-wm-check {
-	max-width: 24px; opacity: 1; margin-right: 8px;
-}
-.nf-wm-status {
-	font-family: var(--mono); font-size: 10px;
-	color: rgba(34,197,94,0.6); letter-spacing: 0.02em;
-	margin-left: 8px;
-	animation: nfFadeUp 0.4s ease 0.15s both;
-}
-
-/* notification pills */
-.nf-pill {
-	position: absolute;
-	left: var(--ox); top: var(--oy);
-	transform: translate(var(--dx), var(--dy)) rotate(var(--dr));
-	display: inline-flex; align-items: center; gap: 8px;
-	padding: 8px 14px;
-	background: rgba(255,255,255,0.07);
-	backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-	border-radius: 20px;
-	border: 1px solid rgba(255,255,255,0.1);
-	box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-	white-space: nowrap;
-	animation: nfPopIn 0.3s cubic-bezier(.34,1.56,.64,1);
-	transition: transform 0.8s cubic-bezier(.22,1,.36,1),
-	            opacity 0.5s ease,
-	            box-shadow 0.6s ease;
-}
-.nf-pill--org {
-	transform: translate(0, 0) rotate(0deg);
-	box-shadow: 0 1px 6px rgba(0,0,0,0.15);
-}
-.nf-pill--merge {
-	transform: translate(calc(40px - var(--ox)), calc(10px - var(--oy))) scale(0);
-	opacity: 0; pointer-events: none;
-	transition: transform 0.7s cubic-bezier(.6, 0, .1, 1) calc(var(--i) * 40ms),
-	            opacity 0.35s ease calc(var(--i) * 40ms + 120ms);
-}
-.nf-pill-text {
-	font-family: var(--mono); font-size: 11px;
-	color: rgba(244,241,235,0.7); letter-spacing: 0.01em;
-}
-.nf-pill-dot {
-	width: 6px; height: 6px; border-radius: 50%;
-	background: var(--red); flex-shrink: 0;
-	box-shadow: 0 0 6px rgba(192,57,43,0.5);
-}
-
-/* summary card */
-.nf-summary {
-	position: absolute; z-index: 15;
-	top: 36px; left: 0; right: 0;
-	background: rgba(255,255,255,0.04);
-	border: 1px solid rgba(255,255,255,0.07);
-	border-radius: 12px; padding: 20px;
-	transform-origin: top left;
-	animation: nfSummaryIn 0.7s cubic-bezier(.22,1,.36,1);
-}
-.nf-summary-head {
-	font-family: var(--mono); font-size: 10px; font-weight: 600;
-	color: rgba(244,241,235,0.35); letter-spacing: 0.06em;
-	text-transform: uppercase; margin-bottom: 16px;
-}
-.nf-summary-items { display: flex; flex-direction: column; gap: 10px; }
-.nf-summary-row {
-	display: flex; align-items: center; gap: 10px;
-	font-family: var(--serif); font-size: 12.5px; line-height: 1.4;
-	color: rgba(244,241,235,0.6);
-	animation: nfRowIn 0.4s ease both;
-}
-.nf-summary-row:nth-child(1) { animation-delay: 0.1s; }
-.nf-summary-row:nth-child(2) { animation-delay: 0.16s; }
-.nf-summary-row:nth-child(3) { animation-delay: 0.22s; }
-.nf-summary-row:nth-child(4) { animation-delay: 0.28s; }
-.nf-summary-row:nth-child(5) { animation-delay: 0.34s; }
-.nf-summary-row:nth-child(6) { animation-delay: 0.4s; }
-.nf-summary-row em { font-style: normal; color: rgba(34,197,94,0.7); }
-.nf-si { color: rgba(244,241,235,0.3); flex-shrink: 0; }
-.nf-summary-divider {
-	height: 1px; background: rgba(255,255,255,0.06); margin: 14px 0;
-}
-.nf-summary-actions-head {
-	font-family: var(--mono); font-size: 10px; font-weight: 600;
-	color: rgba(244,241,235,0.3); letter-spacing: 0.06em;
-	text-transform: uppercase; margin-bottom: 10px;
-}
-.nf-summary-actions { display: flex; flex-direction: column; gap: 8px; }
-.nf-summary-action {
-	display: flex; align-items: center; gap: 8px;
-	font-family: var(--mono); font-size: 11px;
-	color: rgba(244,241,235,0.45);
-	animation: nfRowIn 0.4s ease both;
-}
-.nf-summary-action:nth-child(1) { animation-delay: 0.48s; }
-.nf-summary-action:nth-child(2) { animation-delay: 0.56s; }
-.nf-summary-action:nth-child(3) { animation-delay: 0.64s; }
-.nf-summary-action svg { color: var(--red); flex-shrink: 0; }
-
-/* animations */
-@keyframes nfPopIn { from { opacity: 0; scale: 0.7; } to { opacity: 1; scale: 1; } }
-@keyframes nfFadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes nfAbsorb {
-	0% { text-shadow: 0 0 0 transparent; transform: scale(1); }
-	40% { text-shadow: 0 0 28px rgba(244,241,235,0.35); transform: scale(1.1); }
-	100% { text-shadow: 0 0 0 transparent; transform: scale(1); }
-}
-@keyframes nfSummaryIn { from { opacity: 0; transform: translateY(-16px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
-@keyframes nfRowIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
-
-/* activity ticker */
-.hero-ticker-wrap {
-	width: 100vw; margin-top: auto; padding-top: 64px;
-	overflow: hidden; position: relative;
-	mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
-	-webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
-}
-.hero-ticker {
-	display: flex; gap: 24px; white-space: nowrap;
-	animation: tickerScroll 40s linear infinite;
-	padding-bottom: 28px;
-}
-@keyframes tickerScroll {
-	from { transform: translateX(0); }
-	to { transform: translateX(-50%); }
-}
-.hero-tick {
-	display: inline-flex; align-items: center; gap: 10px;
-	font-family: var(--mono); font-size: 12px;
-	color: rgba(244,241,235,0.35); flex-shrink: 0;
-	letter-spacing: 0.01em;
-}
-.hero-tick-tag {
-	font-size: 9px; font-weight: 600; padding: 2px 7px;
-	border-radius: 3px; letter-spacing: 0.04em;
-}
-.hero-tick-tag--green { background: rgba(34,197,94,0.15); color: #22c55e; }
-.hero-tick-tag--blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
-.hero-tick-tag--yellow { background: rgba(250,204,21,0.15); color: #facc15; }
-.hero-tick-tag--purple { background: rgba(167,139,250,0.15); color: #a78bfa; }
-.hero-tick-tag--grey { background: rgba(255,255,255,0.08); color: rgba(244,241,235,0.4); }
-
-@media (max-width: 900px) {
-	.hero-content { grid-template-columns: 1fr; gap: 32px; }
-	.hero-left { text-align: center; }
-	.hero-h1 { text-align: center; }
-	.hero-sub { margin: 0 auto 40px; }
-	.hero-btn { margin: 0 auto; }
-	.hero-right { justify-content: center; }
-	.nf-stage { width: 340px; height: 380px; }
-}
-@media (max-width: 500px) {
-	.hero { padding-top: 60px; }
-	.hero-ticker-wrap { padding-top: 48px; }
-	.nf-stage { width: 300px; height: 360px; transform: scale(0.88); transform-origin: top center; }
-}
-
-/* ── feel (the problem) ── */
-.feel {
-	padding: 100px var(--page-px);
-	border-top: 1px solid var(--grey-4);
-}
-.feel-inner {
-	max-width: 1200px; margin: 0 auto;
-	display: grid; grid-template-columns: 280px 1fr; gap: 60px;
-}
-.feel-label {
-	font-family: var(--mono); font-size: 11px; font-weight: 500;
-	color: var(--grey-3); letter-spacing: 0.04em;
-	position: sticky; top: 120px;
-}
-.feel-text {
-	font-family: var(--serif); font-size: clamp(1.1rem, 1.5vw, 1.3rem);
-	line-height: 1.85; color: var(--grey-1); margin-bottom: 20px;
-	max-width: 600px;
-}
-.feel-text:last-child { margin-bottom: 0; }
-.feel-text--bold {
-	font-weight: 600; color: var(--ink); font-size: clamp(1.2rem, 1.6vw, 1.4rem);
-}
-@media (max-width: 768px) {
-	.feel-inner { grid-template-columns: 1fr; gap: 20px; }
-	.feel-label { position: static; }
-}
-
-/* ── section headers (reusable) ── */
-.section-label {
-	font-family: var(--mono); font-size: 11px; color: var(--red);
-	letter-spacing: 0.04em; margin-bottom: 12px;
-}
-.section-h2 {
-	font-family: var(--serif); font-weight: 700;
-	font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.15;
-	color: var(--ink);
-}
-
-/* ── chat demo ── */
-.chat-section {
-	padding: 100px var(--page-px); border-top: 1px solid var(--grey-4);
-}
-.chat-layout {
-	max-width: 1200px; margin: 0 auto;
-	display: grid; grid-template-columns: 1fr 520px; gap: 64px;
-	align-items: center;
-}
-.chat-left {}
-.chat-sub {
-	font-family: var(--serif); font-size: 1.05rem; line-height: 1.8;
-	color: var(--grey-2); max-width: 440px; margin-top: 16px;
-}
-
-/* feature callouts */
-.chat-feats {
-	display: flex; flex-direction: column; gap: 28px;
-	margin-top: 44px;
-}
-.chat-feat {
-	display: flex; gap: 16px; align-items: flex-start;
-}
-.chat-feat-num {
-	font-family: var(--mono); font-size: 11px; font-weight: 600;
-	color: var(--red); letter-spacing: 0.02em;
-	min-width: 24px; padding-top: 2px;
-}
-.chat-feat-title {
-	font-family: var(--serif); font-weight: 600; font-size: 1.05rem;
-	color: var(--ink); margin-bottom: 4px;
-}
-.chat-feat-desc {
-	font-family: var(--serif); font-size: 0.9rem; line-height: 1.7;
-	color: var(--grey-2); max-width: 380px;
-}
-
-/* chat window — fixed dimensions, no layout shift */
-.chat-right {}
-.cd-window {
-	width: 520px; height: 580px;
-	background: var(--ink); border-radius: 16px;
-	display: flex; flex-direction: column;
-	overflow: hidden;
-	border: 1px solid rgba(255,255,255,0.06);
-	box-shadow: 0 24px 80px rgba(0,0,0,0.12);
-}
-.cd-header {
-	display: flex; align-items: center; gap: 8px;
-	padding: 14px 20px; flex-shrink: 0;
-	border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.cd-header-dot {
-	width: 8px; height: 8px; border-radius: 50%;
-	background: #22c55e;
-}
-.cd-header-name {
-	font-family: var(--display); font-size: 14px;
-	color: rgba(244,241,235,0.7); letter-spacing: 0.02em;
-	text-transform: lowercase;
-}
-.cd-header-status {
-	font-family: var(--mono); font-size: 10px;
-	color: rgba(34,197,94,0.5); letter-spacing: 0.02em;
-}
-.cd-messages {
-	flex: 1; overflow-y: auto;
-	padding: 0 20px;
-	scroll-behavior: smooth;
-}
-.cd-messages::-webkit-scrollbar { width: 0; }
-.cd-messages-inner {
-	min-height: 100%;
-	display: flex; flex-direction: column; justify-content: flex-end;
-	padding: 12px 0;
-}
-
-.cd-group {
-	display: flex; flex-direction: column; gap: 16px;
-	padding-bottom: 4px;
-	animation: cdFadeIn 0.3s ease;
-}
-.cd-cap {
-	font-family: var(--mono); font-size: 10px; font-weight: 500;
-	color: rgba(244,241,235,0.2); letter-spacing: 0.1em;
-	text-transform: uppercase; text-align: center;
-	padding: 16px 0 4px;
-	animation: cdFadeIn 0.4s ease;
-}
-
-.cd-msg {
-	display: flex; flex-direction: column; gap: 4px;
-	animation: cdMsgIn 0.4s cubic-bezier(.22,1,.36,1);
-}
-.cd-msg--you { align-items: flex-end; }
-.cd-msg--wm { align-items: flex-start; }
-
-.cd-meta {
-	display: flex; align-items: center; gap: 6px;
-}
-.cd-who {
-	font-family: var(--mono); font-size: 10px; font-weight: 500;
-	letter-spacing: 0.06em; text-transform: uppercase;
-}
-.cd-msg--you .cd-who { color: var(--grey-3); }
-.cd-msg--wm .cd-who { color: var(--red); opacity: 0.8; }
-.cd-mode-icon { color: var(--grey-3); }
-
-.cd-text {
-	font-family: var(--serif); font-size: 0.92rem; line-height: 1.7;
-	margin: 0; max-width: 420px; padding: 12px 16px; border-radius: 12px;
-}
-.cd-msg--you .cd-text {
-	background: #2a2a2a; color: #e0ddd6;
-	border-bottom-right-radius: 4px;
-}
-.cd-msg--wm .cd-text {
-	background: #1e1e1e; color: #c8c4bc;
-	border-bottom-left-radius: 4px;
-}
-.cd-msg--remember .cd-text {
-	border: 1px solid rgba(34,197,94,0.15);
-}
-.cd-remember-tag {
-	font-family: var(--mono); font-size: 10px;
-	color: rgba(34,197,94,0.6); letter-spacing: 0.02em;
-	margin-top: 4px;
-}
-
-/* wm typing indicator */
-.cd-typing-row { animation: cdFadeIn 0.3s ease; }
-.cd-typing {
-	display: flex; gap: 5px; padding: 14px 18px;
-	background: #1e1e1e; border-radius: 12px;
-	border-bottom-left-radius: 4px;
-}
-.cd-dot {
-	width: 6px; height: 6px; border-radius: 50%;
-	background: rgba(244,241,235,0.25);
-	animation: cdBounce 1.2s infinite ease-in-out;
-}
-.cd-dot:nth-child(2) { animation-delay: 0.15s; }
-.cd-dot:nth-child(3) { animation-delay: 0.3s; }
-
-@keyframes cdBounce {
-	0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
-	30% { transform: translateY(-4px); opacity: 0.8; }
-}
-@keyframes cdMsgIn {
-	from { opacity: 0; transform: translateY(8px); }
-	to { opacity: 1; transform: translateY(0); }
-}
-@keyframes cdFadeIn {
-	from { opacity: 0; }
-	to { opacity: 1; }
-}
-
-/* input bar */
-.cd-input-bar {
-	display: flex; align-items: flex-end; justify-content: space-between;
-	gap: 12px;
-	padding: 14px 20px; flex-shrink: 0;
-	border-top: 1px solid rgba(255,255,255,0.06);
-	background: rgba(255,255,255,0.02);
-}
-.cd-input-placeholder {
-	font-family: var(--mono); font-size: 12px; line-height: 1.5;
-	color: rgba(244,241,235,0.2); letter-spacing: 0.01em;
-}
-.cd-input-text {
-	font-family: var(--mono); font-size: 12px; line-height: 1.5;
-	color: rgba(244,241,235,0.7); letter-spacing: 0.01em;
-	flex: 1; min-width: 0;
-	word-break: break-word;
-}
-.cd-cursor {
-	display: inline-block; width: 1.5px; height: 14px;
-	background: rgba(244,241,235,0.5);
-	margin-left: 1px; flex-shrink: 0;
-	animation: cdBlink 0.7s step-end infinite;
-}
-@keyframes cdBlink {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0; }
-}
-.cd-input-mic { color: rgba(244,241,235,0.15); flex-shrink: 0; margin-bottom: 1px; }
-.cd-input-mic--active { color: var(--red); }
-
-/* voice recording indicator */
-.cd-voice-ind {
-	display: flex; align-items: center; gap: 10px;
-}
-.cd-voice-dot {
-	width: 8px; height: 8px; border-radius: 50%;
-	background: var(--red);
-	animation: cdPulse 1s ease-in-out infinite;
-}
-.cd-voice-label {
-	font-family: var(--mono); font-size: 12px; line-height: 1.5;
-	color: rgba(244,241,235,0.4); letter-spacing: 0.01em;
-}
-@keyframes cdPulse {
-	0%, 100% { opacity: 1; transform: scale(1); }
-	50% { opacity: 0.4; transform: scale(1.3); }
-}
-
-/* responsive */
-@media (max-width: 900px) {
-	.chat-layout { grid-template-columns: 1fr; gap: 40px; }
-	.cd-window { width: 100%; max-width: 520px; height: 540px; }
-}
-@media (max-width: 500px) {
-	.cd-window { height: 480px; }
-}
-
-/* ── modules ── */
-.mod-section {
-	padding: 100px var(--page-px); border-top: 1px solid var(--grey-4);
-}
-.mod-header { max-width: 1200px; margin: 0 auto 48px; }
-.mod-grid {
-	max-width: 1200px; margin: 0 auto;
-	display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-	gap: 1px; background: var(--grey-4);
-	border: 1px solid var(--grey-4);
-}
-.mod-grid > * {
-	opacity: 0; transform: translateY(6px);
-	transition: opacity 0.3s ease, transform 0.3s ease;
-}
-.mod-grid.vis > * { opacity: 1; transform: translateY(0); }
-
-.mod-card {
-	background: var(--cream); padding: 24px;
-	transition: background 0.15s;
-}
-.mod-card:hover { background: #eeebe4; }
-.mod-top {
-	display: flex; align-items: center; justify-content: space-between;
-	margin-bottom: 10px;
-}
-.mod-id {
-	font-family: var(--mono); font-size: 10px; font-weight: 600;
-	color: var(--grey-3); letter-spacing: 0.06em;
-}
-.mod-badge {
-	font-family: var(--mono); font-size: 9px; font-weight: 600;
-	padding: 2px 8px; letter-spacing: 0.04em;
-}
-.mod-badge--live { background: #22c55e; color: #052e16; }
-.mod-badge--watching { background: #facc15; color: #422006; }
-.mod-badge--tracking { background: #facc15; color: #422006; }
-.mod-badge--idle { background: #e5e2dc; color: #666; }
-.mod-badge--ready { background: #e5e2dc; color: #666; }
-
-.mod-name {
-	font-family: var(--serif); font-weight: 600; font-size: 1.15rem;
-	color: var(--ink); margin-bottom: 6px;
-}
-.mod-desc {
-	font-family: var(--serif); font-size: 0.88rem; line-height: 1.65;
-	color: var(--grey-2);
-}
-
-/* ── your first week ── */
-.week-section {
-	padding: 100px var(--page-px); border-top: 1px solid var(--grey-4);
-	background: var(--ink); color: var(--cream);
-}
-.week-section .section-label { color: rgba(192,57,43,0.7); }
-.week-section .section-h2 { color: var(--cream); }
-.week-header { max-width: 1200px; margin: 0 auto 56px; }
-.week-list {
-	max-width: 1200px; margin: 0 auto;
-	display: grid; grid-template-columns: 1fr; gap: 0;
-}
-.week-list > * {
-	opacity: 0; transform: translateY(6px);
-	transition: opacity 0.35s ease, transform 0.35s ease;
-}
-.week-list.vis > * { opacity: 1; transform: translateY(0); }
-
-.week-row {
-	display: grid; grid-template-columns: 80px 1fr; gap: 32px;
-	padding: 28px 0; border-bottom: 1px solid rgba(255,255,255,0.07);
-}
-.week-row:last-child { border-bottom: none; }
-.week-day {
-	font-family: var(--mono); font-size: 12px; font-weight: 500;
-	color: var(--red); letter-spacing: 0.04em; padding-top: 3px;
-}
-.week-title {
-	font-family: var(--serif); font-weight: 600; font-size: 1.1rem;
-	color: var(--cream); margin-bottom: 6px;
-}
-.week-body {
-	font-family: var(--serif); font-size: 0.92rem; line-height: 1.7;
-	color: rgba(244,241,235,0.55);
-}
-@media (max-width: 640px) {
-	.week-row { grid-template-columns: 1fr; gap: 6px; }
-}
-
-/* ── promise (trust) ── */
-.promise {
-	padding: 120px var(--page-px);
-	border-top: 1px solid var(--grey-4);
-}
-.promise-inner {
-	max-width: 700px; margin: 0 auto; text-align: center;
-	opacity: 0; transform: translateY(12px);
-	transition: opacity 0.6s ease, transform 0.6s ease;
-}
-.promise-inner.vis { opacity: 1; transform: translateY(0); }
-.promise-h2 {
-	font-family: var(--serif); font-weight: 700;
-	font-size: clamp(1.8rem, 3.5vw, 2.8rem); line-height: 1.3;
-	color: var(--ink); margin-bottom: 28px;
-}
-.promise-dim { color: var(--grey-2); font-weight: 400; }
-.promise-body {
-	font-family: var(--serif); font-size: 1rem; line-height: 1.85;
-	color: var(--grey-2);
-}
-
-/* ── platforms ── */
-.plat-section {
-	padding: 0 var(--page-px) 100px;
-}
-.plat-grid {
-	max-width: 1200px; margin: 0 auto;
-	display: grid; grid-template-columns: repeat(3, 1fr);
-	gap: 1px; background: var(--grey-4); border: 1px solid var(--grey-4);
-}
-.plat-grid > * {
-	opacity: 0; transform: translateY(6px);
-	transition: opacity 0.4s ease, transform 0.4s ease;
-}
-.plat-grid.vis > * { opacity: 1; transform: translateY(0); }
-.plat-grid.vis > *:nth-child(2) { transition-delay: 0.06s; }
-.plat-grid.vis > *:nth-child(3) { transition-delay: 0.12s; }
-
-.plat-card {
-	background: var(--cream); padding: 32px 28px;
-	display: flex; flex-direction: column;
-}
-.plat-name {
-	font-family: var(--serif); font-weight: 700; font-size: 1.3rem;
-	color: var(--ink); margin-bottom: 8px;
-}
-.plat-desc {
-	font-family: var(--serif); font-size: 0.9rem; line-height: 1.65;
-	color: var(--grey-2); flex: 1; margin-bottom: 16px;
-}
-.plat-tag {
-	font-family: var(--mono); font-size: 10px; font-weight: 600;
-	letter-spacing: 0.04em; padding: 3px 10px; align-self: flex-start;
-}
-.plat-tag--live { background: #22c55e; color: #052e16; }
-.plat-tag--soon { background: var(--grey-4); color: var(--grey-2); }
-@media (max-width: 768px) {
-	.plat-grid { grid-template-columns: 1fr; }
-}
-
-/* ── numbers ── */
-.nums-section {
-	padding: 80px var(--page-px); border-top: 1px solid var(--grey-4);
-	text-align: center;
-}
-.nums-inner {
-	max-width: 800px; margin: 0 auto 24px;
-	display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px;
-	opacity: 0; transform: translateY(8px);
-	transition: opacity 0.5s ease, transform 0.5s ease;
-}
-.nums-inner.vis { opacity: 1; transform: translateY(0); }
-
-.num-val {
-	font-family: var(--display); font-size: clamp(2.5rem, 5vw, 4rem);
-	color: var(--ink); line-height: 1;
-}
-.num-label {
-	font-family: var(--mono); font-size: 11px; color: var(--grey-3);
-	margin-top: 8px; letter-spacing: 0.02em;
-}
-.nums-note {
-	font-family: var(--mono); font-size: 11px; color: var(--grey-3);
-	letter-spacing: 0.03em;
-}
-
-/* ── faq ── */
-.faq-section {
-	padding: 100px var(--page-px); border-top: 1px solid var(--grey-4);
-}
-.faq-header { max-width: 1200px; margin: 0 auto 40px; }
-.faq-list {
-	max-width: 720px; margin: 0 auto;
-}
-.faq-list > * {
-	opacity: 0; transform: translateY(4px);
-	transition: opacity 0.3s ease, transform 0.3s ease;
-}
-.faq-list.vis > * { opacity: 1; transform: translateY(0); }
-
-.faq-item { border-bottom: 1px solid var(--grey-4); }
-.faq-item:last-child { border-bottom: none; }
-.faq-trigger {
-	width: 100%; display: flex; align-items: center; justify-content: space-between;
-	gap: 16px; padding: 20px 0; background: none; border: none;
-	cursor: pointer; text-align: left; font-family: inherit;
-}
-.faq-trigger:hover .faq-q { color: var(--ink); }
-.faq-q {
-	font-family: var(--serif); font-size: 1.05rem; font-weight: 600;
-	color: var(--grey-1); transition: color 0.15s;
-}
-.faq-icon {
-	flex-shrink: 0; color: var(--grey-3);
-	transition: transform 0.3s cubic-bezier(.22,1,.36,1), color 0.15s;
-}
-.faq-icon--open { transform: rotate(45deg); color: var(--red); }
-.faq-body {
-	max-height: 0; overflow: hidden;
-	transition: max-height 0.4s cubic-bezier(.22,1,.36,1);
-}
-.faq-body--open { max-height: 300px; }
-.faq-a {
-	font-family: var(--serif); font-size: 0.92rem; line-height: 1.75;
-	color: var(--grey-2); padding-bottom: 20px;
-}
-
-/* ── CTA ── */
-.cta-section {
-	padding: 120px var(--page-px);
-	background: var(--ink);
-}
-.cta-inner { max-width: 620px; margin: 0 auto; text-align: center; }
-.cta-h2 {
-	font-family: var(--serif); font-weight: 700;
-	font-size: clamp(2rem, 4vw, 3rem); line-height: 1.2;
-	color: var(--cream); margin-bottom: 16px;
-}
-.cta-sub {
-	font-family: var(--serif); font-size: 1rem; line-height: 1.7;
-	color: rgba(244,241,235,0.5); margin-bottom: 36px;
-}
-.cta-form {
-	display: flex; gap: 0; max-width: 480px; margin: 0 auto;
-	align-items: flex-start;
-}
-.cta-input-wrap { flex: 1; display: flex; flex-direction: column; }
-.cta-input {
-	width: 100%; font-family: var(--mono); font-size: 13px;
-	padding: 14px 18px; border: 1px solid #444; border-right: none;
-	border-radius: 5px 0 0 5px; background: #2a2a2a; color: var(--cream);
-	outline: none; transition: border-color 0.15s;
-}
-.cta-input::placeholder { color: #666; }
-.cta-input:focus { border-color: var(--red); }
-.cta-input--err { border-color: var(--red); }
-.cta-err {
-	font-family: var(--mono); font-size: 10px; color: var(--red);
-	text-align: left; margin-top: 6px;
-}
-.cta-btn {
-	display: inline-flex; align-items: center; gap: 8px;
-	font-family: var(--mono); font-size: 12px; font-weight: 600;
-	color: #fff; background: var(--red); padding: 14px 24px;
-	border: 1px solid var(--red); border-radius: 0 5px 5px 0;
-	cursor: pointer; transition: background 0.2s; white-space: nowrap;
-}
-.cta-btn:hover { background: var(--red-dark); }
-@media (max-width: 500px) {
-	.cta-form { flex-direction: column; gap: 10px; }
-	.cta-input { border-right: 1px solid #444; border-radius: 5px; }
-	.cta-btn { border-radius: 5px; justify-content: center; }
-}
-
-.cta-done { padding: 20px 0; }
-.cta-done-h {
-	font-family: var(--serif); font-weight: 700; font-size: 2.5rem;
-	color: var(--cream); margin-bottom: 12px;
-}
-.cta-done-sub {
-	font-family: var(--serif); font-size: 1.05rem; line-height: 1.7;
-	color: rgba(244,241,235,0.5);
-}
-
-/* ── footer ── */
-.foot {
-	padding: 72px var(--page-px) 40px;
-	background: var(--ink); color: var(--cream);
-}
-.foot-top {
-	max-width: 1200px; margin: 0 auto 48px;
-	display: grid; grid-template-columns: 1.4fr 1fr; gap: 80px;
-	align-items: start;
-}
-.foot-brand { max-width: 380px; }
-.foot-logo {
-	font-family: var(--display); font-size: 1.8rem; color: var(--cream);
-	letter-spacing: 0.03em; text-transform: lowercase; margin-bottom: 16px;
-}
-.foot-tagline {
-	font-family: var(--serif); font-size: 1rem; line-height: 1.7;
-	color: rgba(244,241,235,0.45);
-}
-.foot-nav {
-	display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px;
-}
-.foot-heading {
-	font-family: var(--mono); font-size: 11px; font-weight: 600;
-	color: rgba(244,241,235,0.3); letter-spacing: 0.06em;
-	text-transform: uppercase; margin-bottom: 16px;
-}
-.foot-link {
-	display: block; font-family: var(--serif); font-size: 0.92rem;
-	color: rgba(244,241,235,0.55); text-decoration: none;
-	line-height: 2; cursor: pointer; transition: color 0.15s;
-}
-.foot-link:hover { color: var(--cream); }
-.foot-bottom {
-	max-width: 1200px; margin: 0 auto; padding-top: 24px;
-	border-top: 1px solid rgba(255,255,255,0.08);
-	font-family: var(--mono); font-size: 12px; color: rgba(244,241,235,0.25);
-	display: flex; justify-content: space-between; align-items: center;
-}
-.foot-legal { display: flex; gap: 20px; }
-.foot-link-sm {
-	font-family: var(--mono); font-size: 12px;
-	color: rgba(244,241,235,0.3); cursor: pointer;
-	transition: color 0.15s;
-}
-.foot-link-sm:hover { color: rgba(244,241,235,0.6); }
-@media (max-width: 768px) {
-	.foot-top { grid-template-columns: 1fr; gap: 48px; }
-	.foot-nav { grid-template-columns: repeat(3, 1fr); }
-}
-@media (max-width: 500px) {
-	.foot-nav { grid-template-columns: 1fr; gap: 32px; }
-	.foot-bottom { flex-direction: column; gap: 12px; align-items: flex-start; }
-}
-`;
