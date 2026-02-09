@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowRight, Check, Shield, Users, Zap } from "lucide-react";
+import { ArrowRight, Shield, Users, Zap } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { seo } from "@/lib/seo";
@@ -38,7 +38,7 @@ const valueProps = [
 const stats = [
 	{ number: "2,847+", label: "on the waitlist" },
 	{ number: "10", label: "modules at launch" },
-	{ number: "Brooklyn, NY", label: "where we build" },
+	{ number: "BKLYN, NY", label: "where we build" },
 ];
 
 /* ─── component ─── */
@@ -87,8 +87,8 @@ function EarlyAccessPage() {
 								Get early access to Wingmnn.
 							</h1>
 							<p className="font-serif text-base leading-[1.7] text-cream/50 mb-9">
-								We're rolling out access to a small group of early adopters. Drop
-								your email and we'll let you know when it's your turn.
+								We're rolling out access to a small group of early adopters.
+								Drop your email and we'll let you know when it's your turn.
 							</p>
 							<form
 								onSubmit={handleSubmit}
@@ -161,7 +161,7 @@ function EarlyAccessPage() {
 				<div className="max-w-[800px] mx-auto grid grid-cols-3 max-md:grid-cols-1 gap-10 text-center">
 					{stats.map((s) => (
 						<div key={s.label}>
-							<div className="font-display text-[clamp(2.5rem,5vw,4rem)] text-cream leading-none">
+							<div className="font-display text-[clamp(2.5rem,9vw,3rem)] text-cream leading-none">
 								{s.number}
 							</div>
 							<div className="font-mono text-[11px] text-cream/40 mt-2 tracking-[0.02em]">
