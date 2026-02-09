@@ -52,8 +52,7 @@ export default function Header() {
 						Use cases
 					</Link>
 					<Link
-						to="/"
-						hash="join"
+						to="/early-access"
 						className="font-mono text-[11px] font-semibold text-white bg-ink py-[7px] px-[18px] no-underline rounded transition-colors duration-150 hover:bg-[#333]"
 					>
 						Get early access

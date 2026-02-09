@@ -176,8 +176,7 @@ function FreelancersPage() {
 						know when it's your turn.
 					</p>
 					<Link
-						to="/"
-						hash="join"
+						to="/early-access"
 						className="inline-flex items-center gap-2.5 font-mono font-semibold text-sm text-white py-3.5 px-7 rounded-md transition-colors duration-200 bg-accent-red hover:bg-red-dark no-underline"
 					>
 						Get early access <ArrowRight size={16} />
