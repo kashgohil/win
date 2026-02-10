@@ -37,3 +37,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .cursorrules
 .cursor
 CLAUDE.md
+
+# Tauri / Rust build output
+**/src-tauri/target/
