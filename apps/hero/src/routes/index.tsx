@@ -1302,7 +1302,7 @@ function HomePage() {
 							</p>
 							<form
 								onSubmit={handleSubmit}
-								className="flex max-[500px]:flex-col gap-0 max-[500px]:gap-2.5 max-w-[480px] mx-auto items-start"
+								className="flex max-[500px]:flex-col gap-0 max-[500px]:gap-2.5 max-w-[480px] mx-auto items-center md:items-start"
 								noValidate
 							>
 								<div className="flex-1 flex flex-col">
