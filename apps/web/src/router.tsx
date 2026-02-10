@@ -6,5 +6,6 @@ export const getRouter = () => {
   return createRouter({
     routeTree,
     defaultPreload: 'intent',
+    ...(import.meta.env.VITE_TAURI ? { ssr: false } : {}),
   })
 }
