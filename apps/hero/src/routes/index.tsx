@@ -134,7 +134,11 @@ function ImagePlaceholder({
 	label,
 	className = "",
 	dark = false,
-}: { label: string; className?: string; dark?: boolean }) {
+}: {
+	label: string;
+	className?: string;
+	dark?: boolean;
+}) {
 	return (
 		<div
 			className={`flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed ${dark ? "border-white/12 bg-white/3" : "border-grey-4 bg-[#f5f3ee]"} ${className}`}
@@ -1166,18 +1170,9 @@ function HomePage() {
 					))}
 				</div>
 				<div className="max-w-[1200px] mx-auto mt-10 grid grid-cols-3 max-md:grid-cols-1 gap-6">
-					<ImagePlaceholder
-						label="Desktop mockup"
-						className="h-[240px]"
-					/>
-					<ImagePlaceholder
-						label="iPhone mockup"
-						className="h-[240px]"
-					/>
-					<ImagePlaceholder
-						label="Android mockup"
-						className="h-[240px]"
-					/>
+					<ImagePlaceholder label="Desktop mockup" className="h-[240px]" />
+					<ImagePlaceholder label="iPhone mockup" className="h-[240px]" />
+					<ImagePlaceholder label="Android mockup" className="h-[240px]" />
 				</div>
 			</section>
 
