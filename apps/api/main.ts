@@ -18,7 +18,35 @@ const app = new Elysia({ name: "wingmnn-api" })
 		}),
 	)
 	.use(requestID())
-	.use(openapi())
+	.use(
+		openapi({
+			documentation: {
+				info: {
+					title: "Wingmnn API",
+					version: "1.0.0",
+					description: "Backend API for Wingmnn",
+				},
+				tags: [
+					{ name: "Health", description: "Liveness and readiness" },
+					{ name: "Auth", description: "Authentication (better-auth)" },
+					{ name: "User", description: "Authenticated user endpoints" },
+					{ name: "Waitlist", description: "Waitlist signup" },
+				],
+				components: {
+					securitySchemes: {
+						bearerAuth: {
+							type: "http",
+							scheme: "bearer",
+							bearerFormat: "Cookie",
+						},
+					},
+				},
+			},
+			exclude: {
+				paths: ["/auth/*"],
+			},
+		}),
+	)
 	.use(authPlugin)
 	.use(health)
 	.use(strictLimit())
