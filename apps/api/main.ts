@@ -6,6 +6,7 @@ import { Elysia } from "elysia";
 
 import { auth } from "@/auth";
 import { auth as authPlugin } from "@/plugins/auth";
+import { health } from "@/routes/health";
 import { waitlist } from "@/routes/waitlist";
 
 const app = new Elysia({ name: "wingmnn-api" })
@@ -18,11 +19,9 @@ const app = new Elysia({ name: "wingmnn-api" })
 	.use(requestID())
 	.use(openapi())
 	.use(authPlugin)
-	.get("/health", () => ({ hello: "Bun👋" }))
-
+	.use(health)
 	.use(strictLimit())
 	.all("/auth/*", ({ request }) => auth.handler(request))
-
 	.use(lenientLimit())
 	.get("/me", ({ user }) => user, { auth: true })
 	.use(waitlist)
