@@ -1,23 +1,23 @@
 {
-  "name": "win",
-  "module": "index.ts",
-  "type": "module",
-  "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
-  "scripts": {
-    "start:api": "bun run --filter api start",
-    "start:web": "bun run --filter web dev",
-    "start:mobile": "bun run --filter mobile start",
-    "start:hero": "bun run --filter hero dev",
-    "start:desktop": "bun run --filter web tauri:dev"
-  },
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  }
+	"name": "win",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"workspaces": [
+		"apps/*",
+		"packages/*"
+	],
+	"scripts": {
+		"start:api": "bun run --filter api start",
+		"start:web": "bun run --filter web dev",
+		"start:mobile": "bun run --filter mobile start",
+		"start:hero": "bun run --filter hero dev",
+		"start:desktop": "bun run --filter web tauri:dev"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.3.9"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
 }
