@@ -1,9 +1,13 @@
 import { Elysia, t } from "elysia";
 
 import { emailSchema } from "@/schemas/email";
+import { waitlistErrorResponse, waitlistSuccessResponse } from "./responses";
 import { waitlistService } from "./service";
 
-export const waitlist = new Elysia({ name: "waitlist" }).post(
+export const waitlist = new Elysia({
+	name: "waitlist",
+	prefix: "/waitlist",
+}).post(
 	"/",
 	async ({ body, set }) => {
 		const result = await waitlistService.join(body);
@@ -26,8 +30,26 @@ export const waitlist = new Elysia({ name: "waitlist" }).post(
 	{
 		body: t.Object({
 			email: emailSchema,
-			source: t.String().optional(),
-			referrer: t.String().optional(),
+			source: t.Optional(t.String()),
+			referrer: t.Optional(t.String()),
 		}),
+		response: {
+			200: waitlistSuccessResponse,
+			201: waitlistSuccessResponse,
+			400: waitlistErrorResponse,
+			500: waitlistErrorResponse,
+		},
+		detail: {
+			summary: "Join waitlist",
+			description:
+				"Submit email to join the waitlist. Returns success message or error.",
+			tags: ["Waitlist"],
+			responses: {
+				200: { description: "Already on waitlist" },
+				201: { description: "Successfully joined waitlist" },
+				400: { description: "Invalid email" },
+				500: { description: "Server error" },
+			},
+		},
 	},
 );
