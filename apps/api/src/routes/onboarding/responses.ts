@@ -2,7 +2,7 @@ import { t } from "elysia";
 
 export const profileSchema = t.Object({
 	id: t.String({ format: "uuid" }),
-	userId: t.String({ format: "uuid" }),
+	userId: t.String(),
 	timezone: t.Union([t.String(), t.Null()]),
 	role: t.Union([t.String(), t.Null()]),
 	enabledModules: t.Union([t.Array(t.String()), t.Null()]),
