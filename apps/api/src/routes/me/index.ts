@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
 
-import { auth as authPlugin } from "@/plugins/auth";
+import { auth as authPlugin } from "../../plugins/auth";
 import { userResponse } from "./responses";
 
 export const me = new Elysia({

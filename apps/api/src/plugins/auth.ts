@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
 
-import { auth as betterAuth } from "@/auth";
+import { auth as betterAuth } from "../auth";
 
 export const auth = new Elysia({ name: "auth" }).macro({
 	auth: {

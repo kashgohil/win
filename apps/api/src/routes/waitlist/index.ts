@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 
-import { emailSchema } from "@/schemas/email";
+import { emailSchema } from "../../schemas/email";
 import { waitlistErrorResponse, waitlistSuccessResponse } from "./responses";
 import { waitlistService } from "./service";
 

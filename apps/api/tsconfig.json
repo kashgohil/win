@@ -10,10 +10,6 @@
 		"resolveJsonModule": true,
 		"moduleDetection": "force",
 		"noUncheckedIndexedAccess": true,
-		"noEmit": true,
-		"baseUrl": ".",
-		"paths": {
-			"@/*": ["./src/*"]
-		}
+		"noEmit": true
 	}
 }
