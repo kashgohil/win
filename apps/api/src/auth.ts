@@ -5,10 +5,9 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 import { env } from "./env";
 
-export const auth = betterAuth({
+export const betterAuthHandler = betterAuth({
 	database: drizzleAdapter(db, {
 		provider: "pg",
-		usePlural: true,
 		schema: {
 			user: users,
 			session: sessions,
@@ -19,6 +18,9 @@ export const auth = betterAuth({
 	basePath: "/auth",
 	secret: env.BETTER_AUTH_SECRET,
 	baseURL: env.BETTER_AUTH_URL,
+
+	trustedOrigins: [env.BETTER_AUTH_URL!, env.CLIENT_URL!],
+
 	emailAndPassword: {
 		enabled: true,
 	},
@@ -29,13 +31,13 @@ export const auth = betterAuth({
 		},
 	},
 	user: {
-		modelName: "users",
+		modelName: "user",
 		fields: {
-			image: "avatar_url",
+			image: "avatarUrl",
 		},
 	},
 	session: {
-		modelName: "sessions",
+		modelName: "session",
 	},
 	secondaryStorage: createBetterAuthStorage(),
 });

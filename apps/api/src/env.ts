@@ -10,11 +10,13 @@ const envSchema = Type.Object({
 	GITHUB_CLIENT_ID: Type.Optional(Type.String()),
 	GITHUB_CLIENT_SECRET: Type.Optional(Type.String()),
 	REDIS_URL: Type.Optional(Type.String()),
+	CLIENT_URL: Type.Optional(Type.String()),
 });
 
 const envWithDefaults = {
 	...Bun.env,
 	BETTER_AUTH_URL: Bun.env.BETTER_AUTH_URL ?? "http://localhost:8080",
+	CLIENT_URL: Bun.env.CLIENT_URL ?? "http://localhost:3000",
 };
 
 if (!Value.Check(envSchema, envWithDefaults)) {

@@ -1,13 +1,13 @@
 import { Elysia } from "elysia";
 
-import { auth as authPlugin } from "../../plugins/auth";
+import { betterAuthPlugin } from "../../plugins/auth";
 import { userResponse } from "./responses";
 
 export const me = new Elysia({
 	name: "me",
 	prefix: "/me",
 })
-	.use(authPlugin)
+	.use(betterAuthPlugin)
 	.get(
 		"/",
 		({ user }) => {

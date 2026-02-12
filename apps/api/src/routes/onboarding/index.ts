@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 
-import { auth as authPlugin } from "../../plugins/auth";
+import { betterAuthPlugin } from "../../plugins/auth";
 import {
 	errorResponse,
 	profileResponse,
@@ -12,7 +12,7 @@ export const onboarding = new Elysia({
 	name: "onboarding",
 	prefix: "/onboarding",
 })
-	.use(authPlugin)
+	.use(betterAuthPlugin)
 	.get(
 		"/",
 		async ({ user, set }) => {

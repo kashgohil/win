@@ -3,10 +3,11 @@ import openapi from "@elysiajs/openapi";
 import { redis } from "@wingmnn/redis";
 import { Elysia } from "elysia";
 import { lenientLimit, strictLimit } from "./plugins/rate-limit";
+import { logger } from "./plugins/logger";
 import { requestID } from "./plugins/request-id";
 
-import { auth } from "./auth";
-import { auth as authPlugin } from "./plugins/auth";
+import { betterAuthHandler } from "./auth";
+import { betterAuthPlugin } from "./plugins/auth";
 import { health } from "./routes/health";
 import { me } from "./routes/me";
 import { onboarding } from "./routes/onboarding";
@@ -20,6 +21,7 @@ const app = new Elysia({ name: "wingmnn-api" })
 		}),
 	)
 	.use(requestID())
+	.use(logger)
 	.use(
 		openapi({
 			documentation: {
@@ -50,14 +52,18 @@ const app = new Elysia({ name: "wingmnn-api" })
 			},
 		}),
 	)
-	.use(authPlugin)
+	.use(betterAuthPlugin)
+
+	// auth routes
+	.mount(betterAuthHandler.handler)
 	.use(health)
 	.use(strictLimit())
-	.all("/auth/*", ({ request }) => auth.handler(request))
+
 	.use(lenientLimit())
 	.use(me)
 	.use(onboarding)
 	.use(waitlist)
+
 	.listen(8080);
 
 export type App = typeof app;
