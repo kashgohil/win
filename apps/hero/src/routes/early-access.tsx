@@ -38,7 +38,6 @@ const valueProps = [
 const stats = [
 	{ number: "2,847+", label: "on the waitlist" },
 	{ number: "10", label: "modules at launch" },
-	{ number: "BKLYN, NY", label: "where we build" },
 ];
 
 /* ─── component ─── */
@@ -158,7 +157,7 @@ function EarlyAccessPage() {
 
 			{/* ── Social proof / numbers ── */}
 			<section className="py-[80px] px-(--page-px) bg-ink">
-				<div className="max-w-[800px] mx-auto grid grid-cols-3 max-md:grid-cols-1 gap-10 text-center">
+				<div className="max-w-[800px] mx-auto grid grid-cols-2 max-md:grid-cols-1 gap-10 text-center">
 					{stats.map((s) => (
 						<div key={s.label}>
 							<div className="font-display text-[clamp(2.5rem,9vw,3rem)] text-cream leading-none">

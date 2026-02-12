@@ -23,7 +23,7 @@ export default function Footer() {
 						</div>
 						<p className="font-serif text-base leading-[1.7] text-cream/45">
 							A single intelligence that learns how you operate — then operates
-							for you. Built with care in Brooklyn, NY.
+							for you. Built with care.
 						</p>
 					</div>
 					<div className="grid grid-cols-3 max-[500px]:grid-cols-2 gap-x-10 gap-y-8">
