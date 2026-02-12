@@ -1,4 +1,4 @@
-import { HERO_URL } from "@/lib/constants";
+import { env } from "@/env";
 import { Linkedin, Mail, Twitter } from "lucide-react";
 import { useState } from "react";
 import CookieSettings from "./CookieSettings";
@@ -32,14 +32,14 @@ export default function Footer() {
 							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
 								Product
 							</h4>
-							<a href={`${HERO_URL}/how-it-works`} className={linkCls}>
+							<a href={`${env.VITE_HERO_URL}/how-it-works`} className={linkCls}>
 								How it works
 							</a>
-							<a href={`${HERO_URL}/modules`} className={linkCls}>
+							<a href={`${env.VITE_HERO_URL}/modules`} className={linkCls}>
 								Modules
 							</a>
 							<span className={placeholderCls}>Pricing</span>
-							<a href={`${HERO_URL}/integrations`} className={linkCls}>
+							<a href={`${env.VITE_HERO_URL}/integrations`} className={linkCls}>
 								Integrations
 							</a>
 						</div>
@@ -49,19 +49,28 @@ export default function Footer() {
 							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
 								Use Cases
 							</h4>
-							<a href={`${HERO_URL}/use-cases/founders`} className={linkCls}>
+							<a
+								href={`${env.VITE_HERO_URL}/use-cases/founders`}
+								className={linkCls}
+							>
 								For Founders
 							</a>
-							<a href={`${HERO_URL}/use-cases/freelancers`} className={linkCls}>
+							<a
+								href={`${env.VITE_HERO_URL}/use-cases/freelancers`}
+								className={linkCls}
+							>
 								For Freelancers
 							</a>
 							<a
-								href={`${HERO_URL}/use-cases/busy-parents`}
+								href={`${env.VITE_HERO_URL}/use-cases/busy-parents`}
 								className={linkCls}
 							>
 								For Busy Parents
 							</a>
-							<a href={`${HERO_URL}/use-cases/executives`} className={linkCls}>
+							<a
+								href={`${env.VITE_HERO_URL}/use-cases/executives`}
+								className={linkCls}
+							>
 								For Executives
 							</a>
 						</div>
@@ -71,14 +80,14 @@ export default function Footer() {
 							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
 								Resources
 							</h4>
-							<a href={`${HERO_URL}/blog`} className={linkCls}>
+							<a href={`${env.VITE_HERO_URL}/blog`} className={linkCls}>
 								Blog
 							</a>
-							<a href={`${HERO_URL}/help`} className={linkCls}>
+							<a href={`${env.VITE_HERO_URL}/help`} className={linkCls}>
 								Help Center
 							</a>
 							<span className={placeholderCls}>Changelog</span>
-							<a href={`${HERO_URL}/tools`} className={linkCls}>
+							<a href={`${env.VITE_HERO_URL}/tools`} className={linkCls}>
 								Free Tools
 							</a>
 						</div>
@@ -88,11 +97,11 @@ export default function Footer() {
 							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
 								Company
 							</h4>
-							<a href={`${HERO_URL}/about`} className={linkCls}>
+							<a href={`${env.VITE_HERO_URL}/about`} className={linkCls}>
 								About
 							</a>
 							<span className={placeholderCls}>Careers</span>
-							<a href={`${HERO_URL}/contact`} className={linkCls}>
+							<a href={`${env.VITE_HERO_URL}/contact`} className={linkCls}>
 								Contact
 							</a>
 						</div>
@@ -102,10 +111,10 @@ export default function Footer() {
 							<h4 className="font-mono text-[11px] font-semibold text-cream/30 tracking-[0.06em] uppercase mb-4">
 								Legal
 							</h4>
-							<a href={`${HERO_URL}/privacy`} className={linkCls}>
+							<a href={`${env.VITE_HERO_URL}/privacy`} className={linkCls}>
 								Privacy
 							</a>
-							<a href={`${HERO_URL}/terms`} className={linkCls}>
+							<a href={`${env.VITE_HERO_URL}/terms`} className={linkCls}>
 								Terms
 							</a>
 							<button
@@ -122,13 +131,13 @@ export default function Footer() {
 					<span>&copy; {new Date().getFullYear()} Wingmnn Systems Inc.</span>
 					<div className="flex items-center gap-5">
 						<a
-							href={`${HERO_URL}/privacy`}
+							href={`${env.VITE_HERO_URL}/privacy`}
 							className="font-mono text-xs text-cream/30 no-underline cursor-pointer transition-colors duration-150 hover:text-cream/60"
 						>
 							Privacy
 						</a>
 						<a
-							href={`${HERO_URL}/terms`}
+							href={`${env.VITE_HERO_URL}/terms`}
 							className="font-mono text-xs text-cream/30 no-underline cursor-pointer transition-colors duration-150 hover:text-cream/60"
 						>
 							Terms
