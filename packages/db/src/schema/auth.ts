@@ -11,7 +11,7 @@ import {
 import { userProfiles } from "./profile";
 
 export const users = pgTable("users", {
-	id: uuid().primaryKey().defaultRandom(),
+	id: text("id").primaryKey(),
 	email: varchar({ length: 255 }).notNull().unique(),
 	name: varchar({ length: 255 }),
 	avatarUrl: text("avatar_url"),
@@ -26,8 +26,8 @@ export const users = pgTable("users", {
 });
 
 export const sessions = pgTable("sessions", {
-	id: uuid().primaryKey().defaultRandom(),
-	userId: uuid("user_id")
+	id: text("id").primaryKey(),
+	userId: text("user_id")
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" }),
 	token: text().notNull().unique(),
@@ -44,8 +44,8 @@ export const sessions = pgTable("sessions", {
 });
 
 export const accounts = pgTable("account", {
-	id: uuid().primaryKey().defaultRandom(),
-	userId: uuid("user_id")
+	id: text("id").primaryKey(),
+	userId: text("user_id")
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" }),
 	accountId: varchar("account_id", { length: 255 }).notNull(),
@@ -71,7 +71,7 @@ export const accounts = pgTable("account", {
 });
 
 export const verifications = pgTable("verification", {
-	id: uuid().primaryKey().defaultRandom(),
+	id: text("id").primaryKey(),
 	identifier: varchar({ length: 255 }).notNull(),
 	value: text().notNull(),
 	expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
