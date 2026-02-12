@@ -1,2 +1,2 @@
-export * from "./auth.ts";
-export * from "./waitlist.ts";
+export * from "./auth";
+export * from "./waitlist";
