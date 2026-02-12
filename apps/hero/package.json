@@ -11,15 +11,16 @@
 		"lint": "biome lint",
 		"check": "biome check"
 	},
-  "dependencies": {
-    "@wingmnn/fonts": "workspace:*",
-    "@tailwindcss/vite": "^4.0.6",
+	"dependencies": {
+		"@tailwindcss/vite": "^4.0.6",
 		"@tanstack/react-devtools": "^0.7.0",
 		"@tanstack/react-router": "^1.132.0",
 		"@tanstack/react-router-devtools": "^1.132.0",
 		"@tanstack/react-router-ssr-query": "^1.131.7",
 		"@tanstack/react-start": "^1.132.0",
 		"@tanstack/router-plugin": "^1.132.0",
+		"@wingmnn/fonts": "workspace:*",
+		"better-auth": "^1.4.18",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"lucide-react": "^0.561.0",
