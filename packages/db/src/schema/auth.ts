@@ -8,6 +8,8 @@ import {
 	varchar,
 } from "drizzle-orm/pg-core";
 
+import { userProfiles } from "./profile";
+
 export const users = pgTable("users", {
 	id: uuid().primaryKey().defaultRandom(),
 	email: varchar({ length: 255 }).notNull().unique(),
@@ -82,9 +84,13 @@ export const verifications = pgTable("verification", {
 		.$onUpdate(() => new Date()),
 });
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
 	sessions: many(sessions),
 	accounts: many(accounts),
+	profile: one(userProfiles, {
+		fields: [users.id],
+		references: [userProfiles.userId],
+	}),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({

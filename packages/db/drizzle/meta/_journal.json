@@ -15,6 +15,13 @@
       "when": 1770839398544,
       "tag": "0001_dizzy_silk_fever",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770886246481,
+      "tag": "0002_silent_kylun",
+      "breakpoints": true
     }
   ]
 }
