@@ -9,50 +9,264 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedOnboardingIndexRouteImport } from './routes/_authenticated/onboarding/index'
+import { Route as AuthenticatedOnboardingStep4RouteImport } from './routes/_authenticated/onboarding/step4'
+import { Route as AuthenticatedOnboardingStep3RouteImport } from './routes/_authenticated/onboarding/step3'
+import { Route as AuthenticatedOnboardingStep2RouteImport } from './routes/_authenticated/onboarding/step2'
+import { Route as AuthenticatedOnboardingStep1RouteImport } from './routes/_authenticated/onboarding/step1'
+import { Route as AuthenticatedOnboardingLaunchRouteImport } from './routes/_authenticated/onboarding/launch'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedOnboardingIndexRoute =
+  AuthenticatedOnboardingIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedOnboardingRoute,
+  } as any)
+const AuthenticatedOnboardingStep4Route =
+  AuthenticatedOnboardingStep4RouteImport.update({
+    id: '/step4',
+    path: '/step4',
+    getParentRoute: () => AuthenticatedOnboardingRoute,
+  } as any)
+const AuthenticatedOnboardingStep3Route =
+  AuthenticatedOnboardingStep3RouteImport.update({
+    id: '/step3',
+    path: '/step3',
+    getParentRoute: () => AuthenticatedOnboardingRoute,
+  } as any)
+const AuthenticatedOnboardingStep2Route =
+  AuthenticatedOnboardingStep2RouteImport.update({
+    id: '/step2',
+    path: '/step2',
+    getParentRoute: () => AuthenticatedOnboardingRoute,
+  } as any)
+const AuthenticatedOnboardingStep1Route =
+  AuthenticatedOnboardingStep1RouteImport.update({
+    id: '/step1',
+    path: '/step1',
+    getParentRoute: () => AuthenticatedOnboardingRoute,
+  } as any)
+const AuthenticatedOnboardingLaunchRoute =
+  AuthenticatedOnboardingLaunchRouteImport.update({
+    id: '/launch',
+    path: '/launch',
+    getParentRoute: () => AuthenticatedOnboardingRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/auth': typeof AuthRoute
+  '/onboarding': typeof AuthenticatedOnboardingRouteWithChildren
+  '/onboarding/launch': typeof AuthenticatedOnboardingLaunchRoute
+  '/onboarding/step1': typeof AuthenticatedOnboardingStep1Route
+  '/onboarding/step2': typeof AuthenticatedOnboardingStep2Route
+  '/onboarding/step3': typeof AuthenticatedOnboardingStep3Route
+  '/onboarding/step4': typeof AuthenticatedOnboardingStep4Route
+  '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/onboarding/launch': typeof AuthenticatedOnboardingLaunchRoute
+  '/onboarding/step1': typeof AuthenticatedOnboardingStep1Route
+  '/onboarding/step2': typeof AuthenticatedOnboardingStep2Route
+  '/onboarding/step3': typeof AuthenticatedOnboardingStep3Route
+  '/onboarding/step4': typeof AuthenticatedOnboardingStep4Route
+  '/onboarding': typeof AuthenticatedOnboardingIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/onboarding': typeof AuthenticatedOnboardingRouteWithChildren
+  '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/onboarding/launch': typeof AuthenticatedOnboardingLaunchRoute
+  '/_authenticated/onboarding/step1': typeof AuthenticatedOnboardingStep1Route
+  '/_authenticated/onboarding/step2': typeof AuthenticatedOnboardingStep2Route
+  '/_authenticated/onboarding/step3': typeof AuthenticatedOnboardingStep3Route
+  '/_authenticated/onboarding/step4': typeof AuthenticatedOnboardingStep4Route
+  '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/onboarding'
+    | '/onboarding/launch'
+    | '/onboarding/step1'
+    | '/onboarding/step2'
+    | '/onboarding/step3'
+    | '/onboarding/step4'
+    | '/onboarding/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/auth'
+    | '/'
+    | '/onboarding/launch'
+    | '/onboarding/step1'
+    | '/onboarding/step2'
+    | '/onboarding/step3'
+    | '/onboarding/step4'
+    | '/onboarding'
+  id:
+    | '__root__'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/onboarding'
+    | '/_authenticated/'
+    | '/_authenticated/onboarding/launch'
+    | '/_authenticated/onboarding/step1'
+    | '/_authenticated/onboarding/step2'
+    | '/_authenticated/onboarding/step3'
+    | '/_authenticated/onboarding/step4'
+    | '/_authenticated/onboarding/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/onboarding': {
+      id: '/_authenticated/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/onboarding/': {
+      id: '/_authenticated/onboarding/'
+      path: '/'
+      fullPath: '/onboarding/'
+      preLoaderRoute: typeof AuthenticatedOnboardingIndexRouteImport
+      parentRoute: typeof AuthenticatedOnboardingRoute
+    }
+    '/_authenticated/onboarding/step4': {
+      id: '/_authenticated/onboarding/step4'
+      path: '/step4'
+      fullPath: '/onboarding/step4'
+      preLoaderRoute: typeof AuthenticatedOnboardingStep4RouteImport
+      parentRoute: typeof AuthenticatedOnboardingRoute
+    }
+    '/_authenticated/onboarding/step3': {
+      id: '/_authenticated/onboarding/step3'
+      path: '/step3'
+      fullPath: '/onboarding/step3'
+      preLoaderRoute: typeof AuthenticatedOnboardingStep3RouteImport
+      parentRoute: typeof AuthenticatedOnboardingRoute
+    }
+    '/_authenticated/onboarding/step2': {
+      id: '/_authenticated/onboarding/step2'
+      path: '/step2'
+      fullPath: '/onboarding/step2'
+      preLoaderRoute: typeof AuthenticatedOnboardingStep2RouteImport
+      parentRoute: typeof AuthenticatedOnboardingRoute
+    }
+    '/_authenticated/onboarding/step1': {
+      id: '/_authenticated/onboarding/step1'
+      path: '/step1'
+      fullPath: '/onboarding/step1'
+      preLoaderRoute: typeof AuthenticatedOnboardingStep1RouteImport
+      parentRoute: typeof AuthenticatedOnboardingRoute
+    }
+    '/_authenticated/onboarding/launch': {
+      id: '/_authenticated/onboarding/launch'
+      path: '/launch'
+      fullPath: '/onboarding/launch'
+      preLoaderRoute: typeof AuthenticatedOnboardingLaunchRouteImport
+      parentRoute: typeof AuthenticatedOnboardingRoute
     }
   }
 }
 
+interface AuthenticatedOnboardingRouteChildren {
+  AuthenticatedOnboardingLaunchRoute: typeof AuthenticatedOnboardingLaunchRoute
+  AuthenticatedOnboardingStep1Route: typeof AuthenticatedOnboardingStep1Route
+  AuthenticatedOnboardingStep2Route: typeof AuthenticatedOnboardingStep2Route
+  AuthenticatedOnboardingStep3Route: typeof AuthenticatedOnboardingStep3Route
+  AuthenticatedOnboardingStep4Route: typeof AuthenticatedOnboardingStep4Route
+  AuthenticatedOnboardingIndexRoute: typeof AuthenticatedOnboardingIndexRoute
+}
+
+const AuthenticatedOnboardingRouteChildren: AuthenticatedOnboardingRouteChildren =
+  {
+    AuthenticatedOnboardingLaunchRoute: AuthenticatedOnboardingLaunchRoute,
+    AuthenticatedOnboardingStep1Route: AuthenticatedOnboardingStep1Route,
+    AuthenticatedOnboardingStep2Route: AuthenticatedOnboardingStep2Route,
+    AuthenticatedOnboardingStep3Route: AuthenticatedOnboardingStep3Route,
+    AuthenticatedOnboardingStep4Route: AuthenticatedOnboardingStep4Route,
+    AuthenticatedOnboardingIndexRoute: AuthenticatedOnboardingIndexRoute,
+  }
+
+const AuthenticatedOnboardingRouteWithChildren =
+  AuthenticatedOnboardingRoute._addFileChildren(
+    AuthenticatedOnboardingRouteChildren,
+  )
+
+interface AuthenticatedRouteChildren {
+  AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRouteWithChildren
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedOnboardingRoute: AuthenticatedOnboardingRouteWithChildren,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

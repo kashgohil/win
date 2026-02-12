@@ -1,5 +1,5 @@
-@import "@wingmnn/fonts/sentient.css";
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap");
+@import "@wingmnn/fonts/sentient.css";
 
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -15,80 +15,75 @@
 	--font-mono: "IBM Plex Mono", monospace;
 	--font-serif: "Sentient-Variable", Georgia, serif;
 
-	/* ─── Hero palette ─── */
-	--bg-cream: #f4f1eb;
-	--text-ink: #1a1a1a;
-	--page-px: clamp(24px, 5vw, 80px);
-
 	/* ─── Shadcn semantic tokens (cream/ink theme) ─── */
-	--background: #f4f1eb;
-	--foreground: #1a1a1a;
-	--card: #f4f1eb;
-	--card-foreground: #1a1a1a;
-	--popover: #f4f1eb;
-	--popover-foreground: #1a1a1a;
-	--primary: #1a1a1a;
-	--primary-foreground: #f4f1eb;
-	--secondary: #e8e5df;
-	--secondary-foreground: #1a1a1a;
-	--muted: #e8e5df;
-	--muted-foreground: #777;
-	--accent: #e8e5df;
-	--accent-foreground: #1a1a1a;
-	--destructive: #c0392b;
-	--destructive-foreground: #f4f1eb;
-	--border: #d4d0c8;
-	--input: #d4d0c8;
-	--ring: #444;
+	--background: var(--color-cream);
+	--foreground: var(--color-ink);
+	--card: var(--color-cream);
+	--card-foreground: var(--color-ink);
+	--popover: var(--color-cream);
+	--popover-foreground: var(--color-ink);
+	--primary: var(--color-ink);
+	--primary-foreground: var(--color-cream);
+	--secondary: var(--color-cream-soft);
+	--secondary-foreground: var(--color-ink);
+	--muted: var(--color-cream-soft);
+	--muted-foreground: var(--color-grey-2);
+	--accent: var(--color-cream-soft);
+	--accent-foreground: var(--color-ink);
+	--destructive: var(--color-accent-red);
+	--destructive-foreground: var(--color-cream);
+	--border: var(--color-grey-4);
+	--input: var(--color-grey-4);
+	--ring: var(--color-grey-1);
 	--chart-1: oklch(0.646 0.222 41.116);
 	--chart-2: oklch(0.6 0.118 184.704);
 	--chart-3: oklch(0.398 0.07 227.392);
 	--chart-4: oklch(0.828 0.189 84.429);
 	--chart-5: oklch(0.769 0.188 70.08);
 	--radius: 0.625rem;
-	--sidebar: #f4f1eb;
-	--sidebar-foreground: #1a1a1a;
-	--sidebar-primary: #1a1a1a;
-	--sidebar-primary-foreground: #f4f1eb;
-	--sidebar-accent: #e8e5df;
-	--sidebar-accent-foreground: #1a1a1a;
-	--sidebar-border: #d4d0c8;
-	--sidebar-ring: #444;
+	--sidebar: var(--color-cream);
+	--sidebar-foreground: var(--color-ink);
+	--sidebar-primary: var(--color-ink);
+	--sidebar-primary-foreground: var(--color-cream);
+	--sidebar-accent: var(--color-cream-soft);
+	--sidebar-accent-foreground: var(--color-ink);
+	--sidebar-border: var(--color-grey-4);
+	--sidebar-ring: var(--color-grey-1);
 }
 
 .dark {
-	--background: #1a1a1a;
-	--foreground: #f4f1eb;
-	--card: #1a1a1a;
-	--card-foreground: #f4f1eb;
-	--popover: #1a1a1a;
-	--popover-foreground: #f4f1eb;
-	--primary: #f4f1eb;
-	--primary-foreground: #1a1a1a;
-	--secondary: #2a2a2a;
-	--secondary-foreground: #f4f1eb;
-	--muted: #2a2a2a;
-	--muted-foreground: #aaa;
-	--accent: #2a2a2a;
-	--accent-foreground: #f4f1eb;
-	--destructive: #c0392b;
-	--destructive-foreground: #f4f1eb;
-	--border: #444;
-	--input: #444;
-	--ring: #777;
+	--background: var(--color-ink);
+	--foreground: var(--color-cream);
+	--card: var(--color-ink);
+	--card-foreground: var(--color-cream);
+	--popover: var(--color-ink);
+	--popover-foreground: var(--color-cream);
+	--primary: var(--color-cream);
+	--primary-foreground: var(--color-ink);
+	--secondary: var(--color-surface-dark);
+	--secondary-foreground: var(--color-cream);
+	--muted: var(--color-surface-dark);
+	--muted-foreground: var(--color-grey-3);
+	--accent: var(--color-surface-dark);
+	--accent-foreground: var(--color-cream);
+	--destructive: var(--color-accent-red);
+	--destructive-foreground: var(--color-cream);
+	--border: var(--color-grey-1);
+	--input: var(--color-grey-1);
+	--ring: var(--color-grey-2);
 	--chart-1: oklch(0.488 0.243 264.376);
 	--chart-2: oklch(0.696 0.17 162.48);
 	--chart-3: oklch(0.769 0.188 70.08);
 	--chart-4: oklch(0.627 0.265 303.9);
 	--chart-5: oklch(0.645 0.246 16.439);
-	--sidebar: #1a1a1a;
-	--sidebar-foreground: #f4f1eb;
-	--sidebar-primary: #c0392b;
-	--sidebar-primary-foreground: #f4f1eb;
-	--sidebar-accent: #2a2a2a;
-	--sidebar-accent-foreground: #f4f1eb;
-	--sidebar-border: #444;
-	--sidebar-ring: #777;
+	--sidebar: var(--color-ink);
+	--sidebar-foreground: var(--color-cream);
+	--sidebar-primary: var(--color-accent-red);
+	--sidebar-primary-foreground: var(--color-cream);
+	--sidebar-accent: var(--color-surface-dark);
+	--sidebar-accent-foreground: var(--color-cream);
+	--sidebar-border: var(--color-grey-1);
+	--sidebar-ring: var(--color-grey-2);
 }
 
 @theme inline {
@@ -99,9 +94,11 @@
 	--font-serif: "Sentient-Variable", Georgia, serif;
 
 	--color-cream: #f4f1eb;
+	--color-cream-soft: #e8e5df;
 	--color-ink: #1a1a1a;
 	--color-accent-red: #c0392b;
 	--color-red-dark: #a33225;
+	--color-surface-dark: #2a2a2a;
 	--color-grey-1: #444;
 	--color-grey-2: #777;
 	--color-grey-3: #aaa;
@@ -150,15 +147,15 @@
 /* ─── Base ─── */
 html {
 	scroll-behavior: smooth;
-	background: var(--bg-cream);
+	background: var(--background);
 	overflow-x: hidden;
 }
 
 body {
 	margin: 0;
 	font-family: var(--font-body);
-	color: var(--text-ink);
-	background: var(--bg-cream);
+	color: var(--foreground);
+	background: var(--background);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 }
@@ -179,4 +176,123 @@ code {
 	body {
 		@apply bg-background text-foreground;
 	}
+}
+
+/* ─── Onboarding animations ─── */
+
+@keyframes obSlideInRight {
+	from {
+		opacity: 0;
+		transform: translateX(40px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes obSlideInLeft {
+	from {
+		opacity: 0;
+		transform: translateX(-40px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes obFadeUp {
+	from {
+		opacity: 0;
+		transform: translateY(16px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes obCardIn {
+	from {
+		opacity: 0;
+		transform: translateY(12px) scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes obLaunchPulse {
+	0% {
+		transform: scale(1);
+		opacity: 1;
+	}
+	50% {
+		transform: scale(1.15);
+		opacity: 0.8;
+	}
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
+@keyframes obLaunchExpand {
+	from {
+		transform: scale(0);
+		opacity: 0.6;
+	}
+	to {
+		transform: scale(4);
+		opacity: 0;
+	}
+}
+
+.ob-slide-in-right {
+	animation: obSlideInRight 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ob-slide-in-left {
+	animation: obSlideInLeft 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ob-fade-up {
+	animation: obFadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ob-card-in {
+	animation: obCardIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: calc(var(--card-i, 0) * 60ms);
+}
+
+.ob-launch-pulse {
+	animation: obLaunchPulse 1.2s ease-in-out infinite;
+}
+
+.ob-launch-expand {
+	animation: obLaunchExpand 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ─── Dashboard animations ─── */
+
+@keyframes dashFadeUp {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.dash-fade-up {
+	animation: dashFadeUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dash-card-in {
+	animation: obCardIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+	animation-delay: calc(var(--card-i, 0) * 70ms + 250ms);
 }
