@@ -1,0 +1,9 @@
+{
+	"name": "@wingmnn/fonts",
+	"version": "1.0.0",
+	"private": true,
+	"exports": {
+		"./sentient.css": "./sentient.css",
+		"./fonts/*": "./fonts/*"
+	}
+}
