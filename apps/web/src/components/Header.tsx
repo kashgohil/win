@@ -1,4 +1,4 @@
-import { HERO_URL } from "@/lib/constants";
+import { env } from "@/env";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import Logo from "./Logo";
@@ -29,25 +29,25 @@ export default function Header() {
 				</Link>
 				<nav aria-label="Main navigation" className="flex items-center gap-7">
 					<a
-						href={`${HERO_URL}/how-it-works`}
+						href={`${env.VITE_HERO_URL}/how-it-works`}
 						className="max-sm:hidden font-mono text-[11px] text-grey-2 no-underline tracking-[0.02em] transition-colors duration-150 hover:text-ink"
 					>
 						How it works
 					</a>
 					<a
-						href={`${HERO_URL}/modules`}
+						href={`${env.VITE_HERO_URL}/modules`}
 						className="max-sm:hidden font-mono text-[11px] text-grey-2 no-underline tracking-[0.02em] transition-colors duration-150 hover:text-ink"
 					>
 						Modules
 					</a>
 					<a
-						href={`${HERO_URL}/about`}
+						href={`${env.VITE_HERO_URL}/about`}
 						className="max-sm:hidden font-mono text-[11px] text-grey-2 no-underline tracking-[0.02em] transition-colors duration-150 hover:text-ink"
 					>
 						About
 					</a>
 					<a
-						href={`${HERO_URL}/early-access`}
+						href={`${env.VITE_HERO_URL}/early-access`}
 						className="font-mono text-[11px] font-semibold text-white bg-ink py-[7px] px-[18px] no-underline rounded transition-colors duration-150 hover:bg-[#333]"
 					>
 						Get early access
