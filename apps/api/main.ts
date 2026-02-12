@@ -2,6 +2,7 @@ import { lenientLimit, strictLimit } from "@/plugins/rate-limit";
 import { requestID } from "@/plugins/request-id";
 import cors from "@elysiajs/cors";
 import openapi from "@elysiajs/openapi";
+import { redis } from "@wingmnn/redis";
 import { Elysia } from "elysia";
 
 import { auth } from "@/auth";
@@ -57,3 +58,13 @@ const app = new Elysia({ name: "wingmnn-api" })
 	.listen(8080);
 
 console.log(`Listening on ${app.server!.url}`);
+
+function shutdown() {
+	console.log("Shutting down...");
+	redis.close();
+	app.stop();
+	process.exit(0);
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

@@ -9,6 +9,7 @@ const envSchema = Type.Object({
 	GOOGLE_CLIENT_SECRET: Type.Optional(Type.String()),
 	GITHUB_CLIENT_ID: Type.Optional(Type.String()),
 	GITHUB_CLIENT_SECRET: Type.Optional(Type.String()),
+	REDIS_URL: Type.Optional(Type.String()),
 });
 
 const envWithDefaults = {

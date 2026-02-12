@@ -1,4 +1,5 @@
 import { accounts, db, sessions, users, verifications } from "@wingmnn/db";
+import { createBetterAuthStorage } from "@wingmnn/redis";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
@@ -36,4 +37,5 @@ export const auth = betterAuth({
 	session: {
 		modelName: "sessions",
 	},
+	secondaryStorage: createBetterAuthStorage(),
 });

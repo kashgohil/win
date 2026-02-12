@@ -1,10 +1,12 @@
-import { rateLimit, type Options } from "elysia-rate-limit";
+import { RedisRateLimitContext } from "@wingmnn/redis";
+import { rateLimit, type Context, type Options } from "elysia-rate-limit";
 
 type RateLimitOptions = Partial<Options>;
 
 const defaults = {
 	scoping: "scoped",
 	headers: true,
+	context: new RedisRateLimitContext() as Context,
 } satisfies RateLimitOptions;
 
 /** Strict: 10 req / 60s — auth, sensitive endpoints */
