@@ -72,7 +72,13 @@ export const MODULES = [
 	},
 ] as const;
 
-export type ModuleKey = (typeof MODULES)[number]["key"];
+export type Module = (typeof MODULES)[number];
+export type ModuleKey = Module["key"];
+
+export function getActiveModules(enabledModules?: string[] | null): Module[] {
+	if (!enabledModules) return [];
+	return MODULES.filter((m) => enabledModules.includes(m.key));
+}
 
 export const ROLE_MODULE_PRESETS: Record<string, ModuleKey[]> = {
 	founder: ["mail", "cal", "fin", "crm", "task", "notes"],
