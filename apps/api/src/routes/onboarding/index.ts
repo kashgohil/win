@@ -5,6 +5,7 @@ import {
 	errorResponse,
 	profileResponse,
 	stepSuccessResponse,
+	updateProfileBody,
 } from "./responses";
 import { onboardingService } from "./service";
 
@@ -35,6 +36,35 @@ export const onboarding = new Elysia({
 				summary: "Get onboarding profile",
 				description:
 					"Returns the user's onboarding profile, creating one if it doesn't exist",
+				tags: ["Onboarding"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.patch(
+		"/",
+		async ({ user, body, set }) => {
+			const result = await onboardingService.updateProfile(user.id, body);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return { profile: result.profile };
+		},
+		{
+			auth: true,
+			body: updateProfileBody,
+			response: {
+				200: profileResponse,
+				400: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Update profile",
+				description:
+					"Update profile fields (timezone, role, modules, preferences)",
 				tags: ["Onboarding"],
 				security: [{ bearerAuth: [] }],
 			},

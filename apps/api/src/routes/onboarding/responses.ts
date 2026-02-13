@@ -24,6 +24,17 @@ export const stepSuccessResponse = t.Object({
 	profile: profileSchema,
 });
 
+export const updateProfileBody = t.Object(
+	{
+		timezone: t.Optional(t.String({ minLength: 1 })),
+		role: t.Optional(t.String({ minLength: 1 })),
+		enabledModules: t.Optional(t.Array(t.String(), { minItems: 1 })),
+		aiProactivity: t.Optional(t.String({ minLength: 1 })),
+		notificationStyle: t.Optional(t.String({ minLength: 1 })),
+	},
+	{ minProperties: 1 },
+);
+
 export const errorResponse = t.Object({
 	error: t.String(),
 });
