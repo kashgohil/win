@@ -1,37 +1,50 @@
+import { motion } from "motion/react";
 import { getIcon } from "../icons";
+
+const CARD_EASE = [0.22, 1, 0.36, 1] as const;
+const STAGGER_MS = 60;
 
 export default function IntegrationCard({
 	icon,
 	provider,
 	description,
 	style,
+	index = 0,
 }: {
 	icon: string;
 	provider: string;
 	description: string;
 	style?: React.CSSProperties;
+	index?: number;
 }) {
 	const Icon = getIcon(icon);
 
 	return (
-		<div
+		<motion.div
 			style={style}
-			className="ob-card-in flex items-center gap-4 rounded-lg border border-grey-4 bg-cream p-4"
+			initial={{ opacity: 0, y: 12, scale: 0.97 }}
+			animate={{ opacity: 1, y: 0, scale: 1 }}
+			transition={{
+				duration: 0.4,
+				ease: CARD_EASE,
+				delay: index * STAGGER_MS * 0.001,
+			}}
+			className="group flex items-center gap-4 rounded-lg border border-border bg-background p-4 text-left transition-colors duration-200 hover:border-grey-3"
 		>
-			<div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-grey-4/50">
-				{Icon && <Icon size={18} className="text-grey-2" />}
+			<div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-border/40 text-grey-2 transition-colors duration-200 group-hover:bg-border/60">
+				{Icon && <Icon size={18} />}
 			</div>
 			<div className="flex-1 min-w-0">
-				<p className="font-display text-[0.9rem] text-ink font-medium">
+				<p className="font-display text-[0.9rem] text-foreground font-medium">
 					{provider}
 				</p>
 				<p className="font-serif text-[0.78rem] text-grey-3 leading-snug">
 					{description}
 				</p>
 			</div>
-			<span className="shrink-0 font-mono text-[10px] text-grey-3 tracking-[0.04em] border border-grey-4 rounded-full px-2.5 py-1">
+			<span className="shrink-0 font-mono text-[9px] text-grey-3 tracking-[0.06em] uppercase border border-border rounded-full px-2.5 py-1">
 				Coming soon
 			</span>
-		</div>
+		</motion.div>
 	);
 }

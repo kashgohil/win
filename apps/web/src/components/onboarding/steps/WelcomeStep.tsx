@@ -1,10 +1,15 @@
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { onboardingQueryKey } from "@/hooks/use-onboarding";
 import { api } from "@/lib/api";
 import { ROLES } from "@/lib/onboarding-data";
-import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { motion } from "motion/react";
 import { useState } from "react";
 
 import OnboardingShell from "../OnboardingShell";
+import TimezoneCombobox from "../TimezoneCombobox";
 import RoleCard from "../cards/RoleCard";
 
 export default function WelcomeStep({
@@ -23,7 +28,6 @@ export default function WelcomeStep({
 	const [timezone, setTimezone] = useState(initialTimezone || detectedTz);
 	const [role, setRole] = useState(initialRole || "");
 	const [saving, setSaving] = useState(false);
-	const [editingTz, setEditingTz] = useState(false);
 
 	const firstName = userName?.split(" ")[0] || "there";
 
@@ -39,7 +43,7 @@ export default function WelcomeStep({
 				console.error("[onboarding] step 1 failed:", error);
 				return;
 			}
-			await queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+			await queryClient.invalidateQueries({ queryKey: onboardingQueryKey });
 			navigate({ to: "/onboarding/step2" });
 		} finally {
 			setSaving(false);
@@ -48,46 +52,37 @@ export default function WelcomeStep({
 
 	return (
 		<OnboardingShell step={1}>
-			<div className="ob-fade-up">
-				<h1 className="font-display text-[clamp(1.8rem,5vw,2.6rem)] text-ink tracking-[0.01em]">
+			<motion.div
+				className="text-center"
+				initial={{ opacity: 0, y: 10 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+			>
+				<h1 className="font-display text-[clamp(1.8rem,5vw,2.6rem)] text-foreground tracking-[0.01em]">
 					Welcome, {firstName}.
 				</h1>
 				<p className="font-serif text-[1rem] text-grey-2 mt-2 leading-relaxed">
-					Let's set up your Wingmnn. This takes about 90 seconds.
+					Let's set up your Wingmnn. This will take only a moment.
 				</p>
-			</div>
+			</motion.div>
 
-			<div className="mt-8 ob-fade-up" style={{ animationDelay: "100ms" }}>
-				<label className="font-mono text-[11px] text-grey-2 tracking-[0.04em] uppercase block mb-2">
-					Timezone
-				</label>
-				{editingTz ? (
-					<input
-						type="text"
-						value={timezone}
-						onChange={(e) => setTimezone(e.target.value)}
-						onBlur={() => setEditingTz(false)}
-						autoFocus
-						className="font-serif text-[0.95rem] text-ink bg-transparent border-b border-grey-4 pb-1 outline-none w-full max-w-[320px] focus:border-ink transition-colors"
-					/>
-				) : (
-					<button
-						type="button"
-						onClick={() => setEditingTz(true)}
-						className="font-serif text-[0.95rem] text-ink bg-transparent border-none p-0 cursor-pointer hover:text-accent-red transition-colors"
-					>
-						{timezone}{" "}
-						<span className="font-mono text-[10px] text-grey-3 ml-1">
-							edit
-						</span>
-					</button>
-				)}
-			</div>
+			<motion.div
+				className="mt-8 flex flex-col items-center"
+				initial={{ opacity: 0, y: 10 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+			>
+				<Label className="block mb-2">Timezone</Label>
+				<TimezoneCombobox value={timezone} onChange={setTimezone} />
+			</motion.div>
 
-			<div className="mt-10 ob-fade-up" style={{ animationDelay: "200ms" }}>
-				<label className="font-mono text-[11px] text-grey-2 tracking-[0.04em] uppercase block mb-4">
-					I'm a…
-				</label>
+			<motion.div
+				className="mt-10 text-center"
+				initial={{ opacity: 0, y: 10 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ delay: 0.2, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+			>
+				<Label className="block mb-4">Who are you?</Label>
 				<div className="grid grid-cols-2 max-sm:grid-cols-1 gap-3">
 					{ROLES.map((r, i) => (
 						<RoleCard
@@ -97,20 +92,21 @@ export default function WelcomeStep({
 							description={r.description}
 							selected={role === r.key}
 							onClick={() => setRole(r.key)}
-							style={{ "--card-i": i } as React.CSSProperties}
+							index={i}
 						/>
 					))}
 				</div>
-			</div>
+			</motion.div>
 
-			<button
-				type="button"
+			<Button
+				variant="auth"
+				size="auth"
 				disabled={!role || saving}
 				onClick={handleContinue}
-				className="mt-10 w-full py-3.5 rounded-lg bg-ink text-cream font-mono text-[13px] font-semibold tracking-[0.02em] transition-all duration-200 hover:bg-[#333] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+				className="mt-10 cursor-pointer tracking-[0.02em]"
 			>
 				{saving ? "Saving…" : "Continue"}
-			</button>
+			</Button>
 		</OnboardingShell>
 	);
 }

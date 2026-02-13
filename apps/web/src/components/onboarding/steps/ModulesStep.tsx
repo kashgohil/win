@@ -1,8 +1,11 @@
+import { Button } from "@/components/ui/button";
+import { onboardingQueryKey } from "@/hooks/use-onboarding";
 import { api } from "@/lib/api";
 import type { ModuleKey } from "@/lib/onboarding-data";
 import { MODULES, ROLE_MODULE_PRESETS } from "@/lib/onboarding-data";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 
 import OnboardingShell from "../OnboardingShell";
@@ -54,7 +57,7 @@ export default function ModulesStep({
 				console.error("[onboarding] step 2 failed:", error);
 				return;
 			}
-			await queryClient.invalidateQueries({ queryKey: ["onboarding"] });
+			await queryClient.invalidateQueries({ queryKey: onboardingQueryKey });
 			navigate({ to: "/onboarding/step3" });
 		} finally {
 			setSaving(false);
@@ -67,14 +70,19 @@ export default function ModulesStep({
 			wide
 			onBack={() => navigate({ to: "/onboarding/step1" })}
 		>
-			<div className="ob-fade-up">
-				<h1 className="font-display text-[clamp(1.6rem,4vw,2.2rem)] text-ink tracking-[0.01em]">
+			<motion.div
+				className="text-center"
+				initial={{ opacity: 0, y: 10 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+			>
+				<h1 className="font-display text-[clamp(1.6rem,4vw,2.2rem)] text-foreground tracking-[0.01em]">
 					Pick your modules
 				</h1>
 				<p className="font-serif text-[1rem] text-grey-2 mt-2 leading-relaxed">
 					Start with what matters. Add more anytime.
 				</p>
-			</div>
+			</motion.div>
 
 			<div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
 				{MODULES.map((m, i) => (
@@ -86,21 +94,22 @@ export default function ModulesStep({
 						description={m.description}
 						selected={selected.has(m.key)}
 						onClick={() => toggle(m.key)}
-						style={{ "--card-i": i } as React.CSSProperties}
+						index={i}
 					/>
 				))}
 			</div>
 
-			<button
-				type="button"
+			<Button
+				variant="auth"
+				size="auth"
 				disabled={selected.size === 0 || saving}
 				onClick={handleContinue}
-				className="mt-10 w-full py-3.5 rounded-lg bg-ink text-cream font-mono text-[13px] font-semibold tracking-[0.02em] transition-all duration-200 hover:bg-[#333] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+				className="mt-10 cursor-pointer tracking-[0.02em]"
 			>
 				{saving
 					? "Saving…"
 					: `Continue with ${selected.size} module${selected.size !== 1 ? "s" : ""}`}
-			</button>
+			</Button>
 		</OnboardingShell>
 	);
 }

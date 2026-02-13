@@ -1,5 +1,9 @@
 import { cn } from "@/lib/utils";
+import { motion } from "motion/react";
 import { getIcon } from "../icons";
+
+const CARD_EASE = [0.22, 1, 0.36, 1] as const;
+const STAGGER_MS = 60;
 
 export default function RadioCard({
 	icon,
@@ -8,6 +12,7 @@ export default function RadioCard({
 	selected,
 	onClick,
 	style,
+	index = 0,
 }: {
 	icon: string;
 	label: string;
@@ -15,46 +20,60 @@ export default function RadioCard({
 	selected: boolean;
 	onClick: () => void;
 	style?: React.CSSProperties;
+	index?: number;
 }) {
 	const Icon = getIcon(icon);
 
 	return (
-		<button
+		<motion.button
 			type="button"
 			onClick={onClick}
 			style={style}
+			initial={{ opacity: 0, y: 12, scale: 0.97 }}
+			animate={{ opacity: 1, y: 0, scale: 1 }}
+			transition={{
+				duration: 0.4,
+				ease: CARD_EASE,
+				delay: index * STAGGER_MS * 0.001,
+			}}
 			className={cn(
-				"ob-card-in flex items-start gap-4 rounded-lg border p-5 text-left transition-all duration-200 cursor-pointer bg-cream w-full",
+				"group relative flex items-center gap-4 rounded-lg border p-5 text-left transition-colors duration-200 cursor-pointer bg-background w-full overflow-hidden border-l-4",
 				selected
-					? "border-accent-red shadow-[0_0_0_1px_var(--color-accent-red)]"
-					: "border-grey-4 hover:-translate-y-0.5 hover:shadow-sm",
+					? "border-accent-red/50 border-l-accent-red bg-accent-red/3"
+					: "border-border hover:border-grey-3",
 			)}
 		>
-			{Icon && (
-				<Icon
-					size={20}
-					className={cn(
-						"shrink-0 mt-0.5",
-						selected ? "text-accent-red" : "text-grey-2",
-					)}
-				/>
-			)}
-			<div className="flex-1">
-				<p className="font-display text-[0.95rem] text-ink font-medium">
+			<div
+				className={cn(
+					"flex size-9 shrink-0 items-center justify-center rounded-md transition-colors duration-200",
+					selected
+						? "bg-accent-red/10 text-accent-red"
+						: "bg-border/50 text-grey-2 group-hover:bg-border/80",
+				)}
+			>
+				{Icon && <Icon size={17} />}
+			</div>
+
+			<div className="flex-1 min-w-0">
+				<p className="font-display text-[0.95rem] text-foreground font-medium leading-tight">
 					{label}
 				</p>
 				<p className="font-serif text-[0.83rem] text-grey-2 leading-snug mt-0.5">
 					{description}
 				</p>
 			</div>
+
+			{/* Radio */}
 			<div
 				className={cn(
-					"size-4 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors duration-150",
-					selected ? "border-accent-red" : "border-grey-4",
+					"size-4 rounded-full border-[1.5px] flex items-center justify-center shrink-0 transition-all duration-150",
+					selected
+						? "border-accent-red"
+						: "border-border group-hover:border-grey-3",
 				)}
 			>
 				{selected && <div className="size-2 rounded-full bg-accent-red" />}
 			</div>
-		</button>
+		</motion.button>
 	);
 }
