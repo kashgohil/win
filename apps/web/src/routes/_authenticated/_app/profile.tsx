@@ -22,7 +22,7 @@ import { cn, formatDate } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 /* ── Animation presets ── */
 
@@ -35,10 +35,10 @@ const fadeUp = {
 };
 
 const sectionSwap = {
-	initial: { opacity: 0, height: 0 },
-	animate: { opacity: 1, height: "auto" as const },
-	exit: { opacity: 0, height: 0 },
-	transition: { duration: 0.3, ease: EASE },
+	initial: { opacity: 0 },
+	animate: { opacity: 1 },
+	exit: { opacity: 0 },
+	transition: { duration: 0.2, ease: EASE },
 };
 
 /* ── Types ── */
@@ -204,12 +204,12 @@ function ProfilePage() {
 
 					<div className="flex-1 min-w-0">
 						{/* Name — inline edit */}
-						<AnimatePresence mode="wait">
+						<SwapContainer>
 							{editing === "name" ? (
 								<motion.div
 									key="name-edit"
 									{...sectionSwap}
-									className="overflow-hidden flex items-center gap-2"
+									className="flex items-center gap-2"
 								>
 									<input
 										type="text"
@@ -232,7 +232,7 @@ function ProfilePage() {
 								<motion.div
 									key="name-view"
 									{...sectionSwap}
-									className="overflow-hidden group flex items-baseline gap-2"
+									className="group flex items-baseline gap-2"
 								>
 									<h1 className="font-display text-[clamp(1.5rem,3vw,2rem)] text-foreground tracking-[0.01em] leading-tight lowercase">
 										{userName}
@@ -240,7 +240,7 @@ function ProfilePage() {
 									<EditButton onClick={() => startEditing("name")} />
 								</motion.div>
 							)}
-						</AnimatePresence>
+						</SwapContainer>
 
 						<p className="font-mono text-[12px] text-grey-2 mt-1 tracking-[0.02em]">
 							{user.email}
@@ -266,39 +266,33 @@ function ProfilePage() {
 						onEdit={() => startEditing("timezone")}
 						onCancel={cancel}
 					/>
-					<div className="mt-4">
-						<AnimatePresence mode="wait">
-							{editing === "timezone" ? (
-								<motion.div
-									key="tz-edit"
-									{...sectionSwap}
-									className="overflow-hidden space-y-3"
-								>
-									<TimezoneCombobox
-										value={draftTimezone}
-										onChange={setDraftTimezone}
+					<SwapContainer className="mt-4">
+						{editing === "timezone" ? (
+							<motion.div key="tz-edit" {...sectionSwap} className="space-y-3">
+								<TimezoneCombobox
+									value={draftTimezone}
+									onChange={setDraftTimezone}
+								/>
+								<div className="flex justify-end">
+									<InlineActions
+										saving={saving}
+										onSave={() => saveProfile({ timezone: draftTimezone })}
+										onCancel={cancel}
 									/>
-									<div className="flex justify-end">
-										<InlineActions
-											saving={saving}
-											onSave={() => saveProfile({ timezone: draftTimezone })}
-											onCancel={cancel}
-										/>
-									</div>
-								</motion.div>
-							) : (
-								<motion.p
-									key="tz-view"
-									{...sectionSwap}
-									className="overflow-hidden font-body text-[15px] text-foreground tracking-[0.01em]"
-								>
-									{profile.timezone
-										? formatTimezone(profile.timezone)
-										: "Not set"}
-								</motion.p>
-							)}
-						</AnimatePresence>
-					</div>
+								</div>
+							</motion.div>
+						) : (
+							<motion.p
+								key="tz-view"
+								{...sectionSwap}
+								className="font-body text-[15px] text-foreground tracking-[0.01em]"
+							>
+								{profile.timezone
+									? formatTimezone(profile.timezone)
+									: "Not set"}
+							</motion.p>
+						)}
+					</SwapContainer>
 				</motion.section>
 
 				{/* ── Role ── */}
@@ -312,66 +306,60 @@ function ProfilePage() {
 						onEdit={() => startEditing("role")}
 						onCancel={cancel}
 					/>
-					<div className="mt-4">
-						<AnimatePresence mode="wait">
-							{editing === "role" ? (
-								<motion.div
-									key="role-edit"
-									{...sectionSwap}
-									className="overflow-hidden space-y-3"
-								>
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-										{ROLES.map((role, i) => (
-											<RoleCard
-												key={role.key}
-												icon={role.icon}
-												label={role.label}
-												description={role.description}
-												selected={draftRole === role.key}
-												onClick={() => setDraftRole(role.key)}
-												index={i}
-											/>
-										))}
-									</div>
-									<div className="flex justify-end">
-										<InlineActions
-											saving={saving}
-											onSave={() => saveProfile({ role: draftRole })}
-											onCancel={cancel}
+					<SwapContainer className="mt-4">
+						{editing === "role" ? (
+							<motion.div
+								key="role-edit"
+								{...sectionSwap}
+								className="space-y-3"
+							>
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+									{ROLES.map((role, i) => (
+										<RoleCard
+											key={role.key}
+											icon={role.icon}
+											label={role.label}
+											description={role.description}
+											selected={draftRole === role.key}
+											onClick={() => setDraftRole(role.key)}
+											index={i}
 										/>
-									</div>
-								</motion.div>
-							) : (
-								<motion.div
-									key="role-view"
-									{...sectionSwap}
-									className="overflow-hidden"
-								>
-									{currentRole ? (
-										<div className="flex items-center gap-3">
-											{RoleIcon && (
-												<div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent-red/10 text-accent-red">
-													<RoleIcon size={17} />
-												</div>
-											)}
-											<div>
-												<p className="font-display text-[1rem] text-foreground font-medium leading-tight">
-													{currentRole.label}
-												</p>
-												<p className="font-serif text-[0.83rem] text-grey-2 leading-snug mt-0.5">
-													{currentRole.description}
-												</p>
+									))}
+								</div>
+								<div className="flex justify-end">
+									<InlineActions
+										saving={saving}
+										onSave={() => saveProfile({ role: draftRole })}
+										onCancel={cancel}
+									/>
+								</div>
+							</motion.div>
+						) : (
+							<motion.div key="role-view" {...sectionSwap}>
+								{currentRole ? (
+									<div className="flex items-center gap-3">
+										{RoleIcon && (
+											<div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent-red/10 text-accent-red">
+												<RoleIcon size={17} />
 											</div>
+										)}
+										<div>
+											<p className="font-display text-[1rem] text-foreground font-medium leading-tight">
+												{currentRole.label}
+											</p>
+											<p className="font-serif text-[0.83rem] text-grey-2 leading-snug mt-0.5">
+												{currentRole.description}
+											</p>
 										</div>
-									) : (
-										<p className="font-serif text-[15px] text-grey-2 italic">
-											Not set
-										</p>
-									)}
-								</motion.div>
-							)}
-						</AnimatePresence>
-					</div>
+									</div>
+								) : (
+									<p className="font-serif text-[15px] text-grey-2 italic">
+										Not set
+									</p>
+								)}
+							</motion.div>
+						)}
+					</SwapContainer>
 				</motion.section>
 
 				{/* ── Modules ── */}
@@ -386,87 +374,77 @@ function ProfilePage() {
 						onEdit={() => startEditing("modules")}
 						onCancel={cancel}
 					/>
-					<div className="mt-4">
-						<AnimatePresence mode="wait">
-							{editing === "modules" ? (
-								<motion.div
-									key="mod-edit"
-									{...sectionSwap}
-									className="overflow-hidden space-y-3"
-								>
-									<div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-										{MODULES.map((mod, i) => (
-											<ModuleCard
-												key={mod.key}
-												icon={mod.icon}
-												code={mod.code}
-												name={mod.name}
-												description={mod.description}
-												selected={draftModules.includes(mod.key)}
-												onClick={() =>
-													setDraftModules((prev) =>
-														prev.includes(mod.key)
-															? prev.filter((k) => k !== mod.key)
-															: [...prev, mod.key],
-													)
-												}
-												index={i}
-											/>
-										))}
-									</div>
-									<div className="flex justify-end">
-										<InlineActions
-											saving={saving}
-											disabled={draftModules.length === 0}
-											onSave={() =>
-												saveProfile({
-													enabledModules: draftModules,
-												})
+					<SwapContainer className="mt-4">
+						{editing === "modules" ? (
+							<motion.div key="mod-edit" {...sectionSwap} className="space-y-3">
+								<div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+									{MODULES.map((mod, i) => (
+										<ModuleCard
+											key={mod.key}
+											icon={mod.icon}
+											code={mod.code}
+											name={mod.name}
+											description={mod.description}
+											selected={draftModules.includes(mod.key)}
+											onClick={() =>
+												setDraftModules((prev) =>
+													prev.includes(mod.key)
+														? prev.filter((k) => k !== mod.key)
+														: [...prev, mod.key],
+												)
 											}
-											onCancel={cancel}
+											index={i}
 										/>
+									))}
+								</div>
+								<div className="flex justify-end">
+									<InlineActions
+										saving={saving}
+										disabled={draftModules.length === 0}
+										onSave={() =>
+											saveProfile({
+												enabledModules: draftModules,
+											})
+										}
+										onCancel={cancel}
+									/>
+								</div>
+							</motion.div>
+						) : (
+							<motion.div key="mod-view" {...sectionSwap}>
+								{activeModules.length > 0 ? (
+									<div className="flex flex-wrap gap-2">
+										{activeModules.map((mod) => {
+											const Icon = getIcon(mod.icon);
+											return (
+												<div
+													key={mod.key}
+													className="inline-flex items-center gap-2 rounded-md border border-border/60 px-3 py-2 bg-background"
+												>
+													{Icon && (
+														<Icon
+															size={13}
+															className="text-accent-red shrink-0"
+														/>
+													)}
+													<span className="font-mono text-[11px] font-medium text-foreground tracking-[0.04em] uppercase">
+														{mod.code}
+													</span>
+													<span className="font-serif text-[13px] text-grey-2">
+														{mod.name}
+													</span>
+												</div>
+											);
+										})}
 									</div>
-								</motion.div>
-							) : (
-								<motion.div
-									key="mod-view"
-									{...sectionSwap}
-									className="overflow-hidden"
-								>
-									{activeModules.length > 0 ? (
-										<div className="flex flex-wrap gap-2">
-											{activeModules.map((mod) => {
-												const Icon = getIcon(mod.icon);
-												return (
-													<div
-														key={mod.key}
-														className="inline-flex items-center gap-2 rounded-md border border-border/60 px-3 py-2 bg-background"
-													>
-														{Icon && (
-															<Icon
-																size={13}
-																className="text-accent-red shrink-0"
-															/>
-														)}
-														<span className="font-mono text-[11px] font-medium text-foreground tracking-[0.04em] uppercase">
-															{mod.code}
-														</span>
-														<span className="font-serif text-[13px] text-grey-2">
-															{mod.name}
-														</span>
-													</div>
-												);
-											})}
-										</div>
-									) : (
-										<p className="font-serif text-[15px] text-grey-2 italic">
-											No modules enabled
-										</p>
-									)}
-								</motion.div>
-							)}
-						</AnimatePresence>
-					</div>
+								) : (
+									<p className="font-serif text-[15px] text-grey-2 italic">
+										No modules enabled
+									</p>
+								)}
+							</motion.div>
+						)}
+					</SwapContainer>
 				</motion.section>
 
 				{/* ── AI Proactivity ── */}
@@ -480,70 +458,64 @@ function ProfilePage() {
 						onEdit={() => startEditing("proactivity")}
 						onCancel={cancel}
 					/>
-					<div className="mt-4">
-						<AnimatePresence mode="wait">
-							{editing === "proactivity" ? (
-								<motion.div
-									key="proact-edit"
-									{...sectionSwap}
-									className="overflow-hidden space-y-3"
-								>
-									<div className="space-y-2">
-										{PROACTIVITY_OPTIONS.map((opt, i) => (
-											<RadioCard
-												key={opt.key}
-												icon={opt.icon}
-												label={opt.label}
-												description={opt.description}
-												selected={draftProactivity === opt.key}
-												onClick={() => setDraftProactivity(opt.key)}
-												index={i}
-											/>
-										))}
-									</div>
-									<div className="flex justify-end">
-										<InlineActions
-											saving={saving}
-											onSave={() =>
-												saveProfile({
-													aiProactivity: draftProactivity,
-												})
-											}
-											onCancel={cancel}
+					<SwapContainer className="mt-4">
+						{editing === "proactivity" ? (
+							<motion.div
+								key="proact-edit"
+								{...sectionSwap}
+								className="space-y-3"
+							>
+								<div className="space-y-2">
+									{PROACTIVITY_OPTIONS.map((opt, i) => (
+										<RadioCard
+											key={opt.key}
+											icon={opt.icon}
+											label={opt.label}
+											description={opt.description}
+											selected={draftProactivity === opt.key}
+											onClick={() => setDraftProactivity(opt.key)}
+											index={i}
 										/>
-									</div>
-								</motion.div>
-							) : (
-								<motion.div
-									key="proact-view"
-									{...sectionSwap}
-									className="overflow-hidden"
-								>
-									{currentProactivity ? (
-										<div className="flex items-center gap-3">
-											{ProactivityIcon && (
-												<div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent-red/10 text-accent-red">
-													<ProactivityIcon size={17} />
-												</div>
-											)}
-											<div>
-												<p className="font-display text-[0.95rem] text-foreground font-medium leading-tight">
-													{currentProactivity.label}
-												</p>
-												<p className="font-serif text-[0.83rem] text-grey-2 leading-snug mt-0.5">
-													{currentProactivity.description}
-												</p>
+									))}
+								</div>
+								<div className="flex justify-end">
+									<InlineActions
+										saving={saving}
+										onSave={() =>
+											saveProfile({
+												aiProactivity: draftProactivity,
+											})
+										}
+										onCancel={cancel}
+									/>
+								</div>
+							</motion.div>
+						) : (
+							<motion.div key="proact-view" {...sectionSwap}>
+								{currentProactivity ? (
+									<div className="flex items-center gap-3">
+										{ProactivityIcon && (
+											<div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent-red/10 text-accent-red">
+												<ProactivityIcon size={17} />
 											</div>
+										)}
+										<div>
+											<p className="font-display text-[0.95rem] text-foreground font-medium leading-tight">
+												{currentProactivity.label}
+											</p>
+											<p className="font-serif text-[0.83rem] text-grey-2 leading-snug mt-0.5">
+												{currentProactivity.description}
+											</p>
 										</div>
-									) : (
-										<p className="font-serif text-[15px] text-grey-2 italic">
-											Not set
-										</p>
-									)}
-								</motion.div>
-							)}
-						</AnimatePresence>
-					</div>
+									</div>
+								) : (
+									<p className="font-serif text-[15px] text-grey-2 italic">
+										Not set
+									</p>
+								)}
+							</motion.div>
+						)}
+					</SwapContainer>
 				</motion.section>
 
 				{/* ── Notifications ── */}
@@ -557,70 +529,64 @@ function ProfilePage() {
 						onEdit={() => startEditing("notifications")}
 						onCancel={cancel}
 					/>
-					<div className="mt-4">
-						<AnimatePresence mode="wait">
-							{editing === "notifications" ? (
-								<motion.div
-									key="notif-edit"
-									{...sectionSwap}
-									className="overflow-hidden space-y-3"
-								>
-									<div className="space-y-2">
-										{NOTIFICATION_OPTIONS.map((opt, i) => (
-											<RadioCard
-												key={opt.key}
-												icon={opt.icon}
-												label={opt.label}
-												description={opt.description}
-												selected={draftNotifications === opt.key}
-												onClick={() => setDraftNotifications(opt.key)}
-												index={i}
-											/>
-										))}
-									</div>
-									<div className="flex justify-end">
-										<InlineActions
-											saving={saving}
-											onSave={() =>
-												saveProfile({
-													notificationStyle: draftNotifications,
-												})
-											}
-											onCancel={cancel}
+					<SwapContainer className="mt-4">
+						{editing === "notifications" ? (
+							<motion.div
+								key="notif-edit"
+								{...sectionSwap}
+								className="space-y-3"
+							>
+								<div className="space-y-2">
+									{NOTIFICATION_OPTIONS.map((opt, i) => (
+										<RadioCard
+											key={opt.key}
+											icon={opt.icon}
+											label={opt.label}
+											description={opt.description}
+											selected={draftNotifications === opt.key}
+											onClick={() => setDraftNotifications(opt.key)}
+											index={i}
 										/>
-									</div>
-								</motion.div>
-							) : (
-								<motion.div
-									key="notif-view"
-									{...sectionSwap}
-									className="overflow-hidden"
-								>
-									{currentNotifications ? (
-										<div className="flex items-center gap-3">
-											{NotificationsIcon && (
-												<div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent-red/10 text-accent-red">
-													<NotificationsIcon size={17} />
-												</div>
-											)}
-											<div>
-												<p className="font-display text-[0.95rem] text-foreground font-medium leading-tight">
-													{currentNotifications.label}
-												</p>
-												<p className="font-serif text-[0.83rem] text-grey-2 leading-snug mt-0.5">
-													{currentNotifications.description}
-												</p>
+									))}
+								</div>
+								<div className="flex justify-end">
+									<InlineActions
+										saving={saving}
+										onSave={() =>
+											saveProfile({
+												notificationStyle: draftNotifications,
+											})
+										}
+										onCancel={cancel}
+									/>
+								</div>
+							</motion.div>
+						) : (
+							<motion.div key="notif-view" {...sectionSwap}>
+								{currentNotifications ? (
+									<div className="flex items-center gap-3">
+										{NotificationsIcon && (
+											<div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent-red/10 text-accent-red">
+												<NotificationsIcon size={17} />
 											</div>
+										)}
+										<div>
+											<p className="font-display text-[0.95rem] text-foreground font-medium leading-tight">
+												{currentNotifications.label}
+											</p>
+											<p className="font-serif text-[0.83rem] text-grey-2 leading-snug mt-0.5">
+												{currentNotifications.description}
+											</p>
 										</div>
-									) : (
-										<p className="font-serif text-[15px] text-grey-2 italic">
-											Not set
-										</p>
-									)}
-								</motion.div>
-							)}
-						</AnimatePresence>
-					</div>
+									</div>
+								) : (
+									<p className="font-serif text-[15px] text-grey-2 italic">
+										Not set
+									</p>
+								)}
+							</motion.div>
+						)}
+					</SwapContainer>
 				</motion.section>
 			</div>
 		</div>
@@ -725,5 +691,42 @@ function InlineActions({
 				{saving ? "Saving…" : "Save"}
 			</button>
 		</div>
+	);
+}
+
+/* ── Animated height swap container ── */
+
+function SwapContainer({
+	children,
+	className,
+}: {
+	children: React.ReactNode;
+	className?: string;
+}) {
+	const innerRef = useRef<HTMLDivElement>(null);
+	const [height, setHeight] = useState<number | undefined>(undefined);
+
+	useLayoutEffect(() => {
+		const el = innerRef.current;
+		if (!el) return;
+		const ro = new ResizeObserver(([entry]) => {
+			setHeight(entry.contentRect.height);
+		});
+		ro.observe(el);
+		return () => ro.disconnect();
+	}, []);
+
+	return (
+		<motion.div
+			className={cn("overflow-hidden", className)}
+			animate={height !== undefined ? { height } : undefined}
+			transition={{ duration: 0.3, ease: EASE }}
+		>
+			<div ref={innerRef}>
+				<AnimatePresence mode="popLayout" initial={false}>
+					{children}
+				</AnimatePresence>
+			</div>
+		</motion.div>
 	);
 }
