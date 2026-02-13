@@ -40,3 +40,5 @@ CLAUDE.md
 
 # Tauri / Rust build output
 **/src-tauri/target/
+
+dump.rdb
