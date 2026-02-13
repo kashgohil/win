@@ -11,14 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
-import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/_app'
 import { Route as AuthenticatedOnboardingIndexRouteImport } from './routes/_authenticated/onboarding/index'
+import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/_app/index'
 import { Route as AuthenticatedOnboardingStep4RouteImport } from './routes/_authenticated/onboarding/step4'
 import { Route as AuthenticatedOnboardingStep3RouteImport } from './routes/_authenticated/onboarding/step3'
 import { Route as AuthenticatedOnboardingStep2RouteImport } from './routes/_authenticated/onboarding/step2'
 import { Route as AuthenticatedOnboardingStep1RouteImport } from './routes/_authenticated/onboarding/step1'
 import { Route as AuthenticatedOnboardingLaunchRouteImport } from './routes/_authenticated/onboarding/launch'
+import { Route as AuthenticatedAppProfileRouteImport } from './routes/_authenticated/_app/profile'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -29,14 +31,13 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
+  id: '/_app',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedOnboardingIndexRoute =
@@ -45,6 +46,11 @@ const AuthenticatedOnboardingIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedOnboardingRoute,
   } as any)
+const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
 const AuthenticatedOnboardingStep4Route =
   AuthenticatedOnboardingStep4RouteImport.update({
     id: '/step4',
@@ -75,11 +81,17 @@ const AuthenticatedOnboardingLaunchRoute =
     path: '/launch',
     getParentRoute: () => AuthenticatedOnboardingRoute,
   } as any)
+const AuthenticatedAppProfileRoute = AuthenticatedAppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedIndexRoute
+  '/': typeof AuthenticatedAppIndexRoute
   '/auth': typeof AuthRoute
   '/onboarding': typeof AuthenticatedOnboardingRouteWithChildren
+  '/profile': typeof AuthenticatedAppProfileRoute
   '/onboarding/launch': typeof AuthenticatedOnboardingLaunchRoute
   '/onboarding/step1': typeof AuthenticatedOnboardingStep1Route
   '/onboarding/step2': typeof AuthenticatedOnboardingStep2Route
@@ -88,8 +100,9 @@ export interface FileRoutesByFullPath {
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof AuthenticatedAppIndexRoute
   '/auth': typeof AuthRoute
-  '/': typeof AuthenticatedIndexRoute
+  '/profile': typeof AuthenticatedAppProfileRoute
   '/onboarding/launch': typeof AuthenticatedOnboardingLaunchRoute
   '/onboarding/step1': typeof AuthenticatedOnboardingStep1Route
   '/onboarding/step2': typeof AuthenticatedOnboardingStep2Route
@@ -101,13 +114,15 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/_app': typeof AuthenticatedAppRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRouteWithChildren
-  '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/_app/profile': typeof AuthenticatedAppProfileRoute
   '/_authenticated/onboarding/launch': typeof AuthenticatedOnboardingLaunchRoute
   '/_authenticated/onboarding/step1': typeof AuthenticatedOnboardingStep1Route
   '/_authenticated/onboarding/step2': typeof AuthenticatedOnboardingStep2Route
   '/_authenticated/onboarding/step3': typeof AuthenticatedOnboardingStep3Route
   '/_authenticated/onboarding/step4': typeof AuthenticatedOnboardingStep4Route
+  '/_authenticated/_app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
 }
 export interface FileRouteTypes {
@@ -116,6 +131,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/onboarding'
+    | '/profile'
     | '/onboarding/launch'
     | '/onboarding/step1'
     | '/onboarding/step2'
@@ -124,8 +140,9 @@ export interface FileRouteTypes {
     | '/onboarding/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/auth'
     | '/'
+    | '/auth'
+    | '/profile'
     | '/onboarding/launch'
     | '/onboarding/step1'
     | '/onboarding/step2'
@@ -136,13 +153,15 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/_app'
     | '/_authenticated/onboarding'
-    | '/_authenticated/'
+    | '/_authenticated/_app/profile'
     | '/_authenticated/onboarding/launch'
     | '/_authenticated/onboarding/step1'
     | '/_authenticated/onboarding/step2'
     | '/_authenticated/onboarding/step3'
     | '/_authenticated/onboarding/step4'
+    | '/_authenticated/_app/'
     | '/_authenticated/onboarding/'
   fileRoutesById: FileRoutesById
 }
@@ -167,18 +186,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/': {
-      id: '/_authenticated/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/onboarding': {
       id: '/_authenticated/onboarding'
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/_app': {
+      id: '/_authenticated/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedAppRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/onboarding/': {
@@ -187,6 +206,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/onboarding/'
       preLoaderRoute: typeof AuthenticatedOnboardingIndexRouteImport
       parentRoute: typeof AuthenticatedOnboardingRoute
+    }
+    '/_authenticated/_app/': {
+      id: '/_authenticated/_app/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/onboarding/step4': {
       id: '/_authenticated/onboarding/step4'
@@ -223,8 +249,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingLaunchRouteImport
       parentRoute: typeof AuthenticatedOnboardingRoute
     }
+    '/_authenticated/_app/profile': {
+      id: '/_authenticated/_app/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedAppProfileRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
   }
 }
+
+interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppProfileRoute: typeof AuthenticatedAppProfileRoute
+  AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+}
+
+const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppProfileRoute: AuthenticatedAppProfileRoute,
+  AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+}
+
+const AuthenticatedAppRouteWithChildren =
+  AuthenticatedAppRoute._addFileChildren(AuthenticatedAppRouteChildren)
 
 interface AuthenticatedOnboardingRouteChildren {
   AuthenticatedOnboardingLaunchRoute: typeof AuthenticatedOnboardingLaunchRoute
@@ -251,13 +297,13 @@ const AuthenticatedOnboardingRouteWithChildren =
   )
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedAppRoute: typeof AuthenticatedAppRouteWithChildren
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRouteWithChildren
-  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAppRoute: AuthenticatedAppRouteWithChildren,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRouteWithChildren,
-  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

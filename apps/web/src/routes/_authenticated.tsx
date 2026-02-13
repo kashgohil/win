@@ -18,7 +18,7 @@ function AuthenticatedLayout() {
 
 	if (isPending) {
 		return (
-			<div className="min-h-dvh bg-cream flex items-center justify-center">
+			<div className="min-h-dvh bg-background flex items-center justify-center">
 				<p className="font-mono text-[12px] text-grey-3 animate-pulse">
 					Loading…
 				</p>

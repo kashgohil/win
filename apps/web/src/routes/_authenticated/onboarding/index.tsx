@@ -1,5 +1,4 @@
-import { api } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
+import { useOnboardingProfile } from "@/hooks/use-onboarding";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
@@ -10,14 +9,7 @@ export const Route = createFileRoute("/_authenticated/onboarding/")({
 function OnboardingIndex() {
 	const navigate = useNavigate();
 
-	const { data } = useQuery({
-		queryKey: ["onboarding"],
-		queryFn: async () => {
-			const { data, error } = await api.onboarding.get();
-			if (error) throw new Error("Failed to load profile");
-			return data;
-		},
-	});
+	const { data } = useOnboardingProfile();
 
 	useEffect(() => {
 		if (!data?.profile) return;
@@ -29,7 +21,7 @@ function OnboardingIndex() {
 	}, [data, navigate]);
 
 	return (
-		<div className="min-h-dvh bg-cream flex items-center justify-center">
+		<div className="min-h-dvh bg-background flex items-center justify-center">
 			<p className="font-mono text-[12px] text-grey-3 animate-pulse">
 				Loading…
 			</p>

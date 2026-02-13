@@ -1,7 +1,6 @@
 import WelcomeStep from "@/components/onboarding/steps/WelcomeStep";
-import { api } from "@/lib/api";
+import { useOnboardingProfile } from "@/hooks/use-onboarding";
 import { authClient } from "@/lib/auth-client";
-import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/onboarding/step1")({
@@ -11,14 +10,7 @@ export const Route = createFileRoute("/_authenticated/onboarding/step1")({
 function Step1Route() {
 	const { data: session } = authClient.useSession();
 
-	const { data } = useQuery({
-		queryKey: ["onboarding"],
-		queryFn: async () => {
-			const { data, error } = await api.onboarding.get();
-			if (error) throw new Error("Failed to load profile");
-			return data;
-		},
-	});
+	const { data } = useOnboardingProfile();
 
 	return (
 		<WelcomeStep
