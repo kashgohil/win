@@ -15,6 +15,20 @@
       "when": 1770929732196,
       "tag": "0001_absent_stepford_cuckoos",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771089794780,
+      "tag": "0002_curved_morgan_stark",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1771096919422,
+      "tag": "0003_curved_arclight",
+      "breakpoints": true
     }
   ]
 }
