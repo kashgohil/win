@@ -1,10 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-
 import ModuleCard from "@/components/onboarding/cards/ModuleCard";
 import RadioCard from "@/components/onboarding/cards/RadioCard";
 import RoleCard from "@/components/onboarding/cards/RoleCard";
 import { getIcon } from "@/components/onboarding/icons";
 import TimezoneCombobox from "@/components/onboarding/TimezoneCombobox";
+import ModuleIntegrationsSheet from "@/components/profile/ModuleIntegrationsSheet";
 import {
 	onboardingQueryKey,
 	useOnboardingProfile,
@@ -12,17 +11,20 @@ import {
 import { api } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 import {
+	getActiveModules,
+	getModuleIntegrations,
 	MODULES,
 	NOTIFICATION_OPTIONS,
 	PROACTIVITY_OPTIONS,
 	ROLES,
-	getActiveModules,
+	type Module,
 } from "@/lib/onboarding-data";
 import { cn, formatDate } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { ChevronRight, Pencil } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 /* ── Animation presets ── */
 
@@ -92,6 +94,12 @@ function ProfilePage() {
 
 	const [editing, setEditing] = useState<EditingSection>(null);
 	const [saving, setSaving] = useState(false);
+	const [selectedModule, setSelectedModule] = useState<Module | null>(null);
+
+	const selectedIntegrations = useMemo(
+		() => (selectedModule ? getModuleIntegrations(selectedModule.key) : []),
+		[selectedModule],
+	);
 
 	/* Draft state for each section */
 	const [draftName, setDraftName] = useState("");
@@ -416,10 +424,14 @@ function ProfilePage() {
 									<div className="flex flex-wrap gap-2">
 										{activeModules.map((mod) => {
 											const Icon = getIcon(mod.icon);
+											const hasIntegrations =
+												getModuleIntegrations(mod.key).length > 0;
 											return (
-												<div
+												<button
 													key={mod.key}
-													className="inline-flex items-center gap-2 rounded-md border border-border/60 px-3 py-2 bg-background"
+													type="button"
+													onClick={() => setSelectedModule(mod)}
+													className="group/pill inline-flex items-center gap-2 rounded-md border border-border/60 px-3 py-2 bg-background hover:border-grey-3 cursor-pointer transition-colors duration-150"
 												>
 													{Icon && (
 														<Icon
@@ -433,7 +445,14 @@ function ProfilePage() {
 													<span className="font-serif text-[13px] text-grey-2">
 														{mod.name}
 													</span>
-												</div>
+													{hasIntegrations && (
+														<span className="size-1.5 rounded-full bg-accent-red/40 shrink-0" />
+													)}
+													<ChevronRight
+														size={12}
+														className="text-grey-3 opacity-0 -ml-1 group-hover/pill:opacity-100 transition-opacity duration-150 shrink-0"
+													/>
+												</button>
 											);
 										})}
 									</div>
@@ -589,6 +608,15 @@ function ProfilePage() {
 					</SwapContainer>
 				</motion.section>
 			</div>
+
+			<ModuleIntegrationsSheet
+				module={selectedModule}
+				integrations={selectedIntegrations}
+				open={selectedModule !== null}
+				onOpenChange={(open) => {
+					if (!open) setSelectedModule(null);
+				}}
+			/>
 		</div>
 	);
 }
