@@ -12,6 +12,8 @@ import type { Module } from "@/lib/onboarding-data";
 import { cn } from "@/lib/utils";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { LogOut, Moon, Sun } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface NavRailProps {
 	modules: Module[];
@@ -36,6 +38,35 @@ export default function NavRail({
 	const { theme, toggle } = useTheme();
 	const matchRoute = useMatchRoute();
 	const isProfileActive = !!matchRoute({ to: "/profile" });
+
+	const activeModuleIndex = useMemo(() => {
+		const idx = modules.findIndex((mod) =>
+			matchRoute({ to: `/module/${mod.key}`, fuzzy: true }),
+		);
+		return idx >= 0 ? idx : null;
+	}, [modules, matchRoute]);
+
+	/* Measure actual button positions for pixel-perfect dot placement */
+	const navRef = useRef<HTMLElement>(null);
+	const [dotY, setDotY] = useState<number | null>(null);
+
+	const measureDotPosition = useCallback(() => {
+		if (activeModuleIndex === null || !navRef.current) {
+			setDotY(null);
+			return;
+		}
+		const nav = navRef.current;
+		const buttons = nav.querySelectorAll<HTMLElement>("[data-module-btn]");
+		const btn = buttons[activeModuleIndex];
+		if (!btn) return;
+		const navRect = nav.getBoundingClientRect();
+		const btnRect = btn.getBoundingClientRect();
+		setDotY(btnRect.top - navRect.top + btnRect.height / 2 - 2.5);
+	}, [activeModuleIndex]);
+
+	useEffect(() => {
+		measureDotPosition();
+	}, [measureDotPosition]);
 
 	return (
 		<TooltipProvider sliding>
@@ -67,23 +98,69 @@ export default function NavRail({
 				</div>
 
 				{/* ─── Module glyphs ─── */}
-				<nav className="flex-1 flex flex-col items-center gap-0.5 w-full px-1.5 overflow-y-auto">
-					{modules.map((mod, i) => (
-						<Tooltip key={mod.key}>
-							<TooltipTrigger asChild>
-								<Button
-									variant="ghost"
-									className="rail-item group w-full h-10 text-grey-3 hover:text-foreground"
-									style={{ "--rail-i": i + 2 } as React.CSSProperties}
-								>
-									<span className="font-mono text-[11px] font-semibold tracking-widest uppercase group-hover:-translate-y-px transition-transform duration-200">
-										{mod.code}
-									</span>
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent side="right">{mod.name}</TooltipContent>
-						</Tooltip>
-					))}
+				<nav
+					ref={navRef}
+					className="flex-1 flex flex-col items-center gap-0.5 w-full px-1.5 overflow-y-auto relative"
+				>
+					{/* Bleed dot — single element, measured position, spring-slides between modules */}
+					<AnimatePresence>
+						{dotY !== null && (
+							<motion.span
+								key="bleed-dot"
+								className="absolute left-[5px] size-[5px] rounded-full bg-accent-red z-10 pointer-events-none"
+								initial={{ scale: 0, opacity: 0 }}
+								animate={{
+									scale: 1,
+									opacity: 1,
+									y: dotY,
+								}}
+								exit={{ scale: 0, opacity: 0 }}
+								transition={{
+									y: {
+										type: "spring",
+										stiffness: 400,
+										damping: 28,
+										mass: 0.8,
+									},
+									scale: {
+										type: "spring",
+										stiffness: 500,
+										damping: 25,
+									},
+									opacity: { duration: 0.15 },
+								}}
+							/>
+						)}
+					</AnimatePresence>
+
+					{modules.map((mod, i) => {
+						const isModuleActive = i === activeModuleIndex;
+						return (
+							<Tooltip key={mod.key}>
+								<TooltipTrigger asChild>
+									<Button
+										variant="ghost"
+										asChild
+										data-module-btn
+										className={cn(
+											"rail-item group w-full h-10",
+											isModuleActive
+												? "text-foreground"
+												: "text-grey-3 hover:text-foreground",
+										)}
+										style={{ "--rail-i": i + 2 } as React.CSSProperties}
+									>
+										<Link to={`/module/${mod.key}`}>
+											<span className="font-mono text-[11px] font-semibold tracking-widest uppercase group-hover:-translate-y-px transition-transform duration-200">
+												{mod.code}
+											</span>
+										</Link>
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent side="right">{mod.name}</TooltipContent>
+							</Tooltip>
+						);
+					})}
 				</nav>
 
 				{/* ─── User section ─── */}

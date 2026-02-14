@@ -21,6 +21,16 @@ import { Route as AuthenticatedOnboardingStep2RouteImport } from './routes/_auth
 import { Route as AuthenticatedOnboardingStep1RouteImport } from './routes/_authenticated/onboarding/step1'
 import { Route as AuthenticatedOnboardingLaunchRouteImport } from './routes/_authenticated/onboarding/launch'
 import { Route as AuthenticatedAppProfileRouteImport } from './routes/_authenticated/_app/profile'
+import { Route as AuthenticatedAppModuleTravelRouteImport } from './routes/_authenticated/_app/module/travel'
+import { Route as AuthenticatedAppModuleTaskRouteImport } from './routes/_authenticated/_app/module/task'
+import { Route as AuthenticatedAppModuleSocialRouteImport } from './routes/_authenticated/_app/module/social'
+import { Route as AuthenticatedAppModuleNotesRouteImport } from './routes/_authenticated/_app/module/notes'
+import { Route as AuthenticatedAppModuleMailRouteImport } from './routes/_authenticated/_app/module/mail'
+import { Route as AuthenticatedAppModuleHealthRouteImport } from './routes/_authenticated/_app/module/health'
+import { Route as AuthenticatedAppModuleFinRouteImport } from './routes/_authenticated/_app/module/fin'
+import { Route as AuthenticatedAppModuleFilesRouteImport } from './routes/_authenticated/_app/module/files'
+import { Route as AuthenticatedAppModuleCrmRouteImport } from './routes/_authenticated/_app/module/crm'
+import { Route as AuthenticatedAppModuleCalRouteImport } from './routes/_authenticated/_app/module/cal'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -86,6 +96,66 @@ const AuthenticatedAppProfileRoute = AuthenticatedAppProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppModuleTravelRoute =
+  AuthenticatedAppModuleTravelRouteImport.update({
+    id: '/module/travel',
+    path: '/module/travel',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppModuleTaskRoute =
+  AuthenticatedAppModuleTaskRouteImport.update({
+    id: '/module/task',
+    path: '/module/task',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppModuleSocialRoute =
+  AuthenticatedAppModuleSocialRouteImport.update({
+    id: '/module/social',
+    path: '/module/social',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppModuleNotesRoute =
+  AuthenticatedAppModuleNotesRouteImport.update({
+    id: '/module/notes',
+    path: '/module/notes',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppModuleMailRoute =
+  AuthenticatedAppModuleMailRouteImport.update({
+    id: '/module/mail',
+    path: '/module/mail',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppModuleHealthRoute =
+  AuthenticatedAppModuleHealthRouteImport.update({
+    id: '/module/health',
+    path: '/module/health',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppModuleFinRoute =
+  AuthenticatedAppModuleFinRouteImport.update({
+    id: '/module/fin',
+    path: '/module/fin',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppModuleFilesRoute =
+  AuthenticatedAppModuleFilesRouteImport.update({
+    id: '/module/files',
+    path: '/module/files',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppModuleCrmRoute =
+  AuthenticatedAppModuleCrmRouteImport.update({
+    id: '/module/crm',
+    path: '/module/crm',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppModuleCalRoute =
+  AuthenticatedAppModuleCalRouteImport.update({
+    id: '/module/cal',
+    path: '/module/cal',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedAppIndexRoute
@@ -98,6 +168,16 @@ export interface FileRoutesByFullPath {
   '/onboarding/step3': typeof AuthenticatedOnboardingStep3Route
   '/onboarding/step4': typeof AuthenticatedOnboardingStep4Route
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
+  '/module/cal': typeof AuthenticatedAppModuleCalRoute
+  '/module/crm': typeof AuthenticatedAppModuleCrmRoute
+  '/module/files': typeof AuthenticatedAppModuleFilesRoute
+  '/module/fin': typeof AuthenticatedAppModuleFinRoute
+  '/module/health': typeof AuthenticatedAppModuleHealthRoute
+  '/module/mail': typeof AuthenticatedAppModuleMailRoute
+  '/module/notes': typeof AuthenticatedAppModuleNotesRoute
+  '/module/social': typeof AuthenticatedAppModuleSocialRoute
+  '/module/task': typeof AuthenticatedAppModuleTaskRoute
+  '/module/travel': typeof AuthenticatedAppModuleTravelRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedAppIndexRoute
@@ -109,6 +189,16 @@ export interface FileRoutesByTo {
   '/onboarding/step3': typeof AuthenticatedOnboardingStep3Route
   '/onboarding/step4': typeof AuthenticatedOnboardingStep4Route
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
+  '/module/cal': typeof AuthenticatedAppModuleCalRoute
+  '/module/crm': typeof AuthenticatedAppModuleCrmRoute
+  '/module/files': typeof AuthenticatedAppModuleFilesRoute
+  '/module/fin': typeof AuthenticatedAppModuleFinRoute
+  '/module/health': typeof AuthenticatedAppModuleHealthRoute
+  '/module/mail': typeof AuthenticatedAppModuleMailRoute
+  '/module/notes': typeof AuthenticatedAppModuleNotesRoute
+  '/module/social': typeof AuthenticatedAppModuleSocialRoute
+  '/module/task': typeof AuthenticatedAppModuleTaskRoute
+  '/module/travel': typeof AuthenticatedAppModuleTravelRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -124,6 +214,16 @@ export interface FileRoutesById {
   '/_authenticated/onboarding/step4': typeof AuthenticatedOnboardingStep4Route
   '/_authenticated/_app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
+  '/_authenticated/_app/module/cal': typeof AuthenticatedAppModuleCalRoute
+  '/_authenticated/_app/module/crm': typeof AuthenticatedAppModuleCrmRoute
+  '/_authenticated/_app/module/files': typeof AuthenticatedAppModuleFilesRoute
+  '/_authenticated/_app/module/fin': typeof AuthenticatedAppModuleFinRoute
+  '/_authenticated/_app/module/health': typeof AuthenticatedAppModuleHealthRoute
+  '/_authenticated/_app/module/mail': typeof AuthenticatedAppModuleMailRoute
+  '/_authenticated/_app/module/notes': typeof AuthenticatedAppModuleNotesRoute
+  '/_authenticated/_app/module/social': typeof AuthenticatedAppModuleSocialRoute
+  '/_authenticated/_app/module/task': typeof AuthenticatedAppModuleTaskRoute
+  '/_authenticated/_app/module/travel': typeof AuthenticatedAppModuleTravelRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -138,6 +238,16 @@ export interface FileRouteTypes {
     | '/onboarding/step3'
     | '/onboarding/step4'
     | '/onboarding/'
+    | '/module/cal'
+    | '/module/crm'
+    | '/module/files'
+    | '/module/fin'
+    | '/module/health'
+    | '/module/mail'
+    | '/module/notes'
+    | '/module/social'
+    | '/module/task'
+    | '/module/travel'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -149,6 +259,16 @@ export interface FileRouteTypes {
     | '/onboarding/step3'
     | '/onboarding/step4'
     | '/onboarding'
+    | '/module/cal'
+    | '/module/crm'
+    | '/module/files'
+    | '/module/fin'
+    | '/module/health'
+    | '/module/mail'
+    | '/module/notes'
+    | '/module/social'
+    | '/module/task'
+    | '/module/travel'
   id:
     | '__root__'
     | '/_authenticated'
@@ -163,6 +283,16 @@ export interface FileRouteTypes {
     | '/_authenticated/onboarding/step4'
     | '/_authenticated/_app/'
     | '/_authenticated/onboarding/'
+    | '/_authenticated/_app/module/cal'
+    | '/_authenticated/_app/module/crm'
+    | '/_authenticated/_app/module/files'
+    | '/_authenticated/_app/module/fin'
+    | '/_authenticated/_app/module/health'
+    | '/_authenticated/_app/module/mail'
+    | '/_authenticated/_app/module/notes'
+    | '/_authenticated/_app/module/social'
+    | '/_authenticated/_app/module/task'
+    | '/_authenticated/_app/module/travel'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -256,17 +386,107 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppProfileRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/_app/module/travel': {
+      id: '/_authenticated/_app/module/travel'
+      path: '/module/travel'
+      fullPath: '/module/travel'
+      preLoaderRoute: typeof AuthenticatedAppModuleTravelRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/module/task': {
+      id: '/_authenticated/_app/module/task'
+      path: '/module/task'
+      fullPath: '/module/task'
+      preLoaderRoute: typeof AuthenticatedAppModuleTaskRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/module/social': {
+      id: '/_authenticated/_app/module/social'
+      path: '/module/social'
+      fullPath: '/module/social'
+      preLoaderRoute: typeof AuthenticatedAppModuleSocialRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/module/notes': {
+      id: '/_authenticated/_app/module/notes'
+      path: '/module/notes'
+      fullPath: '/module/notes'
+      preLoaderRoute: typeof AuthenticatedAppModuleNotesRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/module/mail': {
+      id: '/_authenticated/_app/module/mail'
+      path: '/module/mail'
+      fullPath: '/module/mail'
+      preLoaderRoute: typeof AuthenticatedAppModuleMailRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/module/health': {
+      id: '/_authenticated/_app/module/health'
+      path: '/module/health'
+      fullPath: '/module/health'
+      preLoaderRoute: typeof AuthenticatedAppModuleHealthRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/module/fin': {
+      id: '/_authenticated/_app/module/fin'
+      path: '/module/fin'
+      fullPath: '/module/fin'
+      preLoaderRoute: typeof AuthenticatedAppModuleFinRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/module/files': {
+      id: '/_authenticated/_app/module/files'
+      path: '/module/files'
+      fullPath: '/module/files'
+      preLoaderRoute: typeof AuthenticatedAppModuleFilesRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/module/crm': {
+      id: '/_authenticated/_app/module/crm'
+      path: '/module/crm'
+      fullPath: '/module/crm'
+      preLoaderRoute: typeof AuthenticatedAppModuleCrmRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/module/cal': {
+      id: '/_authenticated/_app/module/cal'
+      path: '/module/cal'
+      fullPath: '/module/cal'
+      preLoaderRoute: typeof AuthenticatedAppModuleCalRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
   }
 }
 
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppProfileRoute: typeof AuthenticatedAppProfileRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+  AuthenticatedAppModuleCalRoute: typeof AuthenticatedAppModuleCalRoute
+  AuthenticatedAppModuleCrmRoute: typeof AuthenticatedAppModuleCrmRoute
+  AuthenticatedAppModuleFilesRoute: typeof AuthenticatedAppModuleFilesRoute
+  AuthenticatedAppModuleFinRoute: typeof AuthenticatedAppModuleFinRoute
+  AuthenticatedAppModuleHealthRoute: typeof AuthenticatedAppModuleHealthRoute
+  AuthenticatedAppModuleMailRoute: typeof AuthenticatedAppModuleMailRoute
+  AuthenticatedAppModuleNotesRoute: typeof AuthenticatedAppModuleNotesRoute
+  AuthenticatedAppModuleSocialRoute: typeof AuthenticatedAppModuleSocialRoute
+  AuthenticatedAppModuleTaskRoute: typeof AuthenticatedAppModuleTaskRoute
+  AuthenticatedAppModuleTravelRoute: typeof AuthenticatedAppModuleTravelRoute
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppProfileRoute: AuthenticatedAppProfileRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+  AuthenticatedAppModuleCalRoute: AuthenticatedAppModuleCalRoute,
+  AuthenticatedAppModuleCrmRoute: AuthenticatedAppModuleCrmRoute,
+  AuthenticatedAppModuleFilesRoute: AuthenticatedAppModuleFilesRoute,
+  AuthenticatedAppModuleFinRoute: AuthenticatedAppModuleFinRoute,
+  AuthenticatedAppModuleHealthRoute: AuthenticatedAppModuleHealthRoute,
+  AuthenticatedAppModuleMailRoute: AuthenticatedAppModuleMailRoute,
+  AuthenticatedAppModuleNotesRoute: AuthenticatedAppModuleNotesRoute,
+  AuthenticatedAppModuleSocialRoute: AuthenticatedAppModuleSocialRoute,
+  AuthenticatedAppModuleTaskRoute: AuthenticatedAppModuleTaskRoute,
+  AuthenticatedAppModuleTravelRoute: AuthenticatedAppModuleTravelRoute,
 }
 
 const AuthenticatedAppRouteWithChildren =

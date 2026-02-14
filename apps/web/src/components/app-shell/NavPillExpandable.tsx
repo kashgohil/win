@@ -1,6 +1,7 @@
 import Logo from "@/components/Logo";
 import { getIcon } from "@/components/onboarding/icons";
 import type { Module } from "@/lib/onboarding-data";
+import { Link } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useState } from "react";
@@ -67,7 +68,7 @@ export default function NavPillExpandable({ modules }: NavPillProps) {
 									{modules.map((mod, i) => {
 										const Icon = getIcon(mod.icon);
 										return (
-											<motion.button
+											<motion.div
 												key={mod.key}
 												initial={{
 													opacity: 0,
@@ -83,14 +84,17 @@ export default function NavPillExpandable({ modules }: NavPillProps) {
 													stiffness: 500,
 													damping: 25,
 												}}
-												type="button"
-												aria-label={mod.name}
-												title={mod.name}
-												whileTap={{ scale: 0.85 }}
-												className="shrink-0 size-9 rounded-full flex items-center justify-center text-background/40 hover:text-background hover:bg-background/8 transition-colors duration-150 cursor-pointer"
 											>
-												{Icon && <Icon size={16} strokeWidth={1.5} />}
-											</motion.button>
+												<Link
+													to={`/module/${mod.key}` as string}
+													aria-label={mod.name}
+													title={mod.name}
+													onClick={close}
+													className="shrink-0 size-9 rounded-full flex items-center justify-center text-background/40 hover:text-background hover:bg-background/8 transition-colors duration-150 cursor-pointer active:scale-85"
+												>
+													{Icon && <Icon size={16} strokeWidth={1.5} />}
+												</Link>
+											</motion.div>
 										);
 									})}
 								</div>
