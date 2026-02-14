@@ -1,4 +1,3 @@
-import { getIcon } from "@/components/onboarding/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -67,7 +66,6 @@ function SectionRule({
 
 export default function ModulePage({ moduleKey, data }: ModulePageProps) {
 	const mod = getModule(moduleKey);
-	const Icon = mod ? getIcon(mod.icon) : undefined;
 	const [autoExpanded, setAutoExpanded] = useState(false);
 	const [dismissedItems, setDismissedItems] = useState<Set<string>>(new Set());
 
@@ -82,20 +80,13 @@ export default function ModulePage({ moduleKey, data }: ModulePageProps) {
 
 	return (
 		<ScrollArea className="h-[calc(100dvh)] md:h-dvh">
-			<div className="px-(--page-px) py-10 max-w-3xl mx-auto">
+			<div className="px-(--page-px) py-10 max-w-5xl mx-auto">
 				{/* ── Module header ── */}
 				<motion.header
 					initial={{ opacity: 0, y: 16 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
 				>
-					<div className="flex items-center gap-3">
-						<span className="font-mono text-[11px] font-semibold tracking-widest uppercase text-grey-3">
-							{mod?.code}
-						</span>
-						<div className="h-px flex-1 bg-border/30" />
-						{Icon && <Icon className="h-4 w-4 text-grey-3" strokeWidth={1.5} />}
-					</div>
 					<h1 className="font-display text-[clamp(2rem,4.5vw,3rem)] text-foreground tracking-[0.01em] leading-[1.08] lowercase mt-2">
 						{mod?.name}
 					</h1>
