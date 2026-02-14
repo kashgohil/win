@@ -286,7 +286,7 @@ function BriefingStrip({ stats }: { stats: ModuleData["briefing"] }) {
 					>
 						{stat.value}
 					</span>
-					<span className="font-mono text-[9px] uppercase tracking-[0.16em] text-grey-3 mt-1.5">
+					<span className="font-mono text-[9px] uppercase tracking-[0.16em] text-foreground/50 mt-1.5">
 						{stat.label}
 					</span>
 					{stat.trend && (
