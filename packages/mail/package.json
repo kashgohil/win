@@ -1,0 +1,9 @@
+{
+	"name": "@wingmnn/mail",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"dependencies": {
+		"@wingmnn/db": "workspace:*"
+	}
+}
