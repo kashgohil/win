@@ -187,7 +187,7 @@ function ProfilePage() {
 		: undefined;
 
 	return (
-		<div className="px-(--page-px) py-10 max-w-3xl mx-auto">
+		<div className="px-(--page-px) py-10 max-w-5xl mx-auto">
 			{/* ── Masthead ── */}
 			<motion.header {...fadeUp}>
 				<div className="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.14em]">
