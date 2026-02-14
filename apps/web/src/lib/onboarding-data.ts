@@ -192,6 +192,12 @@ export const INTEGRATIONS = [
 	},
 ] as const;
 
+export type Integration = (typeof INTEGRATIONS)[number];
+
+export function getModuleIntegrations(moduleKey: string): Integration[] {
+	return INTEGRATIONS.filter((ig) => ig.module === moduleKey);
+}
+
 export const ROLES = [
 	{
 		key: "founder",
