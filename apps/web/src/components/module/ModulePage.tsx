@@ -356,12 +356,14 @@ function TriageCard({
 			}}
 			className="group relative mb-3 last:mb-0"
 		>
-			<div className="relative rounded-lg border border-border/40 bg-background hover:border-border/70 transition-colors duration-200 overflow-hidden">
-				{/* Urgent indicator bar */}
-				{item.urgent && (
-					<div className="absolute inset-y-0 left-0 w-[2px] bg-accent-red" />
+			<div
+				className={cn(
+					"relative rounded-lg border border-border/40 bg-background hover:border-border/70 transition-colors duration-200 overflow-hidden",
+					item.urgent
+						? "border-accent-red/50 border-l-4 hover:border-accent-red/70"
+						: "border-border/40",
 				)}
-
+			>
 				<div className="p-4 pl-5">
 					{/* Header row */}
 					<div className="flex items-start justify-between gap-3">
