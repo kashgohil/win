@@ -11,6 +11,9 @@ const envSchema = Type.Object({
 	GITHUB_CLIENT_SECRET: Type.Optional(Type.String()),
 	REDIS_URL: Type.Optional(Type.String()),
 	CLIENT_URL: Type.Optional(Type.String()),
+	GMAIL_CLIENT_ID: Type.Optional(Type.String()),
+	GMAIL_CLIENT_SECRET: Type.Optional(Type.String()),
+	GMAIL_REDIRECT_URI: Type.Optional(Type.String()),
 });
 
 const envWithDefaults = {

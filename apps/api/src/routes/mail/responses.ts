@@ -1,0 +1,133 @@
+import { t } from "elysia";
+
+/* ── Shared schemas ── */
+
+export const errorResponse = t.Object({
+	error: t.String(),
+});
+
+/* ── Briefing ── */
+
+const briefingStatSchema = t.Object({
+	label: t.String(),
+	value: t.Union([t.String(), t.Number()]),
+	trend: t.Optional(
+		t.Union([t.Literal("up"), t.Literal("down"), t.Literal("neutral")]),
+	),
+	accent: t.Optional(t.Boolean()),
+});
+
+/* ── Triage ── */
+
+const triageActionSchema = t.Object({
+	label: t.String(),
+	variant: t.Optional(
+		t.Union([t.Literal("default"), t.Literal("outline"), t.Literal("ghost")]),
+	),
+});
+
+const triageItemSchema = t.Object({
+	id: t.String(),
+	title: t.String(),
+	subtitle: t.Optional(t.String()),
+	timestamp: t.String(),
+	urgent: t.Optional(t.Boolean()),
+	actions: t.Array(triageActionSchema),
+	sourceModule: t.Optional(t.String()),
+});
+
+/* ── Auto-handled ── */
+
+const autoHandledItemSchema = t.Object({
+	id: t.String(),
+	text: t.String(),
+	linkedModule: t.Optional(t.String()),
+	timestamp: t.String(),
+});
+
+/* ── Module data ── */
+
+export const moduleDataResponse = t.Object({
+	briefing: t.Array(briefingStatSchema),
+	triage: t.Array(triageItemSchema),
+	autoHandled: t.Array(autoHandledItemSchema),
+});
+
+/* ── Email ── */
+
+export const emailSchema = t.Object({
+	id: t.String({ format: "uuid" }),
+	emailAccountId: t.String({ format: "uuid" }),
+	subject: t.Union([t.String(), t.Null()]),
+	fromAddress: t.Union([t.String(), t.Null()]),
+	fromName: t.Union([t.String(), t.Null()]),
+	toAddresses: t.Union([t.Array(t.String()), t.Null()]),
+	ccAddresses: t.Union([t.Array(t.String()), t.Null()]),
+	snippet: t.Union([t.String(), t.Null()]),
+	receivedAt: t.String({ format: "date-time" }),
+	isRead: t.Boolean(),
+	isStarred: t.Boolean(),
+	hasAttachments: t.Boolean(),
+	labels: t.Union([t.Array(t.String()), t.Null()]),
+	category: t.String(),
+	priorityScore: t.Number(),
+	aiSummary: t.Union([t.String(), t.Null()]),
+});
+
+export const emailDetailSchema = t.Intersect([
+	emailSchema,
+	t.Object({
+		bodyPlain: t.Union([t.String(), t.Null()]),
+		bodyHtml: t.Union([t.String(), t.Null()]),
+	}),
+]);
+
+export const emailListResponse = t.Object({
+	emails: t.Array(emailSchema),
+	total: t.Number(),
+	hasMore: t.Boolean(),
+});
+
+export const emailDetailResponse = t.Object({
+	email: emailDetailSchema,
+});
+
+/* ── Email account ── */
+
+export const emailAccountSchema = t.Object({
+	id: t.String({ format: "uuid" }),
+	provider: t.String(),
+	email: t.String(),
+	syncStatus: t.String(),
+	lastSyncAt: t.Union([t.String({ format: "date-time" }), t.Null()]),
+	active: t.Boolean(),
+	createdAt: t.String({ format: "date-time" }),
+});
+
+export const accountListResponse = t.Object({
+	accounts: t.Array(emailAccountSchema),
+});
+
+export const connectResponse = t.Object({
+	url: t.String(),
+});
+
+export const disconnectResponse = t.Object({
+	message: t.String(),
+});
+
+/* ── Triage action ── */
+
+export const triageActionBody = t.Object({
+	action: t.Union([
+		t.Literal("send_draft"),
+		t.Literal("dismiss"),
+		t.Literal("archive"),
+		t.Literal("snooze"),
+	]),
+	snoozeDuration: t.Optional(t.Number()),
+});
+
+export const triageActionResponse = t.Object({
+	message: t.String(),
+});

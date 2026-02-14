@@ -2,13 +2,14 @@ import cors from "@elysiajs/cors";
 import openapi from "@elysiajs/openapi";
 import { redis } from "@wingmnn/redis";
 import { Elysia } from "elysia";
-import { lenientLimit, strictLimit } from "./plugins/rate-limit";
 import { logger } from "./plugins/logger";
+import { lenientLimit, strictLimit } from "./plugins/rate-limit";
 import { requestID } from "./plugins/request-id";
 
 import { betterAuthHandler } from "./auth";
 import { betterAuthPlugin } from "./plugins/auth";
 import { health } from "./routes/health";
+import { mail } from "./routes/mail";
 import { me } from "./routes/me";
 import { onboarding } from "./routes/onboarding";
 import { waitlist } from "./routes/waitlist";
@@ -34,6 +35,10 @@ const app = new Elysia({ name: "wingmnn-api" })
 					{ name: "Health", description: "Liveness and readiness" },
 					{ name: "Auth", description: "Authentication (better-auth)" },
 					{ name: "User", description: "Authenticated user endpoints" },
+					{
+						name: "Mail",
+						description: "Mail module — emails, triage, accounts",
+					},
 					{ name: "Waitlist", description: "Waitlist signup" },
 					{ name: "Onboarding", description: "User onboarding flow" },
 				],
@@ -60,6 +65,7 @@ const app = new Elysia({ name: "wingmnn-api" })
 	.use(strictLimit())
 
 	.use(lenientLimit())
+	.use(mail)
 	.use(me)
 	.use(onboarding)
 	.use(waitlist)
