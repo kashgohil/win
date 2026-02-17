@@ -1,5 +1,6 @@
 import Logo from "@/components/Logo";
 import { motion } from "motion/react";
+import { MOTION_CONSTANTS } from "../constant";
 
 const modules = [
 	{ code: "MAL", name: "Mail", status: "LIVE", color: "green" },
@@ -34,7 +35,11 @@ export default function AuthBrandPanel() {
 				<motion.span
 					initial={{ opacity: 0, y: 8 }}
 					animate={{ opacity: 1, y: 0 }}
-					transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+					transition={{
+						delay: 0.2,
+						duration: 0.6,
+						ease: MOTION_CONSTANTS.EASE,
+					}}
 					className="mt-5 font-display text-[1.6rem] text-cream tracking-[0.03em] lowercase"
 				>
 					wingmnn
@@ -54,7 +59,11 @@ export default function AuthBrandPanel() {
 				<motion.div
 					initial={{ scaleX: 0 }}
 					animate={{ scaleX: 1 }}
-					transition={{ delay: 0.5, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+					transition={{
+						delay: 0.5,
+						duration: 0.4,
+						ease: MOTION_CONSTANTS.EASE,
+					}}
 					className="mt-6 w-8 h-px bg-accent-red/40 origin-center"
 				/>
 
@@ -68,7 +77,7 @@ export default function AuthBrandPanel() {
 							transition={{
 								delay: 0.6 + i * 0.12,
 								duration: 0.5,
-								ease: [0.22, 1, 0.36, 1],
+								ease: MOTION_CONSTANTS.EASE,
 							}}
 							className="flex items-center justify-between py-2.5 px-4 rounded-lg bg-white/3 border border-white/6"
 						>

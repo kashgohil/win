@@ -36,9 +36,9 @@ export interface ModuleData {
 
 const MAIL_DATA: ModuleData = {
 	briefing: [
+		{ label: "awaiting reply", value: 5, accent: true },
+		{ label: "time saved", value: "1.2h" },
 		{ label: "unread", value: 14 },
-		{ label: "need you", value: 3, accent: true },
-		{ label: "auto-handled", value: 8 },
 	],
 	triage: [
 		{

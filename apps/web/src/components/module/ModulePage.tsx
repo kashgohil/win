@@ -13,6 +13,7 @@ import {
 	useTransform,
 } from "motion/react";
 import { useState } from "react";
+import { MOTION_CONSTANTS } from "../constant";
 
 /* ── Props ── */
 
@@ -101,7 +102,7 @@ export default function ModulePage({
 					<motion.header
 						initial={{ opacity: 0, y: 16 }}
 						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+						transition={{ duration: 0.5, ease: MOTION_CONSTANTS.EASE }}
 					>
 						<h1 className="font-display text-[clamp(2rem,4.5vw,3rem)] text-foreground tracking-[0.01em] leading-[1.08] lowercase mt-2">
 							{mod?.name}
@@ -143,7 +144,7 @@ export default function ModulePage({
 					<motion.header
 						initial={{ opacity: 0, y: 16 }}
 						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+						transition={{ duration: 0.5, ease: MOTION_CONSTANTS.EASE }}
 					>
 						<h1 className="font-display text-[clamp(2rem,4.5vw,3rem)] text-foreground tracking-[0.01em] leading-[1.08] lowercase mt-2">
 							{mod?.name}
@@ -165,7 +166,7 @@ export default function ModulePage({
 				<motion.header
 					initial={{ opacity: 0, y: 16 }}
 					animate={{ opacity: 1, y: 0 }}
-					transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+					transition={{ duration: 0.5, ease: MOTION_CONSTANTS.EASE }}
 				>
 					<h1 className="font-display text-[clamp(2rem,4.5vw,3rem)] text-foreground tracking-[0.01em] leading-[1.08] lowercase mt-2">
 						{mod?.name}
@@ -183,7 +184,7 @@ export default function ModulePage({
 					transition={{
 						duration: 0.5,
 						delay: 0.08,
-						ease: [0.22, 1, 0.36, 1],
+						ease: MOTION_CONSTANTS.EASE,
 					}}
 				>
 					<BriefingStrip stats={data.briefing} />
@@ -198,7 +199,7 @@ export default function ModulePage({
 					transition={{
 						duration: 0.5,
 						delay: 0.15,
-						ease: [0.22, 1, 0.36, 1],
+						ease: MOTION_CONSTANTS.EASE,
 					}}
 				>
 					<SectionRule
@@ -220,7 +221,7 @@ export default function ModulePage({
 									animate={{ opacity: 1, scale: 1 }}
 									transition={{
 										duration: 0.4,
-										ease: [0.22, 1, 0.36, 1],
+										ease: MOTION_CONSTANTS.EASE,
 									}}
 									className="py-12 flex flex-col items-center gap-3"
 								>
@@ -268,7 +269,7 @@ export default function ModulePage({
 					transition={{
 						duration: 0.5,
 						delay: 0.25,
-						ease: [0.22, 1, 0.36, 1],
+						ease: MOTION_CONSTANTS.EASE,
 					}}
 				>
 					<button
@@ -305,7 +306,7 @@ export default function ModulePage({
 								transition={{
 									height: {
 										duration: 0.3,
-										ease: [0.22, 1, 0.36, 1],
+										ease: MOTION_CONSTANTS.EASE,
 									},
 									opacity: { duration: 0.2 },
 								}}
@@ -320,7 +321,7 @@ export default function ModulePage({
 											transition={{
 												delay: i * 0.04,
 												duration: 0.3,
-												ease: [0.22, 1, 0.36, 1],
+												ease: MOTION_CONSTANTS.EASE,
 											}}
 											className="group flex items-baseline gap-3 py-2.5 hover:bg-secondary/30 -mx-2 px-2 rounded-lg transition-colors duration-150"
 										>
@@ -422,12 +423,12 @@ function TriageCard({
 				opacity: 0,
 				x: -60,
 				scale: 0.95,
-				transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] },
+				transition: { duration: 0.25, ease: MOTION_CONSTANTS.EASE },
 			}}
 			transition={{
 				delay: index * 0.06,
 				duration: 0.4,
-				ease: [0.22, 1, 0.36, 1],
+				ease: MOTION_CONSTANTS.EASE,
 				layout: { type: "spring", stiffness: 350, damping: 30 },
 			}}
 			style={{ x, opacity, scale }}

@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { authClient } from "@/lib/auth-client";
 import { HERO_URL } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { MOTION_CONSTANTS } from "../constant";
 import GoogleOAuthButton from "./GoogleOAuthButton";
 
 const errorClass = "font-mono text-[10px] text-accent-red mt-1.5";
@@ -85,7 +86,7 @@ export default function AuthForm({ tab }: { tab: Tab }) {
 		<motion.div
 			initial={{ opacity: 0, y: 10 }}
 			animate={{ opacity: 1, y: 0 }}
-			transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+			transition={{ duration: 0.5, ease: MOTION_CONSTANTS.EASE }}
 			className="auth-light flex min-h-dvh flex-1 flex-col items-center justify-center bg-cream px-6 py-12"
 		>
 			{/* Mobile logo — hidden on desktop since brand panel shows */}
@@ -150,7 +151,7 @@ export default function AuthForm({ tab }: { tab: Tab }) {
 								initial={{ height: 0, opacity: 0 }}
 								animate={{ height: "auto", opacity: 1 }}
 								exit={{ height: 0, opacity: 0 }}
-								transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+								transition={{ duration: 0.3, ease: MOTION_CONSTANTS.EASE }}
 								style={{ overflow: "hidden" }}
 							>
 								<div className="pb-5">

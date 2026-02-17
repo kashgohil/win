@@ -1,3 +1,4 @@
+import { MOTION_CONSTANTS } from "@/components/constant";
 import { getIcon } from "@/components/onboarding/icons";
 import { useOnboardingProfile } from "@/hooks/use-onboarding";
 import { authClient } from "@/lib/auth-client";
@@ -313,7 +314,7 @@ function AnimatedClock({ timeStr }: { timeStr: string }) {
 						exit={{ y: -10, opacity: 0 }}
 						transition={{
 							duration: 0.3,
-							ease: [0.22, 1, 0.36, 1],
+							ease: MOTION_CONSTANTS.EASE,
 						}}
 						className="inline-block"
 					>

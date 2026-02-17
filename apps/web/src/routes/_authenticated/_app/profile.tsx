@@ -1,3 +1,4 @@
+import { MOTION_CONSTANTS } from "@/components/constant";
 import ModuleCard from "@/components/onboarding/cards/ModuleCard";
 import RadioCard from "@/components/onboarding/cards/RadioCard";
 import RoleCard from "@/components/onboarding/cards/RoleCard";
@@ -28,19 +29,17 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 /* ── Animation presets ── */
 
-const EASE = [0.22, 1, 0.36, 1] as const;
-
 const fadeUp = {
 	initial: { opacity: 0, y: 20 },
 	animate: { opacity: 1, y: 0 },
-	transition: { duration: 0.6, ease: EASE },
+	transition: { duration: 0.6, ease: MOTION_CONSTANTS.EASE },
 };
 
 const sectionSwap = {
 	initial: { opacity: 0 },
 	animate: { opacity: 1 },
 	exit: { opacity: 0 },
-	transition: { duration: 0.2, ease: EASE },
+	transition: { duration: 0.2, ease: MOTION_CONSTANTS.EASE },
 };
 
 /* ── Types ── */

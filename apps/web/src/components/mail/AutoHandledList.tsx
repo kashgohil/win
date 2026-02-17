@@ -2,6 +2,7 @@ import type { AutoHandledItem } from "@wingmnn/types";
 import { Check, ChevronDown, Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { MOTION_CONSTANTS } from "../constant";
 
 export function AutoHandledList({
 	items,
@@ -50,7 +51,7 @@ export function AutoHandledList({
 						animate={{ height: "auto", opacity: 1 }}
 						exit={{ height: 0, opacity: 0 }}
 						transition={{
-							height: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+							height: { duration: 0.3, ease: MOTION_CONSTANTS.EASE },
 							opacity: { duration: 0.2 },
 						}}
 						className="overflow-hidden"
@@ -64,7 +65,7 @@ export function AutoHandledList({
 									transition={{
 										delay: i * 0.04,
 										duration: 0.3,
-										ease: [0.22, 1, 0.36, 1],
+										ease: MOTION_CONSTANTS.EASE,
 									}}
 									className="group flex items-baseline gap-3 py-2.5 hover:bg-secondary/30 -mx-2 px-2 rounded-lg transition-colors duration-150"
 								>

@@ -7,8 +7,7 @@ import {
 } from "@/components/ui/sheet";
 import type { Integration, Module } from "@/lib/onboarding-data";
 import { motion } from "motion/react";
-
-const EASE = [0.22, 1, 0.36, 1] as const;
+import { MOTION_CONSTANTS } from "../constant";
 
 function IntegrationRow({
 	integration,
@@ -22,7 +21,11 @@ function IntegrationRow({
 		<motion.div
 			initial={{ opacity: 0, y: 12 }}
 			animate={{ opacity: 1, y: 0 }}
-			transition={{ duration: 0.4, ease: EASE, delay: index * 0.06 }}
+			transition={{
+				duration: 0.4,
+				ease: MOTION_CONSTANTS.EASE,
+				delay: index * 0.06,
+			}}
 			className="flex items-center gap-3 rounded-md border border-border/60 bg-background px-4 py-3"
 		>
 			{Icon && <Icon size={15} className="text-accent-red shrink-0" />}

@@ -1,3 +1,4 @@
+import { MOTION_CONSTANTS } from "@/components/constant";
 import { CategoryFilter } from "@/components/mail/CategoryFilter";
 import { EmailRow, groupEmailsByTime } from "@/components/mail/EmailRow";
 import { useMailEmails } from "@/hooks/use-mail";
@@ -69,7 +70,7 @@ function MailInbox() {
 			<motion.div
 				initial={{ opacity: 0, x: -8 }}
 				animate={{ opacity: 1, x: 0 }}
-				transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+				transition={{ duration: 0.3, ease: MOTION_CONSTANTS.EASE }}
 				className="mb-6"
 			>
 				<Link
@@ -85,7 +86,7 @@ function MailInbox() {
 			<motion.div
 				initial={{ opacity: 0, y: 8 }}
 				animate={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+				transition={{ duration: 0.4, ease: MOTION_CONSTANTS.EASE }}
 			>
 				<CategoryFilter
 					value={category}
@@ -114,7 +115,7 @@ function MailInbox() {
 					transition={{
 						duration: 0.5,
 						delay: 0.08,
-						ease: [0.22, 1, 0.36, 1],
+						ease: MOTION_CONSTANTS.EASE,
 					}}
 					className="mt-4"
 				>

@@ -1,3 +1,4 @@
+import { MOTION_CONSTANTS } from "@/components/constant";
 import { EmailBody } from "@/components/mail/EmailBody";
 import { useMailEmailDetail } from "@/hooks/use-mail";
 import { cn } from "@/lib/utils";
@@ -59,7 +60,7 @@ function EmailDetail() {
 			<motion.div
 				initial={{ opacity: 0, x: -8 }}
 				animate={{ opacity: 1, x: 0 }}
-				transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+				transition={{ duration: 0.3, ease: MOTION_CONSTANTS.EASE }}
 			>
 				<Link
 					to="/module/mail/inbox"
@@ -77,7 +78,7 @@ function EmailDetail() {
 				transition={{
 					duration: 0.5,
 					delay: 0.06,
-					ease: [0.22, 1, 0.36, 1],
+					ease: MOTION_CONSTANTS.EASE,
 				}}
 				className="mt-6"
 			>
@@ -141,7 +142,7 @@ function EmailDetail() {
 						transition={{
 							duration: 0.5,
 							delay: 0.12,
-							ease: [0.22, 1, 0.36, 1],
+							ease: MOTION_CONSTANTS.EASE,
 						}}
 						className="order-first lg:order-last lg:sticky lg:top-8 lg:self-start rounded-lg bg-secondary/20 p-4"
 					>
@@ -164,7 +165,7 @@ function EmailDetail() {
 					transition={{
 						duration: 0.5,
 						delay: 0.18,
-						ease: [0.22, 1, 0.36, 1],
+						ease: MOTION_CONSTANTS.EASE,
 					}}
 					className={email.aiSummary ? "" : "lg:col-span-2"}
 				>
@@ -179,7 +180,7 @@ function EmailDetail() {
 				transition={{
 					duration: 0.4,
 					delay: 0.24,
-					ease: [0.22, 1, 0.36, 1],
+					ease: MOTION_CONSTANTS.EASE,
 				}}
 				className="mt-6 pt-6 border-t border-border/30 flex items-center gap-4"
 			>

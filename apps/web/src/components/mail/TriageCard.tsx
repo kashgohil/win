@@ -3,6 +3,7 @@ import type { TriageItem } from "@wingmnn/types";
 import { ArrowLeft } from "lucide-react";
 import { motion, useMotionValue, useTransform } from "motion/react";
 import { useEffect, useState } from "react";
+import { MOTION_CONSTANTS } from "../constant";
 
 export function TriageCard({
 	item,
@@ -28,12 +29,12 @@ export function TriageCard({
 				opacity: 0,
 				x: -60,
 				scale: 0.95,
-				transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] },
+				transition: { duration: 0.25, ease: MOTION_CONSTANTS.EASE },
 			}}
 			transition={{
 				delay: index * 0.06,
 				duration: 0.4,
-				ease: [0.22, 1, 0.36, 1],
+				ease: MOTION_CONSTANTS.EASE,
 				layout: { type: "spring", stiffness: 350, damping: 30 },
 			}}
 			style={{ x, opacity, scale }}

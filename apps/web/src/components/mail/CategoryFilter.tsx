@@ -3,6 +3,7 @@ import type { EmailCategory } from "@wingmnn/types";
 import { SlidersHorizontal, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { MOTION_CONSTANTS } from "../constant";
 
 const CATEGORIES: { value: EmailCategory | undefined; label: string }[] = [
 	{ value: undefined, label: "All" },
@@ -95,7 +96,7 @@ export function CategoryFilter({
 						animate={{ opacity: 1, height: "auto" }}
 						exit={{ opacity: 0, height: 0 }}
 						transition={{
-							height: { duration: 0.25, ease: [0.22, 1, 0.36, 1] },
+							height: { duration: 0.25, ease: MOTION_CONSTANTS.EASE },
 							opacity: { duration: 0.15 },
 						}}
 						className="overflow-hidden"
