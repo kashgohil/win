@@ -172,6 +172,18 @@ code {
 	}
 }
 
+/* ─── Auth form — always light regardless of theme ─── */
+
+.auth-light {
+	--background: var(--color-cream);
+	--foreground: var(--color-ink);
+	--primary: var(--color-ink);
+	--primary-foreground: var(--color-cream);
+	--border: var(--color-grey-4);
+	--input: var(--color-grey-4);
+	--ring: var(--color-grey-1);
+}
+
 /* ─── Onboarding animations ─── */
 
 @keyframes obSlideInRight {

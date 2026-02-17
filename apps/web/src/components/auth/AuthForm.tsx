@@ -86,12 +86,12 @@ export default function AuthForm({ tab }: { tab: Tab }) {
 			initial={{ opacity: 0, y: 10 }}
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-			className="flex min-h-dvh flex-1 flex-col items-center justify-center bg-background px-6 py-12"
+			className="auth-light flex min-h-dvh flex-1 flex-col items-center justify-center bg-cream px-6 py-12"
 		>
 			{/* Mobile logo — hidden on desktop since brand panel shows */}
 			<div className="mb-10 flex items-center gap-2 lg:hidden">
-				<Logo className="size-5 text-foreground" />
-				<span className="font-display text-[1.3rem] text-foreground tracking-[0.03em] lowercase">
+				<Logo className="size-5 text-ink" />
+				<span className="font-display text-[1.3rem] text-ink tracking-[0.03em] lowercase">
 					wingmnn
 				</span>
 			</div>
@@ -105,9 +105,7 @@ export default function AuthForm({ tab }: { tab: Tab }) {
 						onClick={() => switchTab("signin")}
 						className={cn(
 							"cursor-pointer bg-transparent px-1 pb-3 font-mono text-[13px] font-medium transition-colors duration-200",
-							tab === "signin"
-								? "text-foreground"
-								: "text-grey-3 hover:text-grey-1",
+							tab === "signin" ? "text-ink" : "text-grey-3 hover:text-grey-1",
 						)}
 					>
 						Sign in
@@ -118,9 +116,7 @@ export default function AuthForm({ tab }: { tab: Tab }) {
 						onClick={() => switchTab("signup")}
 						className={cn(
 							"cursor-pointer bg-transparent px-1 pb-3 font-mono text-[13px] font-medium transition-colors duration-200 ml-6",
-							tab === "signup"
-								? "text-foreground"
-								: "text-grey-3 hover:text-grey-1",
+							tab === "signup" ? "text-ink" : "text-grey-3 hover:text-grey-1",
 						)}
 					>
 						Create account
@@ -128,7 +124,7 @@ export default function AuthForm({ tab }: { tab: Tab }) {
 
 					{/* Sliding indicator */}
 					<motion.div
-						className="absolute -bottom-px h-[2px] bg-foreground"
+						className="absolute -bottom-px h-[2px] bg-ink"
 						animate={{ left: indicator.left, width: indicator.width }}
 						transition={{ type: "spring", stiffness: 400, damping: 30 }}
 					/>
