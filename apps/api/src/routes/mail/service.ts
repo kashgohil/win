@@ -5,11 +5,13 @@ import {
 	desc,
 	emailAccounts,
 	emailCategoryEnum,
+	emailProviderEnum,
 	emails,
 	eq,
 	gte,
 	mailAutoHandled,
 	mailTriageItems,
+	syncStatusEnum,
 } from "@wingmnn/db";
 import { getProvider, getValidAccessToken } from "@wingmnn/mail";
 import { cacheable, invalidateCache } from "@wingmnn/redis";
@@ -95,7 +97,7 @@ type SerializedEmail = {
 	isStarred: boolean;
 	hasAttachments: boolean;
 	labels: string[] | null;
-	category: string;
+	category: (typeof emailCategoryEnum.enumValues)[number];
 	priorityScore: number;
 	aiSummary: string | null;
 };
@@ -107,9 +109,9 @@ type SerializedEmailDetail = SerializedEmail & {
 
 type SerializedAccount = {
 	id: string;
-	provider: string;
+	provider: (typeof emailProviderEnum.enumValues)[number];
 	email: string;
-	syncStatus: string;
+	syncStatus: (typeof syncStatusEnum.enumValues)[number];
 	lastSyncAt: string | null;
 	active: boolean;
 	createdAt: string;

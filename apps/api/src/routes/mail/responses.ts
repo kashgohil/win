@@ -69,7 +69,17 @@ export const emailSchema = t.Object({
 	isStarred: t.Boolean(),
 	hasAttachments: t.Boolean(),
 	labels: t.Union([t.Array(t.String()), t.Null()]),
-	category: t.String(),
+	category: t.Union([
+		t.Literal("urgent"),
+		t.Literal("actionable"),
+		t.Literal("informational"),
+		t.Literal("newsletter"),
+		t.Literal("receipt"),
+		t.Literal("confirmation"),
+		t.Literal("promotional"),
+		t.Literal("spam"),
+		t.Literal("uncategorized"),
+	]),
 	priorityScore: t.Number(),
 	aiSummary: t.Union([t.String(), t.Null()]),
 });
@@ -96,9 +106,14 @@ export const emailDetailResponse = t.Object({
 
 export const emailAccountSchema = t.Object({
 	id: t.String({ format: "uuid" }),
-	provider: t.String(),
+	provider: t.Union([t.Literal("gmail"), t.Literal("outlook")]),
 	email: t.String(),
-	syncStatus: t.String(),
+	syncStatus: t.Union([
+		t.Literal("pending"),
+		t.Literal("syncing"),
+		t.Literal("synced"),
+		t.Literal("error"),
+	]),
 	lastSyncAt: t.Union([t.String({ format: "date-time" }), t.Null()]),
 	active: t.Boolean(),
 	createdAt: t.String({ format: "date-time" }),
