@@ -1,4 +1,5 @@
-import { Elysia, t } from "elysia";
+import { Elysia, redirect, t } from "elysia";
+import { env } from "../../env";
 
 import { betterAuthPlugin } from "../../plugins/auth";
 import {
@@ -19,6 +20,46 @@ export const mail = new Elysia({
 	prefix: "/mail",
 })
 	.use(betterAuthPlugin)
+	.get(
+		"/accounts/callback/gmail",
+		async ({ query, set }) => {
+			const clientUrl = `${env.CLIENT_URL}/module/mail`;
+
+			if (query.error) {
+				redirect(`${clientUrl}?error=${encodeURIComponent(query.error)}`);
+				return;
+			}
+
+			if (!query.code || !query.state) {
+				set.redirect = `${clientUrl}?error=missing_params`;
+				return;
+			}
+
+			const result = await mailService.handleOAuthCallback(
+				query.code,
+				query.state,
+			);
+
+			if (!result.ok) {
+				redirect(`${clientUrl}?error=${encodeURIComponent(result.error)}`);
+				return;
+			}
+
+			redirect(`${clientUrl}?connected=true`);
+		},
+		{
+			query: t.Object({
+				code: t.Optional(t.String()),
+				state: t.Optional(t.String()),
+				error: t.Optional(t.String()),
+			}),
+			detail: {
+				summary: "Gmail OAuth callback",
+				description: "Handles the redirect from Google after OAuth consent",
+				tags: ["Mail"],
+			},
+		},
+	)
 	.get(
 		"/data",
 		async ({ user, set }) => {
