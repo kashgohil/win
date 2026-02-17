@@ -14,7 +14,9 @@ import {
 	syncStatusEnum,
 } from "@wingmnn/db";
 import { getProvider, getValidAccessToken } from "@wingmnn/mail";
+import { enqueueInitialSync, scheduleRecurringSync } from "@wingmnn/queue";
 import { cacheable, invalidateCache } from "@wingmnn/redis";
+import { createOAuthState, verifyOAuthState } from "./oauth-state";
 
 /* ── Types ── */
 
@@ -73,6 +75,10 @@ type AccountListResult =
 
 type ConnectResult =
 	| { ok: true; url: string }
+	| { ok: false; error: string; status: 400 | 500 };
+
+type OAuthCallbackResult =
+	| { ok: true; accountId: string }
 	| { ok: false; error: string; status: 400 | 500 };
 
 type DisconnectResult =
@@ -452,13 +458,94 @@ class MailService {
 					status: 400,
 				};
 			}
-			const url = emailProvider.getAuthUrl(userId);
+			const state = await createOAuthState(userId);
+			const url = emailProvider.getAuthUrl(state);
 			return { ok: true, url };
 		} catch (err) {
 			console.error("[mail] connectAccount failed:", err);
 			return {
 				ok: false,
 				error: "Failed to generate auth URL",
+				status: 500,
+			};
+		}
+	}
+
+	async handleOAuthCallback(
+		code: string,
+		state: string,
+	): Promise<OAuthCallbackResult> {
+		const userId = await verifyOAuthState(state);
+		if (!userId) {
+			return {
+				ok: false,
+				error: "Invalid or expired OAuth state",
+				status: 400,
+			};
+		}
+
+		try {
+			const provider = getProvider("gmail");
+			if (!provider) {
+				return {
+					ok: false,
+					error: "Gmail provider not available",
+					status: 500,
+				};
+			}
+
+			const tokens = await provider.exchangeCode(code);
+
+			// Upsert: update tokens if same user+provider+email already exists
+			const rows = await db
+				.insert(emailAccounts)
+				.values({
+					userId,
+					provider: "gmail",
+					email: tokens.email,
+					accessToken: tokens.accessToken,
+					refreshToken: tokens.refreshToken,
+					tokenExpiresAt: tokens.expiresAt,
+					scopes: tokens.scopes,
+					syncStatus: "pending",
+					active: true,
+				})
+				.onConflictDoUpdate({
+					target: [
+						emailAccounts.userId,
+						emailAccounts.provider,
+						emailAccounts.email,
+					],
+					set: {
+						accessToken: tokens.accessToken,
+						refreshToken: tokens.refreshToken,
+						tokenExpiresAt: tokens.expiresAt,
+						scopes: tokens.scopes,
+						syncStatus: "pending",
+						active: true,
+						syncError: null,
+					},
+				})
+				.returning();
+
+			const account = rows[0];
+			if (!account) {
+				return {
+					ok: false,
+					error: "Failed to create email account",
+					status: 500,
+				};
+			}
+
+			await enqueueInitialSync(account.id, userId);
+			await scheduleRecurringSync(account.id, userId);
+
+			return { ok: true, accountId: account.id };
+		} catch (err) {
+			console.error("[mail] handleOAuthCallback failed:", err);
+			return {
+				ok: false,
+				error: "Failed to complete OAuth connection",
 				status: 500,
 			};
 		}
