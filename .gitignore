@@ -38,6 +38,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .cursor
 CLAUDE.md
 
+# Beads (local agent db)
+.beads/
+
 # Tauri / Rust build output
 **/src-tauri/target/
 
