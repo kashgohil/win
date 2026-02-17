@@ -10,7 +10,8 @@
 	},
 	"devDependencies": {
 		"@types/bun": "^1.3.9",
-		"@wingmnn/api": "workspace:*"
+		"@wingmnn/api": "workspace:*",
+		"@wingmnn/db": "workspace:*"
 	},
 	"peerDependencies": {
 		"typescript": "^5"
