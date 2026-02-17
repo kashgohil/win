@@ -8,11 +8,11 @@
 		"packages/*"
 	],
 	"scripts": {
-		"start:api": "bun run --filter api dev",
-		"start:web": "bun run --filter web dev",
-		"start:mobile": "bun run --filter mobile start",
-		"start:hero": "bun run --filter hero dev",
-		"start:desktop": "bun run --filter web tauri:dev",
+		"dev:api": "bun run --filter @wingmnn/api dev",
+		"dev:web": "bun run --filter @wingmnn/web dev",
+		"dev:mobile": "bun run --filter @wingmnn/mobile dev",
+		"dev:hero": "bun run --filter @wingmnn/hero dev",
+		"dev:desktop": "bun run --filter @wingmnn/web tauri:dev",
 		"db:generate": "bun run --filter @wingmnn/db db:generate",
 		"db:migrate": "bun run --filter @wingmnn/db db:migrate",
 		"db:push": "bun run --filter @wingmnn/db db:push",
