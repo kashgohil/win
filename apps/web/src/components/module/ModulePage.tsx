@@ -19,6 +19,14 @@ import { useState } from "react";
 interface ModulePageProps {
 	moduleKey: ModuleKey;
 	data: ModuleData;
+	/** Called when a non-ghost triage action button is clicked */
+	onAction?: (itemId: string, actionLabel: string) => void;
+	/** Called when a triage item is dismissed (ghost button or swipe). Overrides local-only dismiss. */
+	onDismiss?: (itemId: string) => void;
+	/** Optional loading state — renders skeleton when true */
+	isLoading?: boolean;
+	/** Optional empty state rendered when provided and data has no content */
+	emptyState?: React.ReactNode;
 }
 
 /* ── Helpers ── */
@@ -64,7 +72,14 @@ function SectionRule({
 
 /* ── Main component ── */
 
-export default function ModulePage({ moduleKey, data }: ModulePageProps) {
+export default function ModulePage({
+	moduleKey,
+	data,
+	onAction,
+	onDismiss: onDismissProp,
+	isLoading,
+	emptyState,
+}: ModulePageProps) {
 	const mod = getModule(moduleKey);
 	const [autoExpanded, setAutoExpanded] = useState(false);
 	const [dismissedItems, setDismissedItems] = useState<Set<string>>(new Set());
@@ -76,7 +91,72 @@ export default function ModulePage({ moduleKey, data }: ModulePageProps) {
 
 	const handleDismiss = (id: string) => {
 		setDismissedItems((prev) => new Set([...prev, id]));
+		onDismissProp?.(id);
 	};
+
+	if (isLoading) {
+		return (
+			<ScrollArea className="h-[calc(100dvh)] md:h-dvh">
+				<div className="px-(--page-px) py-10 max-w-5xl mx-auto">
+					<motion.header
+						initial={{ opacity: 0, y: 16 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+					>
+						<h1 className="font-display text-[clamp(2rem,4.5vw,3rem)] text-foreground tracking-[0.01em] leading-[1.08] lowercase mt-2">
+							{mod?.name}
+						</h1>
+						<p className="font-mono text-[12px] text-grey-2 tracking-[0.02em] mt-1">
+							{mod?.description}
+						</p>
+					</motion.header>
+					<div className="animate-pulse mt-8">
+						<div className="grid grid-cols-3 gap-px bg-border/30 rounded-lg overflow-hidden border border-border/30">
+							{[0, 1, 2].map((i) => (
+								<div
+									key={i}
+									className="bg-background px-4 py-4 flex flex-col items-center"
+								>
+									<div className="h-7 w-12 bg-secondary/30 rounded" />
+									<div className="h-2 w-16 bg-secondary/20 rounded mt-2" />
+								</div>
+							))}
+						</div>
+						<div className="mt-10 space-y-3">
+							{[0, 1, 2].map((i) => (
+								<div key={i} className="rounded-lg border border-border/20 p-4">
+									<div className="h-4 w-48 bg-secondary/30 rounded" />
+									<div className="h-3 w-72 bg-secondary/20 rounded mt-2" />
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
+			</ScrollArea>
+		);
+	}
+
+	if (emptyState) {
+		return (
+			<ScrollArea className="h-[calc(100dvh)] md:h-dvh">
+				<div className="px-(--page-px) py-10 max-w-5xl mx-auto">
+					<motion.header
+						initial={{ opacity: 0, y: 16 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+					>
+						<h1 className="font-display text-[clamp(2rem,4.5vw,3rem)] text-foreground tracking-[0.01em] leading-[1.08] lowercase mt-2">
+							{mod?.name}
+						</h1>
+						<p className="font-mono text-[12px] text-grey-2 tracking-[0.02em] mt-1">
+							{mod?.description}
+						</p>
+					</motion.header>
+					{emptyState}
+				</div>
+			</ScrollArea>
+		);
+	}
 
 	return (
 		<ScrollArea className="h-[calc(100dvh)] md:h-dvh">
@@ -167,6 +247,9 @@ export default function ModulePage({ moduleKey, data }: ModulePageProps) {
 										key={item.id}
 										item={item}
 										index={i}
+										onAction={
+											onAction ? (label) => onAction(item.id, label) : undefined
+										}
 										onDismiss={() => handleDismiss(item.id)}
 									/>
 								))
@@ -318,10 +401,12 @@ function BriefingStrip({ stats }: { stats: ModuleData["briefing"] }) {
 function TriageCard({
 	item,
 	index,
+	onAction,
 	onDismiss,
 }: {
 	item: TriageItem;
 	index: number;
+	onAction?: (actionLabel: string) => void;
 	onDismiss: () => void;
 }) {
 	const x = useMotionValue(0);
@@ -405,7 +490,13 @@ function TriageCard({
 								key={action.label}
 								variant={action.variant ?? "default"}
 								size="sm"
-								onClick={action.variant === "ghost" ? onDismiss : undefined}
+								onClick={
+									action.variant === "ghost"
+										? onDismiss
+										: onAction
+											? () => onAction(action.label)
+											: undefined
+								}
 								className={cn(
 									"font-mono text-[11px] tracking-[0.02em] h-7 px-3",
 									action.variant === "default" &&
