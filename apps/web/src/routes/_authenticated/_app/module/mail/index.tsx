@@ -1,5 +1,7 @@
+import { MOTION_CONSTANTS } from "@/components/constant";
 import ModulePage from "@/components/module/ModulePage";
 import {
+	mailKeys,
 	useConnectAccount,
 	useMailData,
 	useTriageAction,
@@ -7,13 +9,24 @@ import {
 import type { ModuleData } from "@/lib/module-data";
 import { MODULE_DATA } from "@/lib/module-data";
 import type { ModuleKey } from "@/lib/onboarding-data";
-import { createFileRoute } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { EmailProvider, TriageAction } from "@wingmnn/types";
-import { ArrowRight, Mail } from "lucide-react";
+import { ArrowRight, CheckCircle, Mail, XCircle } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
+
+type MailSearch = {
+	connected?: string;
+	error?: string;
+};
 
 export const Route = createFileRoute("/_authenticated/_app/module/mail/")({
 	component: MailModule,
+	validateSearch: (search: Record<string, unknown>): MailSearch => ({
+		connected: search.connected as string | undefined,
+		error: search.error as string | undefined,
+	}),
 });
 
 const PROVIDERS: {
@@ -37,6 +50,38 @@ const PROVIDERS: {
 function MailModule() {
 	const { data, isPending } = useMailData();
 	const triageAction = useTriageAction();
+	const { connected, error } = Route.useSearch();
+	const navigate = useNavigate();
+	const queryClient = useQueryClient();
+	const [status, setStatus] = useState<{
+		type: "success" | "error";
+		message: string;
+	} | null>(null);
+
+	useEffect(() => {
+		if (connected) {
+			setStatus({
+				type: "success",
+				message: "Gmail connected successfully. Syncing your inbox...",
+			});
+			queryClient.invalidateQueries({ queryKey: mailKeys.accounts() });
+			queryClient.invalidateQueries({ queryKey: mailKeys.data() });
+			navigate({ replace: true });
+		} else if (error) {
+			const message =
+				error === "access_denied"
+					? "Access was denied. Please try again."
+					: `Connection failed: ${error}`;
+			setStatus({ type: "error", message });
+			navigate({ replace: true });
+		}
+	}, [connected, error, navigate, queryClient]);
+
+	useEffect(() => {
+		if (!status) return;
+		const timer = setTimeout(() => setStatus(null), 5000);
+		return () => clearTimeout(timer);
+	}, [status]);
 
 	const handleAction = (itemId: string, actionLabel: string) => {
 		const actionMap: Record<string, TriageAction> = {
@@ -71,14 +116,35 @@ function MailModule() {
 		: undefined;
 
 	return (
-		<ModulePage
-			moduleKey="mail"
-			data={moduleData ?? MODULE_DATA.mail}
-			onAction={handleAction}
-			onDismiss={handleDismiss}
-			isLoading={isPending}
-			emptyState={!isPending && !moduleData ? <ConnectCard /> : undefined}
-		/>
+		<>
+			{status && (
+				<motion.div
+					initial={{ opacity: 0, y: -8 }}
+					animate={{ opacity: 1, y: 0 }}
+					exit={{ opacity: 0, y: -8 }}
+					className={`mb-4 flex items-center gap-2 rounded-lg border px-4 py-3 text-[13px] font-body ${
+						status.type === "success"
+							? "border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
+							: "border-red-500/20 bg-red-500/5 text-red-700 dark:text-red-400"
+					}`}
+				>
+					{status.type === "success" ? (
+						<CheckCircle className="size-4 shrink-0" />
+					) : (
+						<XCircle className="size-4 shrink-0" />
+					)}
+					{status.message}
+				</motion.div>
+			)}
+			<ModulePage
+				moduleKey="mail"
+				data={moduleData ?? MODULE_DATA.mail}
+				onAction={handleAction}
+				onDismiss={handleDismiss}
+				isLoading={isPending}
+				emptyState={!isPending && !moduleData ? <ConnectCard /> : undefined}
+			/>
+		</>
 	);
 }
 
@@ -117,7 +183,7 @@ function ConnectCard() {
 			<motion.div
 				initial={{ opacity: 0, y: 16 }}
 				animate={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+				transition={{ duration: 0.5, ease: MOTION_CONSTANTS.EASE }}
 				className="absolute inset-0 flex items-center justify-center"
 			>
 				<div className="w-full max-w-sm rounded-xl border border-border/40 bg-background/95 backdrop-blur-sm p-6 shadow-sm">
