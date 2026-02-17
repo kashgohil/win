@@ -1,9 +1,7 @@
+import { MOTION_CONSTANTS } from "@/components/constant";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { Check, getIcon } from "../icons";
-
-const CARD_EASE = [0.22, 1, 0.36, 1] as const;
-const STAGGER_MS = 60;
 
 export default function ModuleCard({
 	icon,
@@ -35,8 +33,8 @@ export default function ModuleCard({
 			animate={{ opacity: 1, y: 0, scale: 1 }}
 			transition={{
 				duration: 0.4,
-				ease: CARD_EASE,
-				delay: index * STAGGER_MS * 0.001,
+				ease: MOTION_CONSTANTS.EASE,
+				delay: index * MOTION_CONSTANTS.STAGGER_MS * 0.001,
 			}}
 			className={cn(
 				"group relative flex flex-col items-start rounded-lg border p-4 text-left transition-colors duration-200 cursor-pointer",

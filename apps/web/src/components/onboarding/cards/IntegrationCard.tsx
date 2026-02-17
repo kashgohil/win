@@ -1,8 +1,6 @@
+import { MOTION_CONSTANTS } from "@/components/constant";
 import { motion } from "motion/react";
 import { getIcon } from "../icons";
-
-const CARD_EASE = [0.22, 1, 0.36, 1] as const;
-const STAGGER_MS = 60;
 
 export default function IntegrationCard({
 	icon,
@@ -26,8 +24,8 @@ export default function IntegrationCard({
 			animate={{ opacity: 1, y: 0, scale: 1 }}
 			transition={{
 				duration: 0.4,
-				ease: CARD_EASE,
-				delay: index * STAGGER_MS * 0.001,
+				ease: MOTION_CONSTANTS.EASE,
+				delay: index * MOTION_CONSTANTS.STAGGER_MS * 0.001,
 			}}
 			className="group flex items-center gap-4 rounded-lg border border-border bg-background p-4 text-left transition-colors duration-200 hover:border-grey-3"
 		>

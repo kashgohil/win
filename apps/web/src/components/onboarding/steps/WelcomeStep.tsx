@@ -8,6 +8,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { useState } from "react";
 
+import { MOTION_CONSTANTS } from "@/components/constant";
 import OnboardingShell from "../OnboardingShell";
 import TimezoneCombobox from "../TimezoneCombobox";
 import RoleCard from "../cards/RoleCard";
@@ -56,7 +57,7 @@ export default function WelcomeStep({
 				className="text-center"
 				initial={{ opacity: 0, y: 10 }}
 				animate={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+				transition={{ duration: 0.5, ease: MOTION_CONSTANTS.EASE }}
 			>
 				<h1 className="font-display text-[clamp(1.8rem,5vw,2.6rem)] text-foreground tracking-[0.01em]">
 					Welcome, {firstName}.
@@ -70,7 +71,7 @@ export default function WelcomeStep({
 				className="mt-8 flex flex-col items-center"
 				initial={{ opacity: 0, y: 10 }}
 				animate={{ opacity: 1, y: 0 }}
-				transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+				transition={{ delay: 0.1, duration: 0.5, ease: MOTION_CONSTANTS.EASE }}
 			>
 				<Label className="block mb-2">Timezone</Label>
 				<TimezoneCombobox value={timezone} onChange={setTimezone} />
@@ -80,7 +81,7 @@ export default function WelcomeStep({
 				className="mt-10 text-center"
 				initial={{ opacity: 0, y: 10 }}
 				animate={{ opacity: 1, y: 0 }}
-				transition={{ delay: 0.2, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+				transition={{ delay: 0.2, duration: 0.5, ease: MOTION_CONSTANTS.EASE }}
 			>
 				<Label className="block mb-4">Who are you?</Label>
 				<div className="grid grid-cols-2 max-sm:grid-cols-1 gap-3">

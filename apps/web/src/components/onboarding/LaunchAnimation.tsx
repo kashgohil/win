@@ -2,6 +2,7 @@ import Logo from "@/components/Logo";
 import { useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { useEffect } from "react";
+import { MOTION_CONSTANTS } from "../constant";
 
 export default function LaunchAnimation() {
 	const navigate = useNavigate();
@@ -26,7 +27,7 @@ export default function LaunchAnimation() {
 						animate={{ scale: 1, opacity: 1 }}
 						transition={{
 							duration: 0.6,
-							ease: [0.22, 1, 0.36, 1],
+							ease: MOTION_CONSTANTS.EASE,
 						}}
 					>
 						<Logo className="size-14 text-cream ob-launch-pulse" />
@@ -45,7 +46,7 @@ export default function LaunchAnimation() {
 					transition={{
 						delay: 0.6,
 						duration: 0.6,
-						ease: [0.22, 1, 0.36, 1],
+						ease: MOTION_CONSTANTS.EASE,
 					}}
 					className="font-display text-[clamp(1.4rem,3.5vw,1.8rem)] text-cream tracking-[0.02em] mt-12"
 				>

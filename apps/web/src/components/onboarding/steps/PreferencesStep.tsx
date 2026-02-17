@@ -11,6 +11,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { useState } from "react";
 
+import { MOTION_CONSTANTS } from "@/components/constant";
 import OnboardingShell from "../OnboardingShell";
 import RadioCard from "../cards/RadioCard";
 
@@ -58,7 +59,7 @@ export default function PreferencesStep({
 				className="text-center"
 				initial={{ opacity: 0, y: 10 }}
 				animate={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+				transition={{ duration: 0.5, ease: MOTION_CONSTANTS.EASE }}
 			>
 				<h1 className="font-display text-[clamp(1.6rem,4vw,2.2rem)] text-foreground tracking-[0.01em]">
 					Set the rules
