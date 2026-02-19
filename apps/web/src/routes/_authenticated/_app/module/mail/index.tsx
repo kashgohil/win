@@ -1,14 +1,16 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
 import ModulePage from "@/components/module/ModulePage";
+import { mailKeys, useConnectAccount } from "@/hooks/use-mail";
+import { api } from "@/lib/api";
 import {
-	mailKeys,
-	useConnectAccount,
-	useMailData,
-	useTriageAction,
-} from "@/hooks/use-mail";
+	mailAutoHandledCollection,
+	mailBriefingCollection,
+	mailTriageCollection,
+} from "@/lib/mail-collections";
 import type { ModuleData } from "@/lib/module-data";
 import { MODULE_DATA } from "@/lib/module-data";
 import type { ModuleKey } from "@/lib/onboarding-data";
+import { useLiveQuery } from "@tanstack/react-db";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import type { EmailProvider, TriageAction } from "@wingmnn/types";
@@ -47,9 +49,32 @@ const PROVIDERS: {
 	},
 ];
 
+const ACTION_MAP: Record<string, TriageAction> = {
+	"Send as-is": "send_draft",
+	"Send follow-up": "send_draft",
+	"Reply with summary": "send_draft",
+	Dismiss: "dismiss",
+	Archive: "archive",
+	Snooze: "snooze",
+};
+
 function MailModule() {
-	const { data, isPending } = useMailData();
-	const triageAction = useTriageAction();
+	const {
+		data: triage,
+		isLoading: triageLoading,
+		isError: triageError,
+	} = useLiveQuery(mailTriageCollection);
+
+	const { data: autoHandled, isLoading: autoLoading } = useLiveQuery(
+		mailAutoHandledCollection,
+	);
+
+	const { data: briefing, isLoading: briefingLoading } = useLiveQuery(
+		mailBriefingCollection,
+	);
+
+	const isPending = triageLoading || autoLoading || briefingLoading;
+
 	const { connected, error } = Route.useSearch();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
@@ -65,7 +90,6 @@ function MailModule() {
 				message: "Gmail connected successfully. Syncing your inbox...",
 			});
 			queryClient.invalidateQueries({ queryKey: mailKeys.accounts() });
-			queryClient.invalidateQueries({ queryKey: mailKeys.data() });
 			navigate({ replace: true });
 		} else if (error) {
 			const message =
@@ -84,36 +108,31 @@ function MailModule() {
 	}, [status]);
 
 	const handleAction = (itemId: string, actionLabel: string) => {
-		const actionMap: Record<string, TriageAction> = {
-			"Send as-is": "send_draft",
-			"Send follow-up": "send_draft",
-			"Reply with summary": "send_draft",
-			Dismiss: "dismiss",
-			Archive: "archive",
-			Snooze: "snooze",
-		};
+		const action = ACTION_MAP[actionLabel] ?? "dismiss";
 
-		const action = actionMap[actionLabel] ?? "dismiss";
-		triageAction.mutate({ id: itemId, action });
+		mailTriageCollection.utils.writeDelete(itemId);
+		api.mail.triage({ id: itemId }).action.post({ action });
 	};
 
 	const handleDismiss = (itemId: string) => {
-		triageAction.mutate({ id: itemId, action: "dismiss" });
+		mailTriageCollection.utils.writeDelete(itemId);
+		api.mail.triage({ id: itemId }).action.post({ action: "dismiss" });
 	};
 
-	const moduleData: ModuleData | undefined = data
-		? {
-				briefing: data.briefing,
-				triage: data.triage.map((t) => ({
-					...t,
-					sourceModule: t.sourceModule as ModuleKey | undefined,
-				})),
-				autoHandled: data.autoHandled.map((a) => ({
-					...a,
-					linkedModule: a.linkedModule as ModuleKey | undefined,
-				})),
-			}
-		: undefined;
+	const moduleData: ModuleData | undefined =
+		!isPending && !triageError
+			? {
+					briefing,
+					triage: triage.map((t) => ({
+						...t,
+						sourceModule: t.sourceModule as ModuleKey | undefined,
+					})),
+					autoHandled: autoHandled.map((a) => ({
+						...a,
+						linkedModule: a.linkedModule as ModuleKey | undefined,
+					})),
+				}
+			: undefined;
 
 	return (
 		<>
