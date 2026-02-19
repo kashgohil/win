@@ -747,7 +747,7 @@ function SwapContainer({
 		<motion.div
 			className={cn("overflow-hidden", className)}
 			animate={height !== undefined ? { height } : undefined}
-			transition={{ duration: 0.3, ease: EASE }}
+			transition={{ duration: 0.3, ease: MOTION_CONSTANTS.EASE }}
 		>
 			<div ref={innerRef}>
 				<AnimatePresence mode="popLayout" initial={false}>
