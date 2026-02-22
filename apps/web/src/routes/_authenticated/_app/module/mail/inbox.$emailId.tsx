@@ -1,7 +1,7 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
 import { EmailBody } from "@/components/mail/EmailBody";
 import { useMailEmailDetail } from "@/hooks/use-mail";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Archive, ArrowLeft, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
@@ -11,18 +11,6 @@ export const Route = createFileRoute(
 )({
 	component: EmailDetail,
 });
-
-function formatDate(iso: string): string {
-	const date = new Date(iso);
-	return date.toLocaleDateString("en-US", {
-		weekday: "short",
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		hour: "numeric",
-		minute: "2-digit",
-	});
-}
 
 function EmailDetail() {
 	const { emailId } = Route.useParams();

@@ -26,17 +26,19 @@ type InboxSearch = {
 	offset?: number;
 };
 
-export const Route = createFileRoute("/_authenticated/_app/module/mail/inbox")({
-	component: MailInbox,
-	validateSearch: (search: Record<string, unknown>): InboxSearch => ({
-		category:
-			typeof search.category === "string" &&
-			VALID_CATEGORIES.has(search.category)
-				? (search.category as EmailCategory)
-				: undefined,
-		offset: typeof search.offset === "number" ? search.offset : undefined,
-	}),
-});
+export const Route = createFileRoute("/_authenticated/_app/module/mail/inbox/")(
+	{
+		component: MailInbox,
+		validateSearch: (search: Record<string, unknown>): InboxSearch => ({
+			category:
+				typeof search.category === "string" &&
+				VALID_CATEGORIES.has(search.category)
+					? (search.category as EmailCategory)
+					: undefined,
+			offset: typeof search.offset === "number" ? search.offset : undefined,
+		}),
+	},
+);
 
 function MailInbox() {
 	const { category, offset } = Route.useSearch();

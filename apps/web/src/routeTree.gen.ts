@@ -32,7 +32,7 @@ import { Route as AuthenticatedAppModuleFilesRouteImport } from './routes/_authe
 import { Route as AuthenticatedAppModuleCrmRouteImport } from './routes/_authenticated/_app/module/crm'
 import { Route as AuthenticatedAppModuleCalRouteImport } from './routes/_authenticated/_app/module/cal'
 import { Route as AuthenticatedAppModuleMailIndexRouteImport } from './routes/_authenticated/_app/module/mail/index'
-import { Route as AuthenticatedAppModuleMailInboxRouteImport } from './routes/_authenticated/_app/module/mail/inbox'
+import { Route as AuthenticatedAppModuleMailInboxIndexRouteImport } from './routes/_authenticated/_app/module/mail/inbox.index'
 import { Route as AuthenticatedAppModuleMailInboxEmailIdRouteImport } from './routes/_authenticated/_app/module/mail/inbox.$emailId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -165,17 +165,17 @@ const AuthenticatedAppModuleMailIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedAppModuleMailRoute,
   } as any)
-const AuthenticatedAppModuleMailInboxRoute =
-  AuthenticatedAppModuleMailInboxRouteImport.update({
-    id: '/inbox',
-    path: '/inbox',
+const AuthenticatedAppModuleMailInboxIndexRoute =
+  AuthenticatedAppModuleMailInboxIndexRouteImport.update({
+    id: '/inbox/',
+    path: '/inbox/',
     getParentRoute: () => AuthenticatedAppModuleMailRoute,
   } as any)
 const AuthenticatedAppModuleMailInboxEmailIdRoute =
   AuthenticatedAppModuleMailInboxEmailIdRouteImport.update({
-    id: '/$emailId',
-    path: '/$emailId',
-    getParentRoute: () => AuthenticatedAppModuleMailInboxRoute,
+    id: '/inbox/$emailId',
+    path: '/inbox/$emailId',
+    getParentRoute: () => AuthenticatedAppModuleMailRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -199,9 +199,9 @@ export interface FileRoutesByFullPath {
   '/module/social': typeof AuthenticatedAppModuleSocialRoute
   '/module/task': typeof AuthenticatedAppModuleTaskRoute
   '/module/travel': typeof AuthenticatedAppModuleTravelRoute
-  '/module/mail/inbox': typeof AuthenticatedAppModuleMailInboxRouteWithChildren
   '/module/mail/': typeof AuthenticatedAppModuleMailIndexRoute
   '/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
+  '/module/mail/inbox/': typeof AuthenticatedAppModuleMailInboxIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedAppIndexRoute
@@ -222,9 +222,9 @@ export interface FileRoutesByTo {
   '/module/social': typeof AuthenticatedAppModuleSocialRoute
   '/module/task': typeof AuthenticatedAppModuleTaskRoute
   '/module/travel': typeof AuthenticatedAppModuleTravelRoute
-  '/module/mail/inbox': typeof AuthenticatedAppModuleMailInboxRouteWithChildren
   '/module/mail': typeof AuthenticatedAppModuleMailIndexRoute
   '/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
+  '/module/mail/inbox': typeof AuthenticatedAppModuleMailInboxIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -250,9 +250,9 @@ export interface FileRoutesById {
   '/_authenticated/_app/module/social': typeof AuthenticatedAppModuleSocialRoute
   '/_authenticated/_app/module/task': typeof AuthenticatedAppModuleTaskRoute
   '/_authenticated/_app/module/travel': typeof AuthenticatedAppModuleTravelRoute
-  '/_authenticated/_app/module/mail/inbox': typeof AuthenticatedAppModuleMailInboxRouteWithChildren
   '/_authenticated/_app/module/mail/': typeof AuthenticatedAppModuleMailIndexRoute
   '/_authenticated/_app/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
+  '/_authenticated/_app/module/mail/inbox/': typeof AuthenticatedAppModuleMailInboxIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -277,9 +277,9 @@ export interface FileRouteTypes {
     | '/module/social'
     | '/module/task'
     | '/module/travel'
-    | '/module/mail/inbox'
     | '/module/mail/'
     | '/module/mail/inbox/$emailId'
+    | '/module/mail/inbox/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -300,9 +300,9 @@ export interface FileRouteTypes {
     | '/module/social'
     | '/module/task'
     | '/module/travel'
-    | '/module/mail/inbox'
     | '/module/mail'
     | '/module/mail/inbox/$emailId'
+    | '/module/mail/inbox'
   id:
     | '__root__'
     | '/_authenticated'
@@ -327,9 +327,9 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/module/social'
     | '/_authenticated/_app/module/task'
     | '/_authenticated/_app/module/travel'
-    | '/_authenticated/_app/module/mail/inbox'
     | '/_authenticated/_app/module/mail/'
     | '/_authenticated/_app/module/mail/inbox/$emailId'
+    | '/_authenticated/_app/module/mail/inbox/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -500,48 +500,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppModuleMailIndexRouteImport
       parentRoute: typeof AuthenticatedAppModuleMailRoute
     }
-    '/_authenticated/_app/module/mail/inbox': {
-      id: '/_authenticated/_app/module/mail/inbox'
+    '/_authenticated/_app/module/mail/inbox/': {
+      id: '/_authenticated/_app/module/mail/inbox/'
       path: '/inbox'
-      fullPath: '/module/mail/inbox'
-      preLoaderRoute: typeof AuthenticatedAppModuleMailInboxRouteImport
+      fullPath: '/module/mail/inbox/'
+      preLoaderRoute: typeof AuthenticatedAppModuleMailInboxIndexRouteImport
       parentRoute: typeof AuthenticatedAppModuleMailRoute
     }
     '/_authenticated/_app/module/mail/inbox/$emailId': {
       id: '/_authenticated/_app/module/mail/inbox/$emailId'
-      path: '/$emailId'
+      path: '/inbox/$emailId'
       fullPath: '/module/mail/inbox/$emailId'
       preLoaderRoute: typeof AuthenticatedAppModuleMailInboxEmailIdRouteImport
-      parentRoute: typeof AuthenticatedAppModuleMailInboxRoute
+      parentRoute: typeof AuthenticatedAppModuleMailRoute
     }
   }
 }
 
-interface AuthenticatedAppModuleMailInboxRouteChildren {
-  AuthenticatedAppModuleMailInboxEmailIdRoute: typeof AuthenticatedAppModuleMailInboxEmailIdRoute
-}
-
-const AuthenticatedAppModuleMailInboxRouteChildren: AuthenticatedAppModuleMailInboxRouteChildren =
-  {
-    AuthenticatedAppModuleMailInboxEmailIdRoute:
-      AuthenticatedAppModuleMailInboxEmailIdRoute,
-  }
-
-const AuthenticatedAppModuleMailInboxRouteWithChildren =
-  AuthenticatedAppModuleMailInboxRoute._addFileChildren(
-    AuthenticatedAppModuleMailInboxRouteChildren,
-  )
-
 interface AuthenticatedAppModuleMailRouteChildren {
-  AuthenticatedAppModuleMailInboxRoute: typeof AuthenticatedAppModuleMailInboxRouteWithChildren
   AuthenticatedAppModuleMailIndexRoute: typeof AuthenticatedAppModuleMailIndexRoute
+  AuthenticatedAppModuleMailInboxEmailIdRoute: typeof AuthenticatedAppModuleMailInboxEmailIdRoute
+  AuthenticatedAppModuleMailInboxIndexRoute: typeof AuthenticatedAppModuleMailInboxIndexRoute
 }
 
 const AuthenticatedAppModuleMailRouteChildren: AuthenticatedAppModuleMailRouteChildren =
   {
-    AuthenticatedAppModuleMailInboxRoute:
-      AuthenticatedAppModuleMailInboxRouteWithChildren,
     AuthenticatedAppModuleMailIndexRoute: AuthenticatedAppModuleMailIndexRoute,
+    AuthenticatedAppModuleMailInboxEmailIdRoute:
+      AuthenticatedAppModuleMailInboxEmailIdRoute,
+    AuthenticatedAppModuleMailInboxIndexRoute:
+      AuthenticatedAppModuleMailInboxIndexRoute,
   }
 
 const AuthenticatedAppModuleMailRouteWithChildren =
