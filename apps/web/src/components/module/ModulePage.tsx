@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import type { ModuleData, TriageItem } from "@/lib/module-data";
 import { MODULES, type Module, type ModuleKey } from "@/lib/onboarding-data";
 import { cn } from "@/lib/utils";
@@ -28,6 +27,10 @@ interface ModulePageProps {
 	isLoading?: boolean;
 	/** Optional empty state rendered when provided and data has no content */
 	emptyState?: React.ReactNode;
+	/** Optional content rendered on the right side of the header title row */
+	headerActions?: React.ReactNode;
+	/** Optional content rendered at the bottom of the page, inside the scroll area */
+	children?: React.ReactNode;
 }
 
 /* ── Helpers ── */
@@ -80,6 +83,8 @@ export default function ModulePage({
 	onDismiss: onDismissProp,
 	isLoading,
 	emptyState,
+	headerActions,
+	children,
 }: ModulePageProps) {
 	const mod = getModule(moduleKey);
 	const [autoExpanded, setAutoExpanded] = useState(false);
@@ -104,9 +109,14 @@ export default function ModulePage({
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.5, ease: MOTION_CONSTANTS.EASE }}
 					>
-						<h1 className="font-display text-[clamp(2rem,4.5vw,3rem)] text-foreground tracking-[0.01em] leading-[1.08] lowercase mt-2">
-							{mod?.name}
-						</h1>
+						<div className="flex items-start justify-between gap-4">
+							<h1 className="font-display text-[clamp(2rem,4.5vw,3rem)] text-foreground tracking-[0.01em] leading-[1.08] lowercase mt-2">
+								{mod?.name}
+							</h1>
+							{headerActions && (
+								<div className="shrink-0 mt-3">{headerActions}</div>
+							)}
+						</div>
 						<p className="font-mono text-[12px] text-grey-2 tracking-[0.02em] mt-1">
 							{mod?.description}
 						</p>
@@ -146,9 +156,14 @@ export default function ModulePage({
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.5, ease: MOTION_CONSTANTS.EASE }}
 					>
-						<h1 className="font-display text-[clamp(2rem,4.5vw,3rem)] text-foreground tracking-[0.01em] leading-[1.08] lowercase mt-2">
-							{mod?.name}
-						</h1>
+						<div className="flex items-start justify-between gap-4">
+							<h1 className="font-display text-[clamp(2rem,4.5vw,3rem)] text-foreground tracking-[0.01em] leading-[1.08] lowercase mt-2">
+								{mod?.name}
+							</h1>
+							{headerActions && (
+								<div className="shrink-0 mt-3">{headerActions}</div>
+							)}
+						</div>
 						<p className="font-mono text-[12px] text-grey-2 tracking-[0.02em] mt-1">
 							{mod?.description}
 						</p>
@@ -168,9 +183,14 @@ export default function ModulePage({
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.5, ease: MOTION_CONSTANTS.EASE }}
 				>
-					<h1 className="font-display text-[clamp(2rem,4.5vw,3rem)] text-foreground tracking-[0.01em] leading-[1.08] lowercase mt-2">
-						{mod?.name}
-					</h1>
+					<div className="flex items-start justify-between gap-4">
+						<h1 className="font-display text-[clamp(2rem,4.5vw,3rem)] text-foreground tracking-[0.01em] leading-[1.08] lowercase mt-2">
+							{mod?.name}
+						</h1>
+						{headerActions && (
+							<div className="shrink-0 mt-3">{headerActions}</div>
+						)}
+					</div>
 					<p className="font-mono text-[12px] text-grey-2 tracking-[0.02em] mt-1">
 						{mod?.description}
 					</p>
@@ -190,8 +210,6 @@ export default function ModulePage({
 					<BriefingStrip stats={data.briefing} />
 				</motion.div>
 
-				<Separator className="my-8 bg-border/40" />
-
 				{/* ── Triage zone ── */}
 				<motion.section
 					initial={{ opacity: 0, y: 16 }}
@@ -201,6 +219,7 @@ export default function ModulePage({
 						delay: 0.15,
 						ease: MOTION_CONSTANTS.EASE,
 					}}
+					className="mt-8"
 				>
 					<SectionRule
 						label="Needs you"
@@ -259,11 +278,9 @@ export default function ModulePage({
 					</div>
 				</motion.section>
 
-				<Separator className="my-8 bg-border/40" />
-
 				{/* ── Auto-handled zone ── */}
 				<motion.section
-					className="pb-16"
+					className={children ? "pb-4 mt-8" : "pb-16 mt-8"}
 					initial={{ opacity: 0, y: 16 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{
@@ -348,6 +365,7 @@ export default function ModulePage({
 					</AnimatePresence>
 				</motion.section>
 			</div>
+			{children}
 		</ScrollArea>
 	);
 }
@@ -411,8 +429,8 @@ function TriageCard({
 	onDismiss: () => void;
 }) {
 	const x = useMotionValue(0);
-	const opacity = useTransform(x, [-200, 0], [0, 1]);
-	const scale = useTransform(x, [-200, 0], [0.95, 1]);
+	const dragOpacity = useTransform(x, [-200, 0], [0, 1]);
+	const dragScale = useTransform(x, [-200, 0], [0.95, 1]);
 
 	return (
 		<motion.div
@@ -431,86 +449,89 @@ function TriageCard({
 				ease: MOTION_CONSTANTS.EASE,
 				layout: { type: "spring", stiffness: 350, damping: 30 },
 			}}
-			style={{ x, opacity, scale }}
-			drag="x"
-			dragConstraints={{ left: 0, right: 0 }}
-			dragElastic={0.15}
-			onDragEnd={(_, info) => {
-				if (info.offset.x < -120) {
-					onDismiss();
-				}
-			}}
 			className="group relative mb-3 last:mb-0"
 		>
-			<div
-				className={cn(
-					"relative rounded-lg border border-border/40 bg-background hover:border-border/70 transition-colors duration-200 overflow-hidden",
-					item.urgent
-						? "border-accent-red/50 border-l-4 hover:border-accent-red/70"
-						: "border-border/40",
-				)}
+			<motion.div
+				style={{ x, opacity: dragOpacity, scale: dragScale }}
+				drag="x"
+				dragConstraints={{ left: 0, right: 0 }}
+				dragElastic={0.15}
+				onDragEnd={(_, info) => {
+					if (info.offset.x < -120) {
+						onDismiss();
+					}
+				}}
 			>
-				<div className="p-4 pl-5">
-					{/* Header row */}
-					<div className="flex items-start justify-between gap-3">
-						<div className="flex-1 min-w-0">
-							<div className="flex items-center gap-2">
-								{item.urgent && (
-									<span className="size-1.5 rounded-full bg-accent-red shrink-0" />
+				<div
+					className={cn(
+						"relative rounded-lg border border-border/40 bg-background hover:border-border/70 transition-colors duration-200 overflow-hidden",
+						item.urgent
+							? "border-accent-red/50 border-l-4 hover:border-accent-red/70"
+							: "border-border/40",
+					)}
+				>
+					<div className="p-4 pl-5">
+						{/* Header row */}
+						<div className="flex items-start justify-between gap-3">
+							<div className="flex-1 min-w-0">
+								<div className="flex items-center gap-2">
+									{item.urgent && (
+										<span className="size-1.5 rounded-full bg-accent-red shrink-0" />
+									)}
+									<h3 className="font-body text-[15px] text-foreground tracking-[0.01em] leading-snug truncate">
+										{item.title}
+									</h3>
+								</div>
+								{item.subtitle && (
+									<p className="font-body text-[13px] text-grey-2 leading-relaxed mt-1.5">
+										{item.subtitle}
+									</p>
 								)}
-								<h3 className="font-body text-[15px] text-foreground tracking-[0.01em] leading-snug truncate">
-									{item.title}
-								</h3>
 							</div>
-							{item.subtitle && (
-								<p className="font-body text-[13px] text-grey-2 leading-relaxed mt-1.5">
-									{item.subtitle}
-								</p>
-							)}
-						</div>
-						<div className="flex items-center gap-2 shrink-0">
-							{item.sourceModule && (
-								<Badge
-									variant="outline"
-									className="font-mono text-[9px] tracking-widest uppercase border-border/40 text-grey-3 px-1.5 py-0"
-								>
-									<ArrowRight className="size-2.5" />
-									{getModuleCode(item.sourceModule)}
-								</Badge>
-							)}
-							<span className="font-mono text-[10px] text-grey-3">
-								{item.timestamp}
-							</span>
-						</div>
-					</div>
-
-					{/* Action row */}
-					<div className="flex items-center gap-2 mt-4">
-						{item.actions.map((action) => (
-							<Button
-								key={action.label}
-								variant={action.variant ?? "default"}
-								size="sm"
-								onClick={
-									action.variant === "ghost"
-										? onDismiss
-										: onAction
-											? () => onAction(action.label)
-											: undefined
-								}
-								className={cn(
-									"font-mono text-[11px] tracking-[0.02em] h-7 px-3",
-									action.variant === "default" &&
-										"bg-foreground text-background hover:bg-foreground/90",
-									action.variant === "ghost" && "text-grey-3",
+							<div className="flex items-center gap-2 shrink-0">
+								{item.sourceModule && (
+									<Badge
+										variant="outline"
+										className="font-mono text-[9px] tracking-widest uppercase border-border/40 text-grey-3 px-1.5 py-0"
+									>
+										<ArrowRight className="size-2.5" />
+										{getModuleCode(item.sourceModule)}
+									</Badge>
 								)}
-							>
-								{action.label}
-							</Button>
-						))}
+								<span className="font-mono text-[10px] text-grey-3">
+									{item.timestamp}
+								</span>
+							</div>
+						</div>
+
+						{/* Action row */}
+						<div className="flex items-center gap-2 mt-4">
+							{item.actions.map((action) => (
+								<Button
+									key={action.label}
+									variant={action.variant ?? "default"}
+									size="sm"
+									onClick={
+										action.variant === "ghost"
+											? onDismiss
+											: onAction
+												? () => onAction(action.label)
+												: undefined
+									}
+									className={cn(
+										"font-mono text-[11px] tracking-[0.02em] h-7 px-3",
+										action.variant === "default" &&
+											"bg-foreground text-background hover:bg-foreground/90",
+										action.variant === "ghost" && "text-grey-3",
+									)}
+								>
+									{action.label}
+								</Button>
+							))}
+						</div>
 					</div>
 				</div>
-			</div>
+			</motion.div>
 		</motion.div>
 	);
 }

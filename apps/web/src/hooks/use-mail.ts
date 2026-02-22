@@ -108,29 +108,9 @@ export function useTriageAction() {
 export function useConnectAccount() {
 	return useMutation({
 		mutationFn: async (provider: EmailProvider) => {
-			const { data, error } = await api.mail.accounts
-				.connect({ provider })
-				.post();
+			const { data, error } = await api.mail.link({ provider }).post();
 			if (error) throw new Error("Failed to connect account");
 			return data;
-		},
-	});
-}
-
-export function useDisconnectAccount() {
-	const queryClient = useQueryClient();
-
-	return useMutation({
-		mutationFn: async (accountId: string) => {
-			const { data, error } = await api.mail
-				.accounts({ id: accountId })
-				.delete();
-			if (error) throw new Error("Failed to disconnect account");
-			return data;
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: mailKeys.accounts() });
-			queryClient.invalidateQueries({ queryKey: mailKeys.data() });
 		},
 	});
 }
