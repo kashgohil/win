@@ -41,3 +41,20 @@ export const mailBriefingCollection = createCollection(
 		getKey: (item) => item.label,
 	}),
 );
+
+async function fetchMailAccounts() {
+	const { data, error } = await api.mail.accounts.get();
+	if (error) throw new Error("Failed to load accounts");
+	return data;
+}
+
+export const mailAccountsCollection = createCollection(
+	queryCollectionOptions({
+		id: "mail-accounts",
+		queryKey: ["mail", "accounts"] as const,
+		queryFn: fetchMailAccounts,
+		select: (data) => data.accounts,
+		queryClient,
+		getKey: (item) => item.id,
+	}),
+);
