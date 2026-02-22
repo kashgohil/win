@@ -1,36 +1,28 @@
 import { AccountCard } from "@/components/mail/AccountCard";
 import {
+	ProviderCard,
+	type ProviderConfig,
+} from "@/components/mail/ProviderCard";
+import {
 	Sheet,
 	SheetContent,
 	SheetDescription,
 	SheetHeader,
 	SheetTitle,
 } from "@/components/ui/sheet";
-import {
-	useConnectAccount,
-	useDisconnectAccount,
-	useMailAccounts,
-} from "@/hooks/use-mail";
-import { cn } from "@/lib/utils";
+import { useConnectAccount } from "@/hooks/use-mail";
+import { api } from "@/lib/api";
+import { mailAccountsCollection } from "@/lib/mail-collections";
+import { useLiveQuery } from "@tanstack/react-db";
 import type { EmailProvider } from "@wingmnn/types";
-import { ArrowRight, Mail } from "lucide-react";
 
-const PROVIDERS: {
-	key: EmailProvider;
-	name: string;
-	description: string;
-	accent: string;
-	hoverAccent: string;
-	iconBg: string;
-	iconText: string;
-	enabled: boolean;
-}[] = [
+const PROVIDERS: ProviderConfig[] = [
 	{
 		key: "gmail",
 		name: "gmail",
 		description: "Google Workspace & personal accounts",
-		accent: "border-accent-red/20",
-		hoverAccent: "hover:border-accent-red/40 hover:bg-accent-red/[0.02]",
+		accent: "border-accent-red/30",
+		hoverAccent: "hover:border-accent-red/50 hover:bg-accent-red/[0.03]",
 		iconBg: "bg-accent-red/10",
 		iconText: "text-accent-red",
 		enabled: true,
@@ -39,8 +31,8 @@ const PROVIDERS: {
 		key: "outlook",
 		name: "outlook",
 		description: "Microsoft 365 & personal accounts",
-		accent: "border-[#0078d4]/15",
-		hoverAccent: "hover:border-[#0078d4]/30 hover:bg-[#0078d4]/[0.02]",
+		accent: "border-[#0078d4]/20",
+		hoverAccent: "hover:border-[#0078d4]/40 hover:bg-[#0078d4]/[0.03]",
 		iconBg: "bg-[#0078d4]/10",
 		iconText: "text-[#0078d4]",
 		enabled: false,
@@ -54,9 +46,10 @@ export function SettingsSheet({
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }) {
-	const { data, isPending } = useMailAccounts();
+	const { data: accounts, isLoading: isPending } = useLiveQuery(
+		mailAccountsCollection,
+	);
 	const connectAccount = useConnectAccount();
-	const disconnectAccount = useDisconnectAccount();
 
 	const handleConnect = async (provider: EmailProvider) => {
 		const result = await connectAccount.mutateAsync(provider);
@@ -65,7 +58,11 @@ export function SettingsSheet({
 		}
 	};
 
-	const accounts = data?.accounts ?? [];
+	const handleDisconnect = (accountId: string) => {
+		mailAccountsCollection.utils.writeDelete(accountId);
+		api.mail.accounts({ id: accountId }).delete();
+	};
+
 	const hasAccounts = accounts.length > 0;
 
 	return (
@@ -104,8 +101,7 @@ export function SettingsSheet({
 										<AccountCard
 											key={account.id}
 											account={account}
-											onDisconnect={() => disconnectAccount.mutate(account.id)}
-											isDisconnecting={disconnectAccount.isPending}
+											onDisconnect={() => handleDisconnect(account.id)}
 										/>
 									))
 								)}
@@ -137,48 +133,12 @@ export function SettingsSheet({
 
 						<div className="space-y-3">
 							{PROVIDERS.map((provider) => (
-								<button
+								<ProviderCard
 									key={provider.key}
-									type="button"
-									onClick={() =>
-										provider.enabled && handleConnect(provider.key)
-									}
-									disabled={!provider.enabled || connectAccount.isPending}
-									className={cn(
-										"group relative w-full rounded-lg border p-4 text-left transition-all duration-200",
-										provider.accent,
-										provider.enabled
-											? cn(provider.hoverAccent, "cursor-pointer")
-											: "opacity-50 cursor-not-allowed",
-									)}
-								>
-									<div className="flex items-start gap-3">
-										<div
-											className={cn(
-												"size-10 rounded-full flex items-center justify-center shrink-0",
-												provider.iconBg,
-											)}
-										>
-											<Mail className={cn("size-4", provider.iconText)} />
-										</div>
-										<div className="flex-1 min-w-0">
-											<p className="font-display text-[16px] text-foreground lowercase leading-tight">
-												{provider.name}
-											</p>
-											<p className="font-mono text-[10px] text-grey-2 mt-0.5 tracking-[0.02em]">
-												{provider.description}
-											</p>
-											{!provider.enabled && (
-												<span className="inline-block font-mono text-[9px] text-grey-3 uppercase tracking-widest mt-1.5">
-													Coming soon
-												</span>
-											)}
-										</div>
-										{provider.enabled && (
-											<ArrowRight className="size-4 text-grey-3 shrink-0 mt-0.5 group-hover:translate-x-0.5 transition-transform duration-200" />
-										)}
-									</div>
-								</button>
+									provider={provider}
+									loading={connectAccount.isPending}
+									onConnect={() => handleConnect(provider.key)}
+								/>
 							))}
 						</div>
 					</section>
@@ -194,13 +154,14 @@ function SettingsSkeleton() {
 			{[0, 1].map((i) => (
 				<div
 					key={i}
-					className="rounded-lg border border-border/30 p-4 animate-pulse"
+					className="flex overflow-hidden rounded-lg bg-secondary/40 animate-pulse"
 				>
-					<div className="flex items-start gap-3">
-						<div className="size-10 rounded-full bg-secondary/40" />
+					<div className="w-1 shrink-0 bg-grey-3/30" />
+					<div className="flex flex-1 items-center gap-3 px-3 py-2.5">
+						<div className="size-8 rounded-full bg-secondary/60" />
 						<div className="flex-1 space-y-2">
-							<div className="h-3.5 w-40 bg-secondary/40 rounded" />
-							<div className="h-2.5 w-16 bg-secondary/25 rounded" />
+							<div className="h-3.5 w-40 bg-secondary/60 rounded" />
+							<div className="h-2.5 w-20 bg-secondary/40 rounded" />
 						</div>
 					</div>
 				</div>
