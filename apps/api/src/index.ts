@@ -6,6 +6,8 @@ import { logger } from "./plugins/logger";
 import { lenientLimit, strictLimit } from "./plugins/rate-limit";
 import { requestID } from "./plugins/request-id";
 
+const isDev = process.env.NODE_ENV !== "production";
+
 import { betterAuthHandler } from "./auth";
 import { betterAuthPlugin } from "./plugins/auth";
 import { health } from "./routes/health";
@@ -62,9 +64,8 @@ const app = new Elysia({ name: "wingmnn-api" })
 	// auth routes
 	.mount(betterAuthHandler.handler)
 	.use(health)
-	.use(strictLimit())
-
-	.use(lenientLimit())
+	.use(isDev ? (app) => app : strictLimit())
+	.use(isDev ? (app) => app : lenientLimit())
 	.use(mail)
 	.use(me)
 	.use(onboarding)

@@ -22,17 +22,17 @@ export const mail = new Elysia({
 	.use(betterAuthPlugin)
 	.get(
 		"/accounts/callback/gmail",
-		async ({ query, set }) => {
+		async ({ query }) => {
 			const clientUrl = `${env.CLIENT_URL}/module/mail`;
 
 			if (query.error) {
-				redirect(`${clientUrl}?error=${encodeURIComponent(query.error)}`);
-				return;
+				return redirect(
+					`${clientUrl}?error=${encodeURIComponent(query.error)}`,
+				);
 			}
 
 			if (!query.code || !query.state) {
-				set.redirect = `${clientUrl}?error=missing_params`;
-				return;
+				return redirect(`${clientUrl}?error=missing_params`);
 			}
 
 			const result = await mailService.handleOAuthCallback(
@@ -41,11 +41,12 @@ export const mail = new Elysia({
 			);
 
 			if (!result.ok) {
-				redirect(`${clientUrl}?error=${encodeURIComponent(result.error)}`);
-				return;
+				return redirect(
+					`${clientUrl}?error=${encodeURIComponent(result.error)}`,
+				);
 			}
 
-			redirect(`${clientUrl}?connected=true`);
+			return redirect(`${clientUrl}?connected=true`);
 		},
 		{
 			query: t.Object({
@@ -178,7 +179,7 @@ export const mail = new Elysia({
 		},
 	)
 	.post(
-		"/accounts/connect/:provider",
+		"/link/:provider",
 		async ({ user, params, set }) => {
 			const result = await mailService.connectAccount(user.id, params.provider);
 
