@@ -95,7 +95,7 @@ export function groupEmailsByTime(emails: SerializedEmail[]): TimeCluster[] {
 export function EmailRow({ email }: { email: SerializedEmail }) {
 	const initial = getInitial(email.fromName, email.fromAddress);
 	const senderDisplay = email.fromName || email.fromAddress || "Unknown";
-	const isUrgent = email.category === "urgent" || email.priorityScore >= 8;
+	const isUrgent = email.category === "urgent";
 
 	return (
 		<Link
