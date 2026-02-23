@@ -2,12 +2,14 @@ import { MOTION_CONSTANTS } from "@/components/constant";
 import { ComposeSheet } from "@/components/mail/ComposeSheet";
 import { EmailActions } from "@/components/mail/EmailActions";
 import { EmailBody } from "@/components/mail/EmailBody";
-import { useMailEmailDetail } from "@/hooks/use-mail";
+import { mailKeys, useMailEmailDetail } from "@/hooks/use-mail";
+import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute(
 	"/_authenticated/_app/module/mail/inbox/$emailId",
@@ -18,10 +20,38 @@ export const Route = createFileRoute(
 function EmailDetail() {
 	const { emailId } = Route.useParams();
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const { data, isPending } = useMailEmailDetail(emailId);
 	const [composeMode, setComposeMode] = useState<"reply" | "forward" | null>(
 		null,
 	);
+	const autoMarkedRef = useRef<string | null>(null);
+
+	// Mark as read once when first loading an unread email
+	useEffect(() => {
+		if (!data?.email || data.email.isRead || autoMarkedRef.current === emailId)
+			return;
+		autoMarkedRef.current = emailId;
+
+		const patch = { isRead: true };
+		queryClient.setQueryData(mailKeys.email(emailId), (old: any) => {
+			if (!old?.email) return old;
+			return { ...old, email: { ...old.email, ...patch } };
+		});
+		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) => {
+			if (!old?.pages) return old;
+			return {
+				...old,
+				pages: old.pages.map((page: any) => ({
+					...page,
+					emails: page.emails.map((e: any) =>
+						e.id === emailId ? { ...e, ...patch } : e,
+					),
+				})),
+			};
+		});
+		api.mail.emails({ id: emailId }).read.patch();
+	}, [data?.email?.id, data?.email?.isRead, emailId, queryClient]);
 
 	if (isPending) {
 		return <DetailSkeleton />;
@@ -47,7 +77,7 @@ function EmailDetail() {
 	}
 
 	const email = data.email;
-	const isUrgent = email.category === "urgent" || email.priorityScore >= 8;
+	const isUrgent = email.category === "urgent";
 	const navigateBack = () => navigate({ to: "/module/mail/inbox" });
 
 	return (
