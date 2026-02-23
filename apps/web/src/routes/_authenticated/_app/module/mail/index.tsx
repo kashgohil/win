@@ -1,5 +1,3 @@
-import { MOTION_CONSTANTS } from "@/components/constant";
-import { EmailRow, groupEmailsByTime } from "@/components/mail/EmailRow";
 import {
 	getProviderStyle,
 	getSyncIndicator,
@@ -12,7 +10,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { mailKeys, useMailEmails } from "@/hooks/use-mail";
+import { mailKeys } from "@/hooks/use-mail";
 import { api } from "@/lib/api";
 import {
 	mailAccountsCollection,
@@ -28,7 +26,7 @@ import { useLiveQuery } from "@tanstack/react-db";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { TriageAction } from "@wingmnn/types";
-import { ArrowRight, CheckCircle, Plus, XCircle } from "lucide-react";
+import { ArrowRight, CheckCircle, Inbox, Plus, XCircle } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 
@@ -133,11 +131,6 @@ function MailModule() {
 				}
 			: undefined;
 
-	const { data: recentEmails } = useMailEmails({ limit: 5 });
-	const clusters = recentEmails?.emails
-		? groupEmailsByTime(recentEmails.emails)
-		: [];
-
 	return (
 		<>
 			{status && (
@@ -167,48 +160,20 @@ function MailModule() {
 				isLoading={isPending}
 				headerActions={<MailHeaderActions />}
 			>
-				{/* Recent emails preview */}
-				{clusters.length > 0 && (
-					<motion.div
-						initial={{ opacity: 0, y: 12 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{
-							duration: 0.5,
-							delay: 0.15,
-							ease: MOTION_CONSTANTS.EASE,
-						}}
-						className="px-(--page-px) max-w-5xl mx-auto pb-16"
+				<div className="px-(--page-px) max-w-5xl mx-auto pb-16">
+					<Link
+						to="/module/mail/inbox"
+						className="group flex items-center justify-between rounded-lg border border-border/40 hover:border-border/70 bg-secondary/5 hover:bg-secondary/15 px-5 py-4 transition-colors duration-200"
 					>
-						<div className="flex items-center gap-3 mb-4">
-							<span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-grey-3">
-								Recent
+						<div className="flex items-center gap-3">
+							<Inbox className="size-4 text-grey-2 group-hover:text-foreground transition-colors duration-200" />
+							<span className="font-body text-[14px] text-foreground/80 group-hover:text-foreground transition-colors duration-200">
+								View all emails
 							</span>
-							<div className="flex-1 h-px bg-border/50" />
-							<Link
-								to="/module/mail/inbox"
-								className="group inline-flex items-center gap-1 font-mono text-[11px] text-grey-2 hover:text-foreground transition-colors duration-150"
-							>
-								View inbox
-								<ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform duration-150" />
-							</Link>
 						</div>
-
-						{clusters.map((cluster) => (
-							<div key={cluster.label ?? "today"}>
-								{cluster.label && (
-									<div className="pt-4 pb-1.5">
-										<span className="font-body text-[13px] text-grey-3">
-											{cluster.label}
-										</span>
-									</div>
-								)}
-								{cluster.emails.map((email) => (
-									<EmailRow key={email.id} email={email} />
-								))}
-							</div>
-						))}
-					</motion.div>
-				)}
+						<ArrowRight className="size-3.5 text-grey-3 group-hover:text-foreground group-hover:translate-x-0.5 transition-all duration-200" />
+					</Link>
+				</div>
 			</ModulePage>
 		</>
 	);
@@ -241,54 +206,67 @@ function MailHeaderActions() {
 
 	return (
 		<>
-			<div className="flex items-center gap-1.5">
-				<TooltipProvider>
-					<div className="flex items-center -space-x-2">
-						{accounts.map((account, i) => {
-							const provider = getProviderStyle(account.provider);
-							const sync = getSyncIndicator(account.syncStatus);
-							return (
-								<Tooltip key={account.id}>
-									<TooltipTrigger asChild>
-										<button
-											type="button"
-											className={cn(
-												"relative size-7 rounded-full flex items-center justify-center text-[11px] font-semibold border-2 border-background cursor-default transition-transform hover:z-10 hover:scale-110",
-												provider.bg,
-												provider.text,
-											)}
-											style={{ zIndex: accounts.length - i }}
-										>
-											{provider.initial}
-											<span
-												className={cn(
-													"absolute -bottom-px -right-px size-2 rounded-full ring-2 ring-background",
-													sync.color,
-													sync.animate && "animate-pulse",
-												)}
-											/>
-										</button>
-									</TooltipTrigger>
-									<TooltipContent side="bottom" sideOffset={8}>
-										<div className="flex flex-col gap-0.5">
-											<span className="font-medium capitalize">
-												{account.provider}
-											</span>
-											<span className="opacity-70">{account.email}</span>
-										</div>
-									</TooltipContent>
-								</Tooltip>
-							);
-						})}
-					</div>
-				</TooltipProvider>
-				<button
-					type="button"
-					onClick={() => setSettingsOpen(true)}
-					className="size-7 rounded-full border border-dashed border-border/60 flex items-center justify-center text-grey-3 hover:text-foreground hover:border-border transition-colors cursor-pointer"
+			<div className="flex items-center gap-3">
+				<Link
+					to="/module/mail/inbox"
+					className="group inline-flex items-center gap-1.5 font-body text-[12px] text-grey-2 hover:text-foreground transition-colors duration-150"
 				>
-					<Plus className="size-3.5" />
-				</button>
+					<Inbox className="size-3.5" />
+					Inbox
+					<ArrowRight className="size-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150" />
+				</Link>
+
+				<div className="w-px h-3.5 bg-border/40" />
+
+				<div className="flex items-center gap-1.5">
+					<TooltipProvider>
+						<div className="flex items-center -space-x-2">
+							{accounts.map((account, i) => {
+								const provider = getProviderStyle(account.provider);
+								const sync = getSyncIndicator(account.syncStatus);
+								return (
+									<Tooltip key={account.id}>
+										<TooltipTrigger asChild>
+											<button
+												type="button"
+												className={cn(
+													"relative size-7 rounded-full flex items-center justify-center text-[11px] font-semibold border-2 border-background cursor-default transition-transform hover:z-10 hover:scale-110",
+													provider.bg,
+													provider.text,
+												)}
+												style={{ zIndex: accounts.length - i }}
+											>
+												{provider.initial}
+												<span
+													className={cn(
+														"absolute -bottom-px -right-px size-2 rounded-full ring-2 ring-background",
+														sync.color,
+														sync.animate && "animate-pulse",
+													)}
+												/>
+											</button>
+										</TooltipTrigger>
+										<TooltipContent side="bottom" sideOffset={8}>
+											<div className="flex flex-col gap-0.5">
+												<span className="font-medium capitalize">
+													{account.provider}
+												</span>
+												<span className="opacity-70">{account.email}</span>
+											</div>
+										</TooltipContent>
+									</Tooltip>
+								);
+							})}
+						</div>
+					</TooltipProvider>
+					<button
+						type="button"
+						onClick={() => setSettingsOpen(true)}
+						className="size-7 rounded-full border border-dashed border-border/60 flex items-center justify-center text-grey-3 hover:text-foreground hover:border-border transition-colors cursor-pointer"
+					>
+						<Plus className="size-3.5" />
+					</button>
+				</div>
 			</div>
 			<SettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
 		</>

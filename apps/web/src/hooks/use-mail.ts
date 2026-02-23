@@ -38,27 +38,6 @@ export function useMailData() {
 	});
 }
 
-export function useMailEmails(params?: {
-	category?: EmailCategory;
-	limit?: number;
-	offset?: number;
-}) {
-	return useQuery({
-		queryKey: mailKeys.emails(params),
-		queryFn: async () => {
-			const { data, error } = await api.mail.emails.get({
-				query: {
-					category: params?.category,
-					limit: params?.limit?.toString(),
-					offset: params?.offset?.toString(),
-				},
-			});
-			if (error) throw new Error("Failed to load emails");
-			return data;
-		},
-	});
-}
-
 export function useMailEmailsInfinite(params?: {
 	category?: EmailCategory;
 	limit?: number;
