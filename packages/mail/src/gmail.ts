@@ -265,6 +265,76 @@ export class GmailProvider implements EmailProvider {
 		}
 	}
 
+	async markUnread(accessToken: string, messageId: string): Promise<void> {
+		const res = await fetch(
+			`${GMAIL_API}/users/me/messages/${messageId}/modify`,
+			{
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ addLabelIds: ["UNREAD"] }),
+			},
+		);
+
+		if (!res.ok) {
+			throw new Error(`Gmail markUnread failed: ${res.status}`);
+		}
+	}
+
+	async star(accessToken: string, messageId: string): Promise<void> {
+		const res = await fetch(
+			`${GMAIL_API}/users/me/messages/${messageId}/modify`,
+			{
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ addLabelIds: ["STARRED"] }),
+			},
+		);
+
+		if (!res.ok) {
+			throw new Error(`Gmail star failed: ${res.status}`);
+		}
+	}
+
+	async unstar(accessToken: string, messageId: string): Promise<void> {
+		const res = await fetch(
+			`${GMAIL_API}/users/me/messages/${messageId}/modify`,
+			{
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ removeLabelIds: ["STARRED"] }),
+			},
+		);
+
+		if (!res.ok) {
+			throw new Error(`Gmail unstar failed: ${res.status}`);
+		}
+	}
+
+	async trash(accessToken: string, messageId: string): Promise<void> {
+		const res = await fetch(
+			`${GMAIL_API}/users/me/messages/${messageId}/trash`,
+			{
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+				},
+			},
+		);
+
+		if (!res.ok) {
+			throw new Error(`Gmail trash failed: ${res.status}`);
+		}
+	}
+
 	private async getMessagesBatched(
 		accessToken: string,
 		messageIds: string[],

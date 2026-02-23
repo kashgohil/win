@@ -131,6 +131,30 @@ export const disconnectResponse = t.Object({
 	message: t.String(),
 });
 
+/* ── Email actions ── */
+
+export const toggleStarResponse = t.Object({
+	isStarred: t.Boolean(),
+});
+
+export const toggleReadResponse = t.Object({
+	isRead: t.Boolean(),
+});
+
+export const messageResponse = t.Object({
+	message: t.String(),
+});
+
+export const composeBody = t.Object({
+	body: t.String(),
+	cc: t.Optional(t.Array(t.String())),
+});
+
+export const forwardBody = t.Object({
+	to: t.Array(t.String()),
+	body: t.String(),
+});
+
 /* ── Triage action ── */
 
 export const triageActionBody = t.Object({

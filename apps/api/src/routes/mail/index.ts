@@ -4,12 +4,17 @@ import { env } from "../../env";
 import { betterAuthPlugin } from "../../plugins/auth";
 import {
 	accountListResponse,
+	composeBody,
 	connectResponse,
 	disconnectResponse,
 	emailDetailResponse,
 	emailListResponse,
 	errorResponse,
+	forwardBody,
+	messageResponse,
 	moduleDataResponse,
+	toggleReadResponse,
+	toggleStarResponse,
 	triageActionBody,
 	triageActionResponse,
 } from "./responses";
@@ -228,6 +233,180 @@ export const mail = new Elysia({
 				summary: "Disconnect email account",
 				description:
 					"Disconnects and removes an email account and all associated data",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.patch(
+		"/emails/:id/star",
+		async ({ user, params, set }) => {
+			const result = await mailService.toggleStar(user.id, params.id);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return result.data;
+		},
+		{
+			auth: true,
+			response: {
+				200: toggleStarResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Toggle email star",
+				description: "Toggles the starred status of an email",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.patch(
+		"/emails/:id/read",
+		async ({ user, params, set }) => {
+			const result = await mailService.toggleRead(user.id, params.id);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return result.data;
+		},
+		{
+			auth: true,
+			response: {
+				200: toggleReadResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Toggle email read status",
+				description: "Toggles the read/unread status of an email",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.post(
+		"/emails/:id/archive",
+		async ({ user, params, set }) => {
+			const result = await mailService.archiveEmail(user.id, params.id);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Archive email",
+				description: "Archives an email and removes it from the inbox",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.delete(
+		"/emails/:id",
+		async ({ user, params, set }) => {
+			const result = await mailService.deleteEmail(user.id, params.id);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Delete email",
+				description: "Moves an email to trash",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.post(
+		"/emails/:id/reply",
+		async ({ user, params, body, set }) => {
+			const result = await mailService.replyToEmail(
+				user.id,
+				params.id,
+				body.body,
+				body.cc,
+			);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			body: composeBody,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Reply to email",
+				description: "Sends a reply to the email sender",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.post(
+		"/emails/:id/forward",
+		async ({ user, params, body, set }) => {
+			const result = await mailService.forwardEmail(
+				user.id,
+				params.id,
+				body.to,
+				body.body,
+			);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			body: forwardBody,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Forward email",
+				description: "Forwards the email to specified recipients",
 				tags: ["Mail"],
 				security: [{ bearerAuth: [] }],
 			},

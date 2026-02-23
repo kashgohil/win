@@ -53,4 +53,8 @@ export interface EmailProvider {
 	sendDraft(accessToken: string, params: SendParams): Promise<void>;
 	archive(accessToken: string, messageId: string): Promise<void>;
 	markRead(accessToken: string, messageId: string): Promise<void>;
+	markUnread(accessToken: string, messageId: string): Promise<void>;
+	star(accessToken: string, messageId: string): Promise<void>;
+	unstar(accessToken: string, messageId: string): Promise<void>;
+	trash(accessToken: string, messageId: string): Promise<void>;
 }

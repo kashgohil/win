@@ -89,6 +89,26 @@ type TriageActionResult =
 	| { ok: true; message: string }
 	| { ok: false; error: string; status: 400 | 404 | 500 };
 
+type ToggleStarResult =
+	| { ok: true; data: { isStarred: boolean } }
+	| { ok: false; error: string; status: 404 | 500 };
+
+type ToggleReadResult =
+	| { ok: true; data: { isRead: boolean } }
+	| { ok: false; error: string; status: 404 | 500 };
+
+type ActionResult =
+	| { ok: true; message: string }
+	| { ok: false; error: string; status: 404 | 500 };
+
+type ReplyResult =
+	| { ok: true; message: string }
+	| { ok: false; error: string; status: 404 | 500 };
+
+type ForwardResult =
+	| { ok: true; message: string }
+	| { ok: false; error: string; status: 404 | 500 };
+
 type SerializedEmail = {
 	id: string;
 	emailAccountId: string;
@@ -582,6 +602,182 @@ class MailService {
 				error: "Failed to disconnect account",
 				status: 500,
 			};
+		}
+	}
+
+	async toggleStar(userId: string, emailId: string): Promise<ToggleStarResult> {
+		try {
+			const email = await db.query.emails.findFirst({
+				where: and(eq(emails.id, emailId), eq(emails.userId, userId)),
+			});
+
+			if (!email) {
+				return { ok: false, error: "Email not found", status: 404 };
+			}
+
+			const ctx = await getEmailProviderContext(emailId);
+			if (!ctx.ok) {
+				return { ok: false, error: ctx.error, status: 500 };
+			}
+
+			const newStarred = !email.isStarred;
+			if (newStarred) {
+				await ctx.provider.star(ctx.accessToken, email.providerMessageId);
+			} else {
+				await ctx.provider.unstar(ctx.accessToken, email.providerMessageId);
+			}
+
+			await db
+				.update(emails)
+				.set({ isStarred: newStarred })
+				.where(eq(emails.id, emailId));
+
+			return { ok: true, data: { isStarred: newStarred } };
+		} catch (err) {
+			console.error("[mail] toggleStar failed:", err);
+			return { ok: false, error: "Failed to toggle star", status: 500 };
+		}
+	}
+
+	async toggleRead(userId: string, emailId: string): Promise<ToggleReadResult> {
+		try {
+			const email = await db.query.emails.findFirst({
+				where: and(eq(emails.id, emailId), eq(emails.userId, userId)),
+			});
+
+			if (!email) {
+				return { ok: false, error: "Email not found", status: 404 };
+			}
+
+			const ctx = await getEmailProviderContext(emailId);
+			if (!ctx.ok) {
+				return { ok: false, error: ctx.error, status: 500 };
+			}
+
+			const newIsRead = !email.isRead;
+			if (newIsRead) {
+				await ctx.provider.markRead(ctx.accessToken, email.providerMessageId);
+			} else {
+				await ctx.provider.markUnread(ctx.accessToken, email.providerMessageId);
+			}
+
+			await db
+				.update(emails)
+				.set({ isRead: newIsRead })
+				.where(eq(emails.id, emailId));
+
+			return { ok: true, data: { isRead: newIsRead } };
+		} catch (err) {
+			console.error("[mail] toggleRead failed:", err);
+			return { ok: false, error: "Failed to toggle read status", status: 500 };
+		}
+	}
+
+	async archiveEmail(userId: string, emailId: string): Promise<ActionResult> {
+		try {
+			const ctx = await getEmailProviderContext(emailId);
+			if (!ctx.ok) {
+				return { ok: false, error: ctx.error, status: 500 };
+			}
+
+			if (ctx.email.userId !== userId) {
+				return { ok: false, error: "Email not found", status: 404 };
+			}
+
+			await ctx.provider.archive(ctx.accessToken, ctx.email.providerMessageId);
+			await db.delete(emails).where(eq(emails.id, emailId));
+			await invalidateCache(`mail:briefing:${userId}`);
+
+			return { ok: true, message: "Email archived" };
+		} catch (err) {
+			console.error("[mail] archiveEmail failed:", err);
+			return { ok: false, error: "Failed to archive email", status: 500 };
+		}
+	}
+
+	async deleteEmail(userId: string, emailId: string): Promise<ActionResult> {
+		try {
+			const ctx = await getEmailProviderContext(emailId);
+			if (!ctx.ok) {
+				return { ok: false, error: ctx.error, status: 500 };
+			}
+
+			if (ctx.email.userId !== userId) {
+				return { ok: false, error: "Email not found", status: 404 };
+			}
+
+			await ctx.provider.trash(ctx.accessToken, ctx.email.providerMessageId);
+			await db.delete(emails).where(eq(emails.id, emailId));
+			await invalidateCache(`mail:briefing:${userId}`);
+
+			return { ok: true, message: "Email deleted" };
+		} catch (err) {
+			console.error("[mail] deleteEmail failed:", err);
+			return { ok: false, error: "Failed to delete email", status: 500 };
+		}
+	}
+
+	async replyToEmail(
+		userId: string,
+		emailId: string,
+		body: string,
+		cc?: string[],
+	): Promise<ReplyResult> {
+		try {
+			const ctx = await getEmailProviderContext(emailId);
+			if (!ctx.ok) {
+				return { ok: false, error: ctx.error, status: 500 };
+			}
+
+			if (ctx.email.userId !== userId) {
+				return { ok: false, error: "Email not found", status: 404 };
+			}
+
+			await ctx.provider.sendDraft(ctx.accessToken, {
+				to: [ctx.email.fromAddress ?? ""],
+				cc,
+				subject: `Re: ${ctx.email.subject ?? ""}`,
+				body,
+				threadId: ctx.email.providerThreadId ?? undefined,
+				inReplyTo: ctx.email.providerMessageId,
+			});
+
+			return { ok: true, message: "Reply sent" };
+		} catch (err) {
+			console.error("[mail] replyToEmail failed:", err);
+			return { ok: false, error: "Failed to send reply", status: 500 };
+		}
+	}
+
+	async forwardEmail(
+		userId: string,
+		emailId: string,
+		to: string[],
+		body: string,
+	): Promise<ForwardResult> {
+		try {
+			const ctx = await getEmailProviderContext(emailId);
+			if (!ctx.ok) {
+				return { ok: false, error: ctx.error, status: 500 };
+			}
+
+			if (ctx.email.userId !== userId) {
+				return { ok: false, error: "Email not found", status: 404 };
+			}
+
+			const originalBody = ctx.email.bodyPlain ?? "";
+			const quotedBody = `${body}\n\n---------- Forwarded message ----------\nFrom: ${ctx.email.fromAddress ?? ""}\nSubject: ${ctx.email.subject ?? ""}\n\n${originalBody}`;
+
+			await ctx.provider.sendDraft(ctx.accessToken, {
+				to,
+				subject: `Fwd: ${ctx.email.subject ?? ""}`,
+				body: quotedBody,
+			});
+
+			return { ok: true, message: "Email forwarded" };
+		} catch (err) {
+			console.error("[mail] forwardEmail failed:", err);
+			return { ok: false, error: "Failed to forward email", status: 500 };
 		}
 	}
 
