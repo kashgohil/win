@@ -1,32 +1,21 @@
 import { db, emails, eq, inArray, mailTriageItems } from "@wingmnn/db";
 import { Worker } from "bullmq";
+import { getAiEnv } from "../ai/env";
+import { getAiProvider } from "../ai/factory";
+import { CLASSIFY_SYSTEM_PROMPT, DRAFT_SYSTEM_PROMPT } from "../ai/prompts";
+import { classifyByRules } from "../ai/rules";
+import type {
+	AiProvider,
+	ClassificationResult,
+	DraftInput,
+	EmailInput,
+} from "../ai/types";
 import { connection } from "../connection";
 import type { MailAiJobData } from "../jobs/mail-ai";
 import { enqueueDraftResponse } from "../jobs/mail-ai";
 import { enqueueAutoHandle } from "../jobs/mail-autohandle";
 
-interface ClassificationResult {
-	category:
-		| "urgent"
-		| "actionable"
-		| "informational"
-		| "newsletter"
-		| "receipt"
-		| "confirmation"
-		| "promotional"
-		| "spam"
-		| "uncategorized";
-	priorityScore: number;
-	summary: string;
-	shouldTriage: boolean;
-	shouldAutoHandle: boolean;
-	autoHandleAction?:
-		| "archived"
-		| "labeled"
-		| "forwarded"
-		| "auto-replied"
-		| "filtered";
-}
+// ── Stub fallbacks (keyword-based, never fails) ──
 
 function stubClassify(email: {
 	subject: string | null;
@@ -107,19 +96,139 @@ function stubClassify(email: {
 	};
 }
 
+function stubGenerateDraft(email: {
+	subject: string | null;
+	fromName: string | null;
+	fromAddress: string | null;
+	snippet: string | null;
+}): string {
+	const senderName =
+		email.fromName ?? email.fromAddress?.split("@")[0] ?? "there";
+	const subject = (email.subject ?? "").toLowerCase();
+
+	if (subject.includes("meeting") || subject.includes("schedule")) {
+		return `Hi ${senderName},\n\nThank you for reaching out about scheduling. I've reviewed the details and will confirm my availability shortly.\n\nBest regards`;
+	}
+
+	if (subject.includes("contract") || subject.includes("agreement")) {
+		return `Hi ${senderName},\n\nThank you for sending this over. I'll review the contract details carefully and get back to you with any questions or my confirmation.\n\nBest regards`;
+	}
+
+	if (subject.includes("invoice") || subject.includes("payment")) {
+		return `Hi ${senderName},\n\nThank you for the invoice. I'll review the details and process it accordingly. I'll reach out if I have any questions.\n\nBest regards`;
+	}
+
+	if (
+		subject.includes("urgent") ||
+		subject.includes("asap") ||
+		subject.includes("immediately")
+	) {
+		return `Hi ${senderName},\n\nThank you for flagging this. I'm looking into it now and will follow up with you shortly.\n\nBest regards`;
+	}
+
+	if (subject.includes("proposal") || subject.includes("quote")) {
+		return `Hi ${senderName},\n\nThank you for the proposal. I'll review the details and get back to you with my thoughts.\n\nBest regards`;
+	}
+
+	if (subject.includes("question") || subject.includes("help")) {
+		return `Hi ${senderName},\n\nThank you for reaching out. I've noted your question and will provide a detailed response shortly.\n\nBest regards`;
+	}
+
+	return `Hi ${senderName},\n\nThank you for your email regarding "${email.subject ?? "your message"}". I'll review this and get back to you shortly.\n\nBest regards`;
+}
+
+// ── Helpers ──
+
+function toEmailInput(email: {
+	subject: string | null;
+	fromAddress: string | null;
+	fromName: string | null;
+	snippet: string | null;
+	bodyPlain: string | null;
+}): EmailInput {
+	return {
+		subject: email.subject ?? "",
+		fromAddress: email.fromAddress ?? "",
+		fromName: email.fromName ?? "",
+		snippet: email.snippet ?? "",
+		bodyPlain: email.bodyPlain ?? "",
+	};
+}
+
+async function classifyEmail(
+	email: {
+		subject: string | null;
+		fromAddress: string | null;
+		fromName: string | null;
+		snippet: string | null;
+		bodyPlain: string | null;
+	},
+	aiProvider: AiProvider | null,
+): Promise<ClassificationResult> {
+	const input = toEmailInput(email);
+
+	// 1. Try keyword rules first (free, instant)
+	const rulesResult = classifyByRules(input);
+	if (rulesResult) {
+		console.log(
+			`[mail-ai] Rules engine classified "${email.subject}" as ${rulesResult.category}`,
+		);
+		return rulesResult;
+	}
+
+	// 2. Try AI provider
+	if (aiProvider) {
+		try {
+			const aiResult = await aiProvider.classify(input, CLASSIFY_SYSTEM_PROMPT);
+			console.log(
+				`[mail-ai] AI classified "${email.subject}" as ${aiResult.category} (score: ${aiResult.priorityScore})`,
+			);
+			return aiResult;
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			console.error(
+				`[mail-ai] AI classification failed for "${email.subject}", falling back to stub:`,
+				message,
+			);
+		}
+	}
+
+	// 3. Stub fallback (always succeeds)
+	return stubClassify(email);
+}
+
+// ── Process classify batch ──
+
 async function processClassify(
 	emailIds: string[],
 	userId: string,
 ): Promise<void> {
 	if (emailIds.length === 0) return;
 
+	const aiProvider = getAiProvider();
+	const { maxConcurrency } = getAiEnv();
+
 	const emailRows = await db.query.emails.findMany({
 		where: inArray(emails.id, emailIds),
 	});
 
-	for (const email of emailRows) {
-		const result = stubClassify(email);
+	// Process with concurrency limit
+	const results: {
+		email: (typeof emailRows)[number];
+		result: ClassificationResult;
+	}[] = [];
+	for (let i = 0; i < emailRows.length; i += maxConcurrency) {
+		const batch = emailRows.slice(i, i + maxConcurrency);
+		const batchResults = await Promise.all(
+			batch.map(async (email) => ({
+				email,
+				result: await classifyEmail(email, aiProvider),
+			})),
+		);
+		results.push(...batchResults);
+	}
 
+	for (const { email, result } of results) {
 		await db
 			.update(emails)
 			.set({
@@ -185,46 +294,7 @@ async function processClassify(
 	}
 }
 
-function generateDraft(email: {
-	subject: string | null;
-	fromName: string | null;
-	fromAddress: string | null;
-	snippet: string | null;
-}): string {
-	const senderName =
-		email.fromName ?? email.fromAddress?.split("@")[0] ?? "there";
-	const subject = (email.subject ?? "").toLowerCase();
-
-	if (subject.includes("meeting") || subject.includes("schedule")) {
-		return `Hi ${senderName},\n\nThank you for reaching out about scheduling. I've reviewed the details and will confirm my availability shortly.\n\nBest regards`;
-	}
-
-	if (subject.includes("contract") || subject.includes("agreement")) {
-		return `Hi ${senderName},\n\nThank you for sending this over. I'll review the contract details carefully and get back to you with any questions or my confirmation.\n\nBest regards`;
-	}
-
-	if (subject.includes("invoice") || subject.includes("payment")) {
-		return `Hi ${senderName},\n\nThank you for the invoice. I'll review the details and process it accordingly. I'll reach out if I have any questions.\n\nBest regards`;
-	}
-
-	if (
-		subject.includes("urgent") ||
-		subject.includes("asap") ||
-		subject.includes("immediately")
-	) {
-		return `Hi ${senderName},\n\nThank you for flagging this. I'm looking into it now and will follow up with you shortly.\n\nBest regards`;
-	}
-
-	if (subject.includes("proposal") || subject.includes("quote")) {
-		return `Hi ${senderName},\n\nThank you for the proposal. I'll review the details and get back to you with my thoughts.\n\nBest regards`;
-	}
-
-	if (subject.includes("question") || subject.includes("help")) {
-		return `Hi ${senderName},\n\nThank you for reaching out. I've noted your question and will provide a detailed response shortly.\n\nBest regards`;
-	}
-
-	return `Hi ${senderName},\n\nThank you for your email regarding "${email.subject ?? "your message"}". I'll review this and get back to you shortly.\n\nBest regards`;
-}
+// ── Process draft response ──
 
 async function processDraftResponse(
 	emailId: string,
@@ -237,7 +307,33 @@ async function processDraftResponse(
 
 	if (!email) return;
 
-	const draft = generateDraft(email);
+	let draft: string;
+
+	const aiProvider = getAiProvider();
+	if (aiProvider) {
+		try {
+			const draftInput: DraftInput = {
+				subject: email.subject ?? "",
+				fromAddress: email.fromAddress ?? "",
+				fromName: email.fromName ?? "",
+				snippet: email.snippet ?? "",
+				bodyPlain: email.bodyPlain ?? "",
+				toAddresses: email.toAddresses ?? [],
+				aiSummary: email.aiSummary ?? "",
+			};
+			draft = await aiProvider.generateDraft(draftInput, DRAFT_SYSTEM_PROMPT);
+			console.log(`[mail-ai] AI generated draft for "${email.subject}"`);
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			console.error(
+				`[mail-ai] AI draft generation failed for "${email.subject}", falling back to stub:`,
+				message,
+			);
+			draft = stubGenerateDraft(email);
+		}
+	} else {
+		draft = stubGenerateDraft(email);
+	}
 
 	await db
 		.update(mailTriageItems)
@@ -247,6 +343,8 @@ async function processDraftResponse(
 		})
 		.where(eq(mailTriageItems.id, triageItemId));
 }
+
+// ── Worker setup ──
 
 export function createMailAiWorker() {
 	const worker = new Worker<MailAiJobData>(
