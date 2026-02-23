@@ -1,12 +1,11 @@
 import { cn } from "@/lib/utils";
 import type { EmailCategory } from "@wingmnn/types";
-import { SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { MOTION_CONSTANTS } from "../constant";
 
-const CATEGORIES: { value: EmailCategory | undefined; label: string }[] = [
-	{ value: undefined, label: "All" },
+const CATEGORIES: { value: EmailCategory; label: string }[] = [
 	{ value: "urgent", label: "Urgent" },
 	{ value: "actionable", label: "Actionable" },
 	{ value: "informational", label: "Info" },
@@ -18,17 +17,13 @@ const CATEGORIES: { value: EmailCategory | undefined; label: string }[] = [
 	{ value: "uncategorized", label: "Other" },
 ];
 
-function getCategoryLabel(value: EmailCategory): string {
-	return CATEGORIES.find((c) => c.value === value)?.label ?? value;
-}
-
 export function CategoryFilter({
 	value,
 	onChange,
 	total,
 }: {
-	value: EmailCategory | undefined;
-	onChange: (category: EmailCategory | undefined) => void;
+	value: EmailCategory[];
+	onChange: (categories: EmailCategory[]) => void;
 	total?: number;
 }) {
 	const [expanded, setExpanded] = useState(false);
@@ -49,6 +44,18 @@ export function CategoryFilter({
 		return () => document.removeEventListener("mousedown", handleClick);
 	}, [expanded]);
 
+	const selected = new Set(value);
+
+	const toggleCategory = (cat: EmailCategory) => {
+		const next = new Set(selected);
+		if (next.has(cat)) {
+			next.delete(cat);
+		} else {
+			next.add(cat);
+		}
+		onChange([...next]);
+	};
+
 	return (
 		<div ref={containerRef}>
 			{/* Header with integrated filter trigger */}
@@ -60,32 +67,21 @@ export function CategoryFilter({
 				)}
 				<div className="flex-1" />
 
-				{value ? (
-					<button
-						type="button"
-						onClick={() => setExpanded((p) => !p)}
-						className="inline-flex items-center gap-1.5 font-body text-[12px] px-2.5 py-0.5 rounded-full bg-foreground text-background cursor-pointer group transition-colors duration-150"
-					>
-						{getCategoryLabel(value)}
-						<X
-							className="size-3 opacity-50 group-hover:opacity-100 transition-opacity"
-							onClick={(e) => {
-								e.stopPropagation();
-								onChange(undefined);
-								setExpanded(false);
-							}}
-						/>
-					</button>
-				) : (
-					<button
-						type="button"
-						onClick={() => setExpanded((p) => !p)}
-						className="inline-flex items-center gap-1.5 font-body text-[12px] text-grey-3 hover:text-foreground cursor-pointer transition-colors duration-150"
-					>
-						<SlidersHorizontal className="size-3" />
-						Filter
-					</button>
-				)}
+				<button
+					type="button"
+					onClick={() => setExpanded((p) => !p)}
+					className={cn(
+						"inline-flex items-center gap-1.5 font-body text-[12px] cursor-pointer transition-colors duration-150",
+						selected.size > 0
+							? "px-2.5 py-0.5 rounded-full bg-foreground text-background"
+							: "text-grey-3 hover:text-foreground",
+					)}
+				>
+					<SlidersHorizontal className="size-3" />
+					{selected.size > 0
+						? `${selected.size} filter${selected.size !== 1 ? "s" : ""}`
+						: "Filter"}
+				</button>
 			</div>
 
 			{/* Expandable chip palette */}
@@ -103,15 +99,12 @@ export function CategoryFilter({
 					>
 						<div className="flex flex-wrap items-center gap-1.5 pt-3">
 							{CATEGORIES.map((cat) => {
-								const active = value === cat.value;
+								const active = selected.has(cat.value);
 								return (
 									<button
 										key={cat.label}
 										type="button"
-										onClick={() => {
-											onChange(cat.value);
-											setExpanded(false);
-										}}
+										onClick={() => toggleCategory(cat.value)}
 										className={cn(
 											"font-body text-[12px] px-2.5 py-1 rounded-full shrink-0 transition-colors duration-150 cursor-pointer",
 											active

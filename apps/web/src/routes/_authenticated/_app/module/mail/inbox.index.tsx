@@ -1,11 +1,12 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
 import { CategoryFilter } from "@/components/mail/CategoryFilter";
 import { EmailRow, groupEmailsByTime } from "@/components/mail/EmailRow";
-import { useMailEmails } from "@/hooks/use-mail";
+import { useMailEmailsInfinite } from "@/hooks/use-mail";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { EmailCategory } from "@wingmnn/types";
 import { ArrowLeft } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect, useRef } from "react";
 
 const PAGE_SIZE = 30;
 
@@ -22,46 +23,74 @@ const VALID_CATEGORIES: Set<string> = new Set([
 ]);
 
 type InboxSearch = {
-	category?: EmailCategory;
-	offset?: number;
+	categories?: EmailCategory[];
 };
+
+function parseCategories(raw: unknown): EmailCategory[] | undefined {
+	if (typeof raw === "string" && VALID_CATEGORIES.has(raw))
+		return [raw as EmailCategory];
+	if (Array.isArray(raw)) {
+		const valid = raw.filter(
+			(v): v is EmailCategory =>
+				typeof v === "string" && VALID_CATEGORIES.has(v),
+		);
+		return valid.length > 0 ? valid : undefined;
+	}
+	return undefined;
+}
 
 export const Route = createFileRoute("/_authenticated/_app/module/mail/inbox/")(
 	{
 		component: MailInbox,
 		validateSearch: (search: Record<string, unknown>): InboxSearch => ({
-			category:
-				typeof search.category === "string" &&
-				VALID_CATEGORIES.has(search.category)
-					? (search.category as EmailCategory)
-					: undefined,
-			offset: typeof search.offset === "number" ? search.offset : undefined,
+			categories: parseCategories(search.categories),
 		}),
 	},
 );
 
 function MailInbox() {
-	const { category, offset } = Route.useSearch();
+	const { categories = [] } = Route.useSearch();
 	const navigate = useNavigate();
+	const sentinelRef = useRef<HTMLDivElement>(null);
 
-	const { data, isPending } = useMailEmails({
-		category,
-		limit: PAGE_SIZE,
-		offset: offset ?? 0,
-	});
+	// When filtering by a single category, pass it to the API for efficiency.
+	// With multiple categories or none, fetch all and filter client-side.
+	const apiCategory = categories.length === 1 ? categories[0] : undefined;
 
-	const handleCategoryChange = (cat: EmailCategory | undefined) => {
-		navigate({
-			to: "/module/mail/inbox",
-			search: { category: cat, offset: undefined },
-			replace: true,
+	const { data, isPending, hasNextPage, isFetchingNextPage, fetchNextPage } =
+		useMailEmailsInfinite({
+			category: apiCategory,
+			limit: PAGE_SIZE,
 		});
-	};
 
-	const handleLoadMore = () => {
+	// IntersectionObserver to auto-fetch next page
+	useEffect(() => {
+		const el = sentinelRef.current;
+		if (!el) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+					fetchNextPage();
+				}
+			},
+			{ rootMargin: "200px" },
+		);
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+	const allEmails = data?.pages.flatMap((page) => page?.emails ?? []) ?? [];
+	const categorySet = categories.length > 1 ? new Set(categories) : undefined;
+	const emails = categorySet
+		? allEmails.filter((e) => categorySet.has(e.category as EmailCategory))
+		: allEmails;
+	const total = categories.length > 1 ? emails.length : data?.pages[0]?.total;
+
+	const handleCategoryChange = (cats: EmailCategory[]) => {
 		navigate({
 			to: "/module/mail/inbox",
-			search: { category, offset: (offset ?? 0) + PAGE_SIZE },
+			search: { categories: cats.length > 0 ? cats : undefined },
 			replace: true,
 		});
 	};
@@ -91,23 +120,25 @@ function MailInbox() {
 				transition={{ duration: 0.4, ease: MOTION_CONSTANTS.EASE }}
 			>
 				<CategoryFilter
-					value={category}
+					value={categories}
 					onChange={handleCategoryChange}
-					total={data?.total}
+					total={total}
 				/>
 			</motion.div>
 
 			{/* Email list */}
 			{isPending ? (
 				<InboxSkeleton />
-			) : !data || data.emails.length === 0 ? (
+			) : emails.length === 0 ? (
 				<motion.div
 					initial={{ opacity: 0 }}
 					animate={{ opacity: 1 }}
 					className="py-16 flex flex-col items-center gap-2"
 				>
 					<p className="font-serif text-[15px] text-grey-2 italic text-center">
-						{category ? `No emails in ${category}.` : "No emails yet."}
+						{categories.length > 0
+							? "No emails matching filters."
+							: "No emails yet."}
 					</p>
 				</motion.div>
 			) : (
@@ -121,7 +152,7 @@ function MailInbox() {
 					}}
 					className="mt-4"
 				>
-					{groupEmailsByTime(data.emails).map((cluster) => (
+					{groupEmailsByTime(emails).map((cluster) => (
 						<div key={cluster.label ?? "today"}>
 							{cluster.label && (
 								<div className="pt-6 pb-2">
@@ -136,16 +167,12 @@ function MailInbox() {
 						</div>
 					))}
 
-					{/* Load more */}
-					{data.hasMore && (
-						<div className="flex justify-center pt-6 pb-8">
-							<button
-								type="button"
-								onClick={handleLoadMore}
-								className="font-body text-[13px] text-grey-2 hover:text-foreground px-4 py-2 rounded-full border border-border/40 hover:border-border/60 transition-colors duration-150 cursor-pointer"
-							>
-								Load more
-							</button>
+					{/* Sentinel for infinite scroll */}
+					<div ref={sentinelRef} className="h-px" />
+
+					{isFetchingNextPage && (
+						<div className="flex justify-center py-6">
+							<div className="size-5 border-2 border-border/60 border-t-foreground/60 rounded-full animate-spin" />
 						</div>
 					)}
 				</motion.div>

@@ -1,5 +1,10 @@
 import { api } from "@/lib/api";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	useInfiniteQuery,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import type {
 	EmailCategory,
 	EmailProvider,
@@ -51,6 +56,31 @@ export function useMailEmails(params?: {
 			if (error) throw new Error("Failed to load emails");
 			return data;
 		},
+	});
+}
+
+export function useMailEmailsInfinite(params?: {
+	category?: EmailCategory;
+	limit?: number;
+}) {
+	const pageSize = params?.limit ?? 30;
+
+	return useInfiniteQuery({
+		queryKey: mailKeys.emails({ category: params?.category }),
+		queryFn: async ({ pageParam = 0 }) => {
+			const { data, error } = await api.mail.emails.get({
+				query: {
+					category: params?.category,
+					limit: pageSize.toString(),
+					offset: pageParam.toString(),
+				},
+			});
+			if (error) throw new Error("Failed to load emails");
+			return data;
+		},
+		initialPageParam: 0,
+		getNextPageParam: (lastPage, _allPages, lastPageParam) =>
+			lastPage?.hasMore ? lastPageParam + pageSize : undefined,
 	});
 }
 
@@ -110,6 +140,46 @@ export function useConnectAccount() {
 		mutationFn: async (provider: EmailProvider) => {
 			const { data, error } = await api.mail.link({ provider }).post();
 			if (error) throw new Error("Failed to connect account");
+			return data;
+		},
+	});
+}
+
+export function useReplyToEmail() {
+	return useMutation({
+		mutationFn: async ({
+			id,
+			body,
+			cc,
+		}: {
+			id: string;
+			body: string;
+			cc?: string[];
+		}) => {
+			const { data, error } = await api.mail
+				.emails({ id })
+				.reply.post({ body, cc });
+			if (error) throw new Error("Failed to send reply");
+			return data;
+		},
+	});
+}
+
+export function useForwardEmail() {
+	return useMutation({
+		mutationFn: async ({
+			id,
+			to,
+			body,
+		}: {
+			id: string;
+			to: string[];
+			body: string;
+		}) => {
+			const { data, error } = await api.mail
+				.emails({ id })
+				.forward.post({ to, body });
+			if (error) throw new Error("Failed to forward email");
 			return data;
 		},
 	});

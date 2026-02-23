@@ -1,10 +1,13 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
+import { ComposeSheet } from "@/components/mail/ComposeSheet";
+import { EmailActions } from "@/components/mail/EmailActions";
 import { EmailBody } from "@/components/mail/EmailBody";
 import { useMailEmailDetail } from "@/hooks/use-mail";
 import { cn, formatDate } from "@/lib/utils";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Archive, ArrowLeft, Sparkles } from "lucide-react";
-import { motion } from "motion/react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, ChevronDown, Sparkles } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useState } from "react";
 
 export const Route = createFileRoute(
 	"/_authenticated/_app/module/mail/inbox/$emailId",
@@ -14,7 +17,11 @@ export const Route = createFileRoute(
 
 function EmailDetail() {
 	const { emailId } = Route.useParams();
+	const navigate = useNavigate();
 	const { data, isPending } = useMailEmailDetail(emailId);
+	const [composeMode, setComposeMode] = useState<"reply" | "forward" | null>(
+		null,
+	);
 
 	if (isPending) {
 		return <DetailSkeleton />;
@@ -41,10 +48,10 @@ function EmailDetail() {
 
 	const email = data.email;
 	const isUrgent = email.category === "urgent" || email.priorityScore >= 8;
+	const navigateBack = () => navigate({ to: "/module/mail/inbox" });
 
 	return (
 		<div className="px-(--page-px) py-8 max-w-5xl mx-auto pb-16">
-			{/* Back link */}
 			<motion.div
 				initial={{ opacity: 0, x: -8 }}
 				animate={{ opacity: 1, x: 0 }}
@@ -52,14 +59,13 @@ function EmailDetail() {
 			>
 				<Link
 					to="/module/mail/inbox"
-					className="inline-flex items-center gap-1.5 font-body text-[13px] text-grey-2 hover:text-foreground transition-colors"
+					className="group inline-flex items-center gap-1.5 font-body text-[13px] text-grey-2 hover:text-foreground transition-colors"
 				>
 					<ArrowLeft className="size-3" />
 					Back to inbox
 				</Link>
 			</motion.div>
 
-			{/* Header */}
 			<motion.header
 				initial={{ opacity: 0, y: 12 }}
 				animate={{ opacity: 1, y: 0 }}
@@ -73,93 +79,82 @@ function EmailDetail() {
 				<h2 className="font-display text-[clamp(1.25rem,2.5vw,1.75rem)] text-foreground leading-tight lowercase">
 					{email.subject || "(no subject)"}
 				</h2>
-
-				{/* Metadata — compact inline */}
-				<div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-					<span className="font-body text-[13px] text-foreground">
-						{email.fromName && (
-							<span className="font-medium">{email.fromName}</span>
-						)}
-						{email.fromAddress && (
-							<span className="text-grey-2">
-								{email.fromName ? " " : ""}
-								&lt;{email.fromAddress}&gt;
-							</span>
-						)}
-					</span>
-					{email.toAddresses && email.toAddresses.length > 0 && (
-						<>
-							<span className="font-body text-[12px] text-grey-3">&rarr;</span>
-							<span className="font-body text-[13px] text-grey-2">
-								{email.toAddresses.join(", ")}
-							</span>
-						</>
-					)}
-				</div>
-
-				{email.ccAddresses && email.ccAddresses.length > 0 && (
-					<div className="mt-1 flex items-baseline gap-2">
-						<span className="font-body text-[12px] text-grey-3">Cc</span>
-						<span className="font-body text-[13px] text-grey-2">
-							{email.ccAddresses.join(", ")}
-						</span>
-					</div>
-				)}
-
-				<div className="mt-2 flex items-center gap-3">
-					<span className="font-body text-[13px] text-grey-2">
-						{formatDate(email.receivedAt)}
-					</span>
-					{isUrgent && <span className="size-1.5 rounded-full bg-accent-red" />}
-					<span className="font-body text-[12px] text-grey-3 capitalize">
-						{email.category}
-					</span>
-				</div>
 			</motion.header>
 
-			{/* Divider */}
-			<div className="my-6 h-px bg-border/30" />
-
-			{/* Body + AI Summary — side-by-side on desktop */}
-			<div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
-				{/* AI Summary — mobile: card above body, desktop: sticky aside */}
-				{email.aiSummary && (
-					<motion.div
-						initial={{ opacity: 0, y: 12 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{
-							duration: 0.5,
-							delay: 0.12,
-							ease: MOTION_CONSTANTS.EASE,
-						}}
-						className="order-first lg:order-last lg:sticky lg:top-8 lg:self-start rounded-lg bg-secondary/20 p-4"
-					>
-						<div className="flex items-center gap-1.5 mb-2">
-							<Sparkles className="size-3 text-grey-3" />
-							<span className="font-body text-[12px] text-foreground/40">
-								Summary
-							</span>
+			{/* Metadata + AI summary as one block */}
+			<motion.div
+				initial={{ opacity: 0, y: 8 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{
+					duration: 0.45,
+					delay: 0.08,
+					ease: MOTION_CONSTANTS.EASE,
+				}}
+				className="mt-4 rounded-lg border border-border/40 bg-secondary/10 overflow-hidden"
+			>
+				<dl className="px-4 py-3.5 space-y-2.5">
+					<div className="flex gap-3 min-w-0">
+						<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
+							From
+						</dt>
+						<dd className="font-body text-[13px] text-foreground min-w-0">
+							{email.fromName && (
+								<span className="font-medium">{email.fromName}</span>
+							)}
+							{email.fromAddress && (
+								<span className="text-grey-2 font-mono text-[12px]">
+									{email.fromName ? " " : ""}
+									&lt;{email.fromAddress}&gt;
+								</span>
+							)}
+						</dd>
+					</div>
+					{email.toAddresses && email.toAddresses.length > 0 && (
+						<div className="flex gap-3 min-w-0">
+							<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
+								To
+							</dt>
+							<dd className="font-mono text-[12px] text-grey-2 min-w-0 break-all">
+								{email.toAddresses.join(", ")}
+							</dd>
 						</div>
-						<p className="font-serif text-[14px] text-foreground/60 italic leading-relaxed">
-							{email.aiSummary}
-						</p>
-					</motion.div>
-				)}
+					)}
+					{email.ccAddresses && email.ccAddresses.length > 0 && (
+						<div className="flex gap-3 min-w-0">
+							<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
+								Cc
+							</dt>
+							<dd className="font-mono text-[12px] text-grey-2 min-w-0 break-all">
+								{email.ccAddresses.join(", ")}
+							</dd>
+						</div>
+					)}
+					<div className="flex flex-wrap items-center gap-x-2 gap-y-0 pt-0.5">
+						<dt className="sr-only">Date and category</dt>
+						<dd className="font-body text-[12px] text-grey-2 flex flex-wrap items-center gap-x-2">
+							<time dateTime={email.receivedAt}>
+								{formatDate(email.receivedAt)}
+							</time>
+							<span className="text-grey-3">·</span>
+							<span className="capitalize">{email.category}</span>
+							{isUrgent && (
+								<>
+									<span className="text-grey-3">·</span>
+									<span className="flex items-center gap-1 text-accent-red">
+										<span
+											className="size-1.5 rounded-full bg-accent-red"
+											aria-hidden
+										/>
+										Urgent
+									</span>
+								</>
+							)}
+						</dd>
+					</div>
+				</dl>
 
-				{/* Body */}
-				<motion.div
-					initial={{ opacity: 0, y: 12 }}
-					animate={{ opacity: 1, y: 0 }}
-					transition={{
-						duration: 0.5,
-						delay: 0.18,
-						ease: MOTION_CONSTANTS.EASE,
-					}}
-					className={email.aiSummary ? "" : "lg:col-span-2"}
-				>
-					<EmailBody html={email.bodyHtml} plain={email.bodyPlain} />
-				</motion.div>
-			</div>
+				{email.aiSummary && <AiSummary summary={email.aiSummary} />}
+			</motion.div>
 
 			{/* Action bar */}
 			<motion.div
@@ -167,19 +162,95 @@ function EmailDetail() {
 				animate={{ opacity: 1, y: 0 }}
 				transition={{
 					duration: 0.4,
-					delay: 0.24,
+					delay: 0.1,
 					ease: MOTION_CONSTANTS.EASE,
 				}}
-				className="mt-6 pt-6 border-t border-border/30 flex items-center gap-4"
+				className="mt-4"
 			>
-				<button
-					type="button"
-					className="inline-flex items-center gap-1.5 font-body text-[13px] text-grey-2 hover:text-foreground transition-colors duration-150 cursor-pointer"
-				>
-					<Archive className="size-3" />
-					Archive
-				</button>
+				<EmailActions
+					emailId={emailId}
+					isStarred={email.isStarred}
+					isRead={email.isRead}
+					onReply={() => setComposeMode("reply")}
+					onForward={() => setComposeMode("forward")}
+					onNavigateBack={navigateBack}
+				/>
 			</motion.div>
+
+			<div className="my-6 h-px bg-border/30" />
+
+			<motion.div
+				initial={{ opacity: 0, y: 12 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{
+					duration: 0.5,
+					delay: 0.12,
+					ease: MOTION_CONSTANTS.EASE,
+				}}
+			>
+				<EmailBody html={email.bodyHtml} plain={email.bodyPlain} />
+			</motion.div>
+
+			<ComposeSheet
+				open={composeMode !== null}
+				onOpenChange={(open) => {
+					if (!open) setComposeMode(null);
+				}}
+				mode={composeMode ?? "reply"}
+				emailId={emailId}
+				fromAddress={email.fromAddress}
+				subject={email.subject}
+				originalBody={email.bodyPlain}
+			/>
+		</div>
+	);
+}
+
+function AiSummary({ summary }: { summary: string }) {
+	const [open, setOpen] = useState(false);
+
+	return (
+		<div className="border-t border-border/30 bg-secondary/5">
+			<button
+				type="button"
+				onClick={() => setOpen((o) => !o)}
+				className="flex w-full items-center gap-2 px-4 py-2.5 font-body text-[12px] text-grey-2 hover:text-foreground cursor-pointer select-none"
+			>
+				<Sparkles
+					className={cn(
+						"size-3.5 shrink-0 transition-colors duration-200",
+						open ? "text-foreground/80" : "text-grey-3",
+					)}
+				/>
+				<span>AI summary</span>
+				<motion.div
+					animate={{ rotate: open ? 180 : 0 }}
+					transition={{ duration: 0.25, ease: MOTION_CONSTANTS.EASE }}
+					className="ml-auto shrink-0"
+				>
+					<ChevronDown className="size-3 text-grey-3" />
+				</motion.div>
+			</button>
+			<AnimatePresence initial={false}>
+				{open && (
+					<motion.div
+						initial={{ height: 0, opacity: 0 }}
+						animate={{ height: "auto", opacity: 1 }}
+						exit={{ height: 0, opacity: 0 }}
+						transition={{
+							height: { duration: 0.3, ease: MOTION_CONSTANTS.EASE },
+							opacity: { duration: 0.2, ease: "easeInOut" },
+						}}
+						className="overflow-hidden"
+					>
+						<div className="px-4 pb-4 pt-1">
+							<p className="font-serif text-[14px] text-foreground/75 italic leading-relaxed border-l-2 border-grey-4/60 pl-3">
+								{summary}
+							</p>
+						</div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 		</div>
 	);
 }
@@ -188,29 +259,32 @@ function DetailSkeleton() {
 	return (
 		<div className="px-(--page-px) py-8 max-w-5xl mx-auto animate-pulse">
 			<div className="h-3 w-24 bg-secondary/30 rounded" />
-			<div className="mt-6 space-y-2">
+			<div className="mt-6">
 				<div className="h-7 w-80 bg-secondary/40 rounded" />
-				<div className="h-3 w-56 bg-secondary/25 rounded mt-3" />
-				<div className="h-3 w-36 bg-secondary/25 rounded" />
+				<div className="mt-4 rounded-lg border border-border/40 bg-secondary/10 px-4 py-3.5 space-y-2.5">
+					<div className="flex gap-3">
+						<div className="h-3 w-9 bg-secondary/30 rounded" />
+						<div className="h-3.5 w-48 bg-secondary/40 rounded" />
+					</div>
+					<div className="flex gap-3">
+						<div className="h-3 w-9 bg-secondary/25 rounded" />
+						<div className="h-3 w-64 bg-secondary/30 rounded" />
+					</div>
+					<div className="h-3 w-36 bg-secondary/25 rounded pt-0.5" />
+					<div className="h-6 w-24 bg-secondary/20 rounded border-t border-border/30 mt-2 pt-3" />
+				</div>
 			</div>
 			<div className="my-6 h-px bg-border/30" />
-			<div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
-				<div className="space-y-2">
-					{Array.from({ length: 6 }).map((_, i) => (
-						<div
-							key={i}
-							className={cn(
-								"h-3 bg-secondary/25 rounded",
-								i % 3 === 0 ? "w-full" : "w-3/4",
-							)}
-						/>
-					))}
-				</div>
-				<div className="rounded-lg bg-secondary/10 p-4 space-y-2">
-					<div className="h-2.5 w-16 bg-secondary/25 rounded" />
-					<div className="h-3 w-full bg-secondary/20 rounded" />
-					<div className="h-3 w-2/3 bg-secondary/20 rounded" />
-				</div>
+			<div className="space-y-2">
+				{Array.from({ length: 6 }).map((_, i) => (
+					<div
+						key={i}
+						className={cn(
+							"h-3 bg-secondary/25 rounded",
+							i % 3 === 0 ? "w-full" : "w-3/4",
+						)}
+					/>
+				))}
 			</div>
 		</div>
 	);

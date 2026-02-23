@@ -1,3 +1,4 @@
+import { Toaster } from "@/components/ui/sonner";
 import { authClient } from "@/lib/auth-client";
 import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
@@ -30,5 +31,10 @@ function AuthenticatedLayout() {
 		return null;
 	}
 
-	return <Outlet />;
+	return (
+		<>
+			<Outlet />
+			<Toaster />
+		</>
+	);
 }
