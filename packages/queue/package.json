@@ -13,7 +13,9 @@
 		"typescript": "^5"
 	},
 	"dependencies": {
+		"@anthropic-ai/sdk": "^0.39.0",
 		"bullmq": "^5.52.1",
+		"zod": "^4.0.0",
 		"@wingmnn/db": "workspace:*",
 		"@wingmnn/mail": "workspace:*",
 		"@wingmnn/redis": "workspace:*"
