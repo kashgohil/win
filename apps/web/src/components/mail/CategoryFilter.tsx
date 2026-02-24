@@ -26,7 +26,7 @@ export function CategoryFilter({
 	onChange: (categories: EmailCategory[]) => void;
 	total?: number;
 }) {
-	const [expanded, setExpanded] = useState(false);
+	const [expanded, setExpanded] = useState(value.length > 0);
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	// Close on click outside
@@ -47,13 +47,11 @@ export function CategoryFilter({
 	const selected = new Set(value);
 
 	const toggleCategory = (cat: EmailCategory) => {
-		const next = new Set(selected);
-		if (next.has(cat)) {
-			next.delete(cat);
+		if (selected.has(cat)) {
+			onChange([]);
 		} else {
-			next.add(cat);
+			onChange([cat]);
 		}
-		onChange([...next]);
 	};
 
 	return (
@@ -79,7 +77,7 @@ export function CategoryFilter({
 				>
 					<SlidersHorizontal className="size-3" />
 					{selected.size > 0
-						? `${selected.size} filter${selected.size !== 1 ? "s" : ""}`
+						? `${[...selected].map((s) => CATEGORIES.find((c) => c.value === s)?.label).join("")}`
 						: "Filter"}
 				</button>
 			</div>
@@ -102,17 +100,28 @@ export function CategoryFilter({
 								const active = selected.has(cat.value);
 								return (
 									<button
-										key={cat.label}
+										key={cat.value}
 										type="button"
 										onClick={() => toggleCategory(cat.value)}
 										className={cn(
-											"font-body text-[12px] px-2.5 py-1 rounded-full shrink-0 transition-colors duration-150 cursor-pointer",
+											"relative font-body text-[12px] px-2.5 py-1 rounded-full shrink-0 cursor-pointer transition-colors duration-150",
 											active
-												? "bg-foreground text-background"
+												? "text-background"
 												: "text-grey-2 hover:text-foreground hover:bg-secondary/50",
 										)}
 									>
-										{cat.label}
+										{active && (
+											<motion.span
+												layoutId="category-filter-bg"
+												className="absolute inset-0 rounded-full bg-foreground"
+												transition={{
+													type: "spring",
+													bounce: 0.15,
+													duration: 0.4,
+												}}
+											/>
+										)}
+										<span className="relative z-10">{cat.label}</span>
 									</button>
 								);
 							})}
