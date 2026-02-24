@@ -7,20 +7,46 @@ import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import type { EmailCategory } from "@wingmnn/types";
 import { ArrowLeft, ChevronDown, Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+
+const VALID_CATEGORIES: Set<string> = new Set([
+	"urgent",
+	"actionable",
+	"informational",
+	"newsletter",
+	"receipt",
+	"confirmation",
+	"promotional",
+	"spam",
+	"uncategorized",
+]);
+
+type DetailSearch = {
+	category?: EmailCategory;
+};
 
 export const Route = createFileRoute(
 	"/_authenticated/_app/module/mail/inbox/$emailId",
 )({
 	component: EmailDetail,
+	validateSearch: (search: Record<string, unknown>): DetailSearch => ({
+		category:
+			typeof search.category === "string" &&
+			VALID_CATEGORIES.has(search.category)
+				? (search.category as EmailCategory)
+				: undefined,
+	}),
 });
 
 function EmailDetail() {
 	const { emailId } = Route.useParams();
+	const { category } = Route.useSearch();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
+	const inboxSearch = category ? { categories: [category] } : {};
 	const { data, isPending } = useMailEmailDetail(emailId);
 	const [composeMode, setComposeMode] = useState<"reply" | "forward" | null>(
 		null,
@@ -62,6 +88,7 @@ function EmailDetail() {
 			<div className="px-(--page-px) py-8 max-w-5xl mx-auto">
 				<Link
 					to="/module/mail/inbox"
+					search={inboxSearch}
 					className="inline-flex items-center gap-1.5 font-body text-[13px] text-grey-2 hover:text-foreground transition-colors"
 				>
 					<ArrowLeft className="size-3" />
@@ -78,7 +105,8 @@ function EmailDetail() {
 
 	const email = data.email;
 	const isUrgent = email.category === "urgent";
-	const navigateBack = () => navigate({ to: "/module/mail/inbox" });
+	const navigateBack = () =>
+		navigate({ to: "/module/mail/inbox", search: inboxSearch });
 
 	return (
 		<div className="px-(--page-px) py-8 max-w-5xl mx-auto pb-16">
@@ -89,6 +117,7 @@ function EmailDetail() {
 			>
 				<Link
 					to="/module/mail/inbox"
+					search={inboxSearch}
 					className="group inline-flex items-center gap-1.5 font-body text-[13px] text-grey-2 hover:text-foreground transition-colors"
 				>
 					<ArrowLeft className="size-3" />
