@@ -49,13 +49,13 @@ export const Route = createRootRoute({
 			{ property: "og:site_name", content: SITE_NAME },
 			{ property: "og:image:width", content: "1200" },
 			{ property: "og:image:height", content: "630" },
-			{ property: "og:image:alt", content: "Wingmnn — your digital twin" },
+			{ property: "og:image:alt", content: "Wingmnn — your partner-in-crime" },
 			{ property: "og:locale", content: "en_US" },
 			/* Twitter Card (global) */
 			{ name: "twitter:card", content: "summary_large_image" },
 			{
 				name: "twitter:image:alt",
-				content: "Wingmnn — your digital twin",
+				content: "Wingmnn — your partner-in-crime",
 			},
 		],
 		links: [

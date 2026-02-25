@@ -32,9 +32,9 @@ export const Route = createFileRoute("/blog")({
 
 const featuredPost = {
 	category: "Product",
-	title: "Introducing Wingmnn: Why we built a digital twin",
+	title: "Introducing Wingmnn: Why we built your partner-in-crime",
 	excerpt:
-		"Most productivity tools solve one problem. We wanted to solve the meta-problem — the cognitive overhead of stitching ten apps together every single day. Here's why we started building Wingmnn, and what we believe a digital twin should actually do.",
+		"Most productivity tools solve one problem. We wanted to solve the meta-problem — the cognitive overhead of stitching ten apps together every single day. Here's why we started building Wingmnn, and what we believe a partner-in-crime should actually do.",
 	date: "Jan 15, 2026",
 	readTime: "8 min read",
 };

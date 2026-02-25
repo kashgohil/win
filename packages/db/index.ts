@@ -5,6 +5,7 @@ export {
 	eq,
 	gte,
 	inArray,
+	or,
 	sql,
 	type InferInsertModel,
 	type InferSelectModel,

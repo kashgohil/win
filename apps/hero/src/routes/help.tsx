@@ -76,7 +76,7 @@ const categories = [
 	{
 		icon: Code,
 		title: "API",
-		desc: "REST endpoints, authentication, rate limits, and examples for building on your digital twin.",
+		desc: "REST endpoints, authentication, rate limits, and examples for building on your partner-in-crime.",
 		articles: 4,
 	},
 ];

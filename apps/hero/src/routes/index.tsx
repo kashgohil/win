@@ -36,7 +36,7 @@ const faqEntries = [
 		a: "Financial connections are read-only through Plaid. We can't move money. Everything is encrypted at rest and in transit. We're SOC 2 Type II compliant.",
 	},
 	{
-		q: 'What does "digital twin" actually mean?',
+		q: "What makes Wingmnn a partner-in-crime?",
 		a: "A persistent model of your preferences, patterns, and priorities. Not a chatbot you re-explain things to. Wingmnn remembers context and acts on your behalf — like a chief of staff who's been with you for years.",
 	},
 	{
@@ -49,7 +49,7 @@ export const Route = createFileRoute("/")({
 	component: HomePage,
 	head: () =>
 		seo({
-			title: "wingmnn — your digital twin",
+			title: "wingmnn — your partner-in-crime",
 			description:
 				"The personal assistant that manages your mail, projects, money, messages, feeds, journal, notes, travel, calendar, and wellness.",
 			path: "/",
@@ -57,7 +57,7 @@ export const Route = createFileRoute("/")({
 				{
 					"@context": "https://schema.org",
 					"@type": "WebPage",
-					name: "wingmnn — your digital twin",
+					name: "wingmnn — your partner-in-crime",
 					url: "https://wingmnn.com",
 					description:
 						"The personal assistant that manages your mail, projects, money, messages, feeds, journal, notes, travel, calendar, and wellness.",
@@ -619,7 +619,7 @@ function HomePage() {
 				<div className="grid grid-cols-2 max-[900px]:grid-cols-1 gap-12 max-[900px]:gap-8 max-w-[1200px] w-full mt-auto mx-auto items-center relative z-1">
 					<div className="text-left max-[900px]:text-center">
 						<p className="font-mono text-xs text-accent-red tracking-[0.08em] mb-7 uppercase">
-							Your digital twin
+							Your partner-in-crime
 						</p>
 						<h1 className="font-display text-[clamp(4rem,10vw,8rem)] leading-[0.88] text-cream mb-7 tracking-[0.02em] lowercase max-[900px]:text-center">
 							wingmnn

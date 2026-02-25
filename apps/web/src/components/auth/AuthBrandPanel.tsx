@@ -52,7 +52,7 @@ export default function AuthBrandPanel() {
 					transition={{ delay: 0.4, duration: 0.5 }}
 					className="mt-6 font-mono text-[11px] text-accent-red tracking-[0.08em] uppercase"
 				>
-					your digital twin
+					your partner-in-crime
 				</motion.span>
 
 				{/* Separator */}

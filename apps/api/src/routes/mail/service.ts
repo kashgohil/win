@@ -11,6 +11,7 @@ import {
 	gte,
 	mailAutoHandled,
 	mailTriageItems,
+	or,
 	syncStatusEnum,
 } from "@wingmnn/db";
 import { getProvider, getValidAccessToken } from "@wingmnn/mail";
@@ -353,6 +354,7 @@ class MailService {
 			limit?: number;
 			offset?: number;
 			category?: string;
+			unreadOnly?: boolean;
 		},
 	): Promise<EmailListResult> {
 		const limit = options.limit ?? 50;
@@ -375,6 +377,18 @@ class MailService {
 						emails.category,
 						options.category as (typeof emails.category.enumValues)[number],
 					),
+				);
+			}
+			if (options.unreadOnly) {
+				conditions.push(
+					or(
+						eq(emails.isRead, false),
+						eq(emails.isStarred, true),
+						eq(
+							emails.category,
+							"urgent" as (typeof emails.category.enumValues)[number],
+						),
+					)!,
 				);
 			}
 

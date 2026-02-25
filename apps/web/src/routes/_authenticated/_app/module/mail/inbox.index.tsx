@@ -61,6 +61,7 @@ function MailInbox() {
 		useMailEmailsInfinite({
 			category: apiCategory,
 			limit: PAGE_SIZE,
+			unreadOnly: true,
 		});
 
 	// IntersectionObserver to auto-fetch next page
