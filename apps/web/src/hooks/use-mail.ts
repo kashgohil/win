@@ -21,6 +21,7 @@ export const mailKeys = {
 		limit?: number;
 		offset?: number;
 		unreadOnly?: boolean;
+		readOnly?: boolean;
 	}) => [...mailKeys.all, "emails", params] as const,
 	email: (id: string) => [...mailKeys.all, "email", id] as const,
 	accounts: () => [...mailKeys.all, "accounts"] as const,
@@ -43,6 +44,7 @@ export function useMailEmailsInfinite(params?: {
 	category?: EmailCategory;
 	limit?: number;
 	unreadOnly?: boolean;
+	readOnly?: boolean;
 }) {
 	const pageSize = params?.limit ?? 30;
 
@@ -50,6 +52,7 @@ export function useMailEmailsInfinite(params?: {
 		queryKey: mailKeys.emails({
 			category: params?.category,
 			unreadOnly: params?.unreadOnly,
+			readOnly: params?.readOnly,
 		}),
 		queryFn: async ({ pageParam = 0 }) => {
 			const { data, error } = await api.mail.emails.get({
@@ -58,6 +61,7 @@ export function useMailEmailsInfinite(params?: {
 					limit: pageSize.toString(),
 					offset: pageParam.toString(),
 					unreadOnly: params?.unreadOnly ? "true" : undefined,
+					readOnly: params?.readOnly ? "true" : undefined,
 				},
 			});
 			if (error) throw new Error("Failed to load emails");

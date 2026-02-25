@@ -101,6 +101,7 @@ export const mail = new Elysia({
 				offset: query.offset ? Number(query.offset) : undefined,
 				category: query.category ?? undefined,
 				unreadOnly: query.unreadOnly === "true",
+				readOnly: query.readOnly === "true",
 			});
 
 			if (!result.ok) {
@@ -117,6 +118,7 @@ export const mail = new Elysia({
 				offset: t.Optional(t.String()),
 				category: t.Optional(t.String()),
 				unreadOnly: t.Optional(t.String()),
+				readOnly: t.Optional(t.String()),
 			}),
 			response: {
 				200: emailListResponse,

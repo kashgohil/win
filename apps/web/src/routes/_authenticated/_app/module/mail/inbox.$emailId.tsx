@@ -26,6 +26,7 @@ const VALID_CATEGORIES: Set<string> = new Set([
 
 type DetailSearch = {
 	category?: EmailCategory;
+	view?: "read";
 };
 
 export const Route = createFileRoute(
@@ -38,15 +39,19 @@ export const Route = createFileRoute(
 			VALID_CATEGORIES.has(search.category)
 				? (search.category as EmailCategory)
 				: undefined,
+		view: search.view === "read" ? "read" : undefined,
 	}),
 });
 
 function EmailDetail() {
 	const { emailId } = Route.useParams();
-	const { category } = Route.useSearch();
+	const { category, view } = Route.useSearch();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	const inboxSearch = category ? { categories: [category] } : {};
+	const inboxSearch = {
+		...(category ? { categories: [category] } : {}),
+		...(view ? { view } : {}),
+	};
 	const { data, isPending } = useMailEmailDetail(emailId);
 	const [composeMode, setComposeMode] = useState<"reply" | "forward" | null>(
 		null,
@@ -64,17 +69,23 @@ function EmailDetail() {
 			if (!old?.email) return old;
 			return { ...old, email: { ...old.email, ...patch } };
 		});
-		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) => {
-			if (!old?.pages) return old;
-			return {
-				...old,
-				pages: old.pages.map((page: any) => ({
-					...page,
-					emails: page.emails.map((e: any) =>
-						e.id === emailId ? { ...e, ...patch } : e,
-					),
-				})),
-			};
+		// Remove from unread list caches
+		queryClient.setQueriesData(
+			{ queryKey: mailKeys.emails({ unreadOnly: true }) },
+			(old: any) => {
+				if (!old?.pages) return old;
+				return {
+					...old,
+					pages: old.pages.map((page: any) => ({
+						...page,
+						emails: page.emails.filter((e: any) => e.id !== emailId),
+					})),
+				};
+			},
+		);
+		// Invalidate read caches so newly-read email appears
+		queryClient.invalidateQueries({
+			queryKey: mailKeys.emails({ readOnly: true }),
 		});
 		api.mail.emails({ id: emailId }).read.patch();
 	}, [data?.email?.id, data?.email?.isRead, emailId, queryClient]);

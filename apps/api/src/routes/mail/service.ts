@@ -355,6 +355,7 @@ class MailService {
 			offset?: number;
 			category?: string;
 			unreadOnly?: boolean;
+			readOnly?: boolean;
 		},
 	): Promise<EmailListResult> {
 		const limit = options.limit ?? 50;
@@ -390,6 +391,9 @@ class MailService {
 						),
 					)!,
 				);
+			}
+			if (options.readOnly) {
+				conditions.push(eq(emails.isRead, true));
 			}
 
 			const [emailRows, [totalResult]] = await Promise.all([

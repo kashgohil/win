@@ -96,8 +96,9 @@ export function EmailRow({ email }: { email: SerializedEmail }) {
 	const initial = getInitial(email.fromName, email.fromAddress);
 	const senderDisplay = email.fromName || email.fromAddress || "Unknown";
 	const isUrgent = email.category === "urgent";
-	const { categories } = useSearch({ strict: false }) as {
+	const { categories, view } = useSearch({ strict: false }) as {
 		categories?: EmailCategory[];
+		view?: "read";
 	};
 	const category = categories?.[0];
 
@@ -105,7 +106,7 @@ export function EmailRow({ email }: { email: SerializedEmail }) {
 		<Link
 			to="/module/mail/inbox/$emailId"
 			params={{ emailId: email.id }}
-			search={category ? { category } : {}}
+			search={{ ...(category ? { category } : {}), ...(view ? { view } : {}) }}
 			className={cn(
 				"group flex items-start gap-3 py-3.5 -mx-2 px-2 rounded-lg hover:bg-secondary/30 transition-colors duration-150 cursor-pointer border-b border-border/15 last:border-0",
 				!email.isRead && "bg-foreground/2",

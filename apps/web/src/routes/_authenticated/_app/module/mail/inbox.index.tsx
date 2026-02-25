@@ -2,6 +2,7 @@ import { MOTION_CONSTANTS } from "@/components/constant";
 import { CategoryFilter } from "@/components/mail/CategoryFilter";
 import { EmailRow, groupEmailsByTime } from "@/components/mail/EmailRow";
 import { useMailEmailsInfinite } from "@/hooks/use-mail";
+import { cn } from "@/lib/utils";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { EmailCategory } from "@wingmnn/types";
 import { ArrowLeft } from "lucide-react";
@@ -24,6 +25,7 @@ const VALID_CATEGORIES: Set<string> = new Set([
 
 type InboxSearch = {
 	categories?: EmailCategory[];
+	view?: "read";
 };
 
 function parseCategories(raw: unknown): EmailCategory[] | undefined {
@@ -44,13 +46,15 @@ export const Route = createFileRoute("/_authenticated/_app/module/mail/inbox/")(
 		component: MailInbox,
 		validateSearch: (search: Record<string, unknown>): InboxSearch => ({
 			categories: parseCategories(search.categories),
+			view: search.view === "read" ? "read" : undefined,
 		}),
 	},
 );
 
 function MailInbox() {
-	const { categories = [] } = Route.useSearch();
+	const { categories = [], view } = Route.useSearch();
 	const navigate = useNavigate();
+	const activeView = view ?? "unread";
 	const sentinelRef = useRef<HTMLDivElement>(null);
 
 	// When filtering by a single category, pass it to the API for efficiency.
@@ -61,7 +65,8 @@ function MailInbox() {
 		useMailEmailsInfinite({
 			category: apiCategory,
 			limit: PAGE_SIZE,
-			unreadOnly: true,
+			unreadOnly: activeView === "unread",
+			readOnly: activeView === "read",
 		});
 
 	// IntersectionObserver to auto-fetch next page
@@ -91,19 +96,33 @@ function MailInbox() {
 	const handleCategoryChange = (cats: EmailCategory[]) => {
 		navigate({
 			to: "/module/mail/inbox",
-			search: { categories: cats.length > 0 ? cats : undefined },
+			search: {
+				categories: cats.length > 0 ? cats : undefined,
+				view,
+			},
+			replace: true,
+		});
+	};
+
+	const switchView = (v: "unread" | "read") => {
+		navigate({
+			to: "/module/mail/inbox",
+			search: {
+				categories: categories.length > 0 ? categories : undefined,
+				view: v === "unread" ? undefined : v,
+			},
 			replace: true,
 		});
 	};
 
 	return (
 		<div className="px-(--page-px) py-8 max-w-5xl mx-auto">
-			{/* Back link */}
+			{/* Header — back link + view toggle */}
 			<motion.div
 				initial={{ opacity: 0, x: -8 }}
 				animate={{ opacity: 1, x: 0 }}
 				transition={{ duration: 0.3, ease: MOTION_CONSTANTS.EASE }}
-				className="mb-6"
+				className="mb-6 flex items-center justify-between"
 			>
 				<Link
 					to="/module/mail"
@@ -112,6 +131,32 @@ function MailInbox() {
 					<ArrowLeft className="size-3.5 group-hover:-translate-x-0.5 transition-transform duration-150" />
 					Mail
 				</Link>
+				<div className="flex items-center gap-0.5 rounded-md bg-secondary/30 p-0.5">
+					<button
+						type="button"
+						onClick={() => switchView("unread")}
+						className={cn(
+							"px-2.5 py-1 rounded-sm font-mono text-[11px] cursor-pointer transition-colors duration-150",
+							activeView === "unread"
+								? "bg-background text-foreground shadow-xs"
+								: "text-grey-3 hover:text-grey-2",
+						)}
+					>
+						Unread
+					</button>
+					<button
+						type="button"
+						onClick={() => switchView("read")}
+						className={cn(
+							"px-2.5 py-1 rounded-sm font-mono text-[11px] cursor-pointer transition-colors duration-150",
+							activeView === "read"
+								? "bg-background text-foreground shadow-xs"
+								: "text-grey-3 hover:text-grey-2",
+						)}
+					>
+						Read
+					</button>
+				</div>
 			</motion.div>
 
 			{/* Section rule with integrated filter */}
@@ -139,7 +184,9 @@ function MailInbox() {
 					<p className="font-serif text-[15px] text-grey-2 italic text-center">
 						{categories.length > 0
 							? "No emails matching filters."
-							: "No emails yet."}
+							: activeView === "read"
+								? "No read emails yet."
+								: "No unread emails."}
 					</p>
 				</motion.div>
 			) : (
