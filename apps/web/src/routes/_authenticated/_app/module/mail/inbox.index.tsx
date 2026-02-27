@@ -26,6 +26,7 @@ const VALID_CATEGORIES: Set<string> = new Set([
 type InboxSearch = {
 	categories?: EmailCategory[];
 	view?: "read";
+	showAll?: boolean;
 };
 
 function parseCategories(raw: unknown): EmailCategory[] | undefined {
@@ -47,23 +48,28 @@ export const Route = createFileRoute("/_authenticated/_app/module/mail/inbox/")(
 		validateSearch: (search: Record<string, unknown>): InboxSearch => ({
 			categories: parseCategories(search.categories),
 			view: search.view === "read" ? "read" : undefined,
+			showAll:
+				search.showAll === true || search.showAll === "true" ? true : undefined,
 		}),
 	},
 );
 
 function MailInbox() {
-	const { categories = [], view } = Route.useSearch();
+	const { categories = [], view, showAll } = Route.useSearch();
 	const navigate = useNavigate();
 	const activeView = view ?? "unread";
 	const sentinelRef = useRef<HTMLDivElement>(null);
 
-	// When filtering by a single category, pass it to the API for efficiency.
-	// With multiple categories or none, fetch all and filter client-side.
-	const apiCategory = categories.length === 1 ? categories[0] : undefined;
+	// Default to urgent when no explicit selection
+	const activeCategory: EmailCategory | null = showAll
+		? null
+		: categories.length > 0
+			? categories[0]
+			: "urgent";
 
 	const { data, isPending, hasNextPage, isFetchingNextPage, fetchNextPage } =
 		useMailEmailsInfinite({
-			category: apiCategory,
+			category: activeCategory ?? undefined,
 			limit: PAGE_SIZE,
 			unreadOnly: activeView === "unread",
 			readOnly: activeView === "read",
@@ -86,19 +92,15 @@ function MailInbox() {
 		return () => observer.disconnect();
 	}, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-	const allEmails = data?.pages.flatMap((page) => page?.emails ?? []) ?? [];
-	const categorySet = categories.length > 1 ? new Set(categories) : undefined;
-	const emails = categorySet
-		? allEmails.filter((e) => categorySet.has(e.category as EmailCategory))
-		: allEmails;
-	const total = categories.length > 1 ? emails.length : data?.pages[0]?.total;
+	const emails = data?.pages.flatMap((page) => page?.emails ?? []) ?? [];
+	const total = data?.pages[0]?.total;
 
-	const handleCategoryChange = (cats: EmailCategory[]) => {
+	const handleCategoryChange = (cat: EmailCategory | null) => {
 		navigate({
 			to: "/module/mail/inbox",
 			search: {
-				categories: cats.length > 0 ? cats : undefined,
-				view,
+				...(cat === null ? { showAll: true } : { categories: [cat] }),
+				...(view ? { view } : {}),
 			},
 			replace: true,
 		});
@@ -108,7 +110,9 @@ function MailInbox() {
 		navigate({
 			to: "/module/mail/inbox",
 			search: {
-				categories: categories.length > 0 ? categories : undefined,
+				...(activeCategory !== null
+					? { categories: [activeCategory] }
+					: { showAll: true }),
 				view: v === "unread" ? undefined : v,
 			},
 			replace: true,
@@ -159,14 +163,14 @@ function MailInbox() {
 				</div>
 			</motion.div>
 
-			{/* Section rule with integrated filter */}
+			{/* Category chips — always visible */}
 			<motion.div
 				initial={{ opacity: 0, y: 8 }}
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.4, ease: MOTION_CONSTANTS.EASE }}
 			>
 				<CategoryFilter
-					value={categories}
+					value={activeCategory}
 					onChange={handleCategoryChange}
 					total={total}
 				/>
@@ -182,7 +186,7 @@ function MailInbox() {
 					className="py-16 flex flex-col items-center gap-2"
 				>
 					<p className="font-serif text-[15px] text-grey-2 italic text-center">
-						{categories.length > 0
+						{activeCategory
 							? "No emails matching filters."
 							: activeView === "read"
 								? "No read emails yet."

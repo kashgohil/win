@@ -154,6 +154,31 @@ export function useReplyToEmail() {
 	});
 }
 
+export function useCategorizeSender() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			senderAddress,
+			category,
+		}: {
+			senderAddress: string;
+			category: EmailCategory;
+		}) => {
+			const { data, error } = await api.mail["sender-rules"].post({
+				senderAddress,
+				category,
+			});
+			if (error) throw new Error("Failed to create sender rule");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["mail", "emails"] });
+			queryClient.invalidateQueries({ queryKey: mailKeys.data() });
+		},
+	});
+}
+
 export function useForwardEmail() {
 	return useMutation({
 		mutationFn: async ({

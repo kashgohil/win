@@ -1,4 +1,5 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
+import { CATEGORY_CONFIG } from "@/components/mail/category-colors";
 import { ComposeSheet } from "@/components/mail/ComposeSheet";
 import { EmailActions } from "@/components/mail/EmailActions";
 import { EmailBody } from "@/components/mail/EmailBody";
@@ -27,6 +28,7 @@ const VALID_CATEGORIES: Set<string> = new Set([
 type DetailSearch = {
 	category?: EmailCategory;
 	view?: "read";
+	showAll?: boolean;
 };
 
 export const Route = createFileRoute(
@@ -40,23 +42,36 @@ export const Route = createFileRoute(
 				? (search.category as EmailCategory)
 				: undefined,
 		view: search.view === "read" ? "read" : undefined,
+		showAll:
+			search.showAll === true || search.showAll === "true" ? true : undefined,
 	}),
 });
 
 function EmailDetail() {
 	const { emailId } = Route.useParams();
-	const { category, view } = Route.useSearch();
+	const { category, view, showAll } = Route.useSearch();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const inboxSearch = {
 		...(category ? { categories: [category] } : {}),
 		...(view ? { view } : {}),
+		...(showAll ? { showAll: true } : {}),
 	};
 	const { data, isPending } = useMailEmailDetail(emailId);
 	const [composeMode, setComposeMode] = useState<"reply" | "forward" | null>(
 		null,
 	);
 	const autoMarkedRef = useRef<string | null>(null);
+
+	// Update document title to email subject
+	useEffect(() => {
+		if (data?.email?.subject) {
+			document.title = data.email.subject;
+		}
+		return () => {
+			document.title = "wingmnn";
+		};
+	}, [data?.email?.subject]);
 
 	// Mark as read once when first loading an unread email
 	useEffect(() => {
@@ -69,7 +84,7 @@ function EmailDetail() {
 			if (!old?.email) return old;
 			return { ...old, email: { ...old.email, ...patch } };
 		});
-		// Remove from unread list caches
+		// Remove from unread list caches and decrement total
 		queryClient.setQueriesData(
 			{ queryKey: mailKeys.emails({ unreadOnly: true }) },
 			(old: any) => {
@@ -79,6 +94,7 @@ function EmailDetail() {
 					pages: old.pages.map((page: any) => ({
 						...page,
 						emails: page.emails.filter((e: any) => e.id !== emailId),
+						total: Math.max(0, (page.total ?? 0) - 1),
 					})),
 				};
 			},
@@ -115,7 +131,6 @@ function EmailDetail() {
 	}
 
 	const email = data.email;
-	const isUrgent = email.category === "urgent";
 	const navigateBack = () =>
 		navigate({ to: "/module/mail/inbox", search: inboxSearch });
 
@@ -206,19 +221,22 @@ function EmailDetail() {
 								{formatDate(email.receivedAt)}
 							</time>
 							<span className="text-grey-3">·</span>
-							<span className="capitalize">{email.category}</span>
-							{isUrgent && (
-								<>
-									<span className="text-grey-3">·</span>
-									<span className="flex items-center gap-1 text-accent-red">
-										<span
-											className="size-1.5 rounded-full bg-accent-red"
-											aria-hidden
-										/>
-										Urgent
-									</span>
-								</>
-							)}
+							<span
+								className={cn(
+									"inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px]",
+									CATEGORY_CONFIG[email.category].bg,
+									CATEGORY_CONFIG[email.category].text,
+								)}
+							>
+								<span
+									className={cn(
+										"size-1.5 rounded-full",
+										CATEGORY_CONFIG[email.category].dot,
+									)}
+									aria-hidden
+								/>
+								{CATEGORY_CONFIG[email.category].label}
+							</span>
 						</dd>
 					</div>
 				</dl>
@@ -241,6 +259,8 @@ function EmailDetail() {
 					emailId={emailId}
 					isStarred={email.isStarred}
 					isRead={email.isRead}
+					fromAddress={email.fromAddress}
+					category={email.category}
 					onReply={() => setComposeMode("reply")}
 					onForward={() => setComposeMode("forward")}
 					onNavigateBack={navigateBack}

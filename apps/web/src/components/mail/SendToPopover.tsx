@@ -4,9 +4,15 @@ import {
 	PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
 	CalendarPlus,
 	CheckSquare,
 	ChevronRight,
+	CornerUpRight,
 	Receipt,
 	StickyNote,
 	UserPlus,
@@ -18,42 +24,43 @@ const sendToOptions = [
 	{
 		label: "create task",
 		icon: CheckSquare,
-		accent: "bg-foreground/5 text-foreground/70",
 	},
 	{
 		label: "add to calendar",
 		icon: CalendarPlus,
-		accent: "bg-foreground/5 text-foreground/70",
 	},
 	{
 		label: "save contact",
 		icon: UserPlus,
-		accent: "bg-foreground/5 text-foreground/70",
 	},
 	{
 		label: "add note",
 		icon: StickyNote,
-		accent: "bg-foreground/5 text-foreground/70",
 	},
 	{
 		label: "track expense",
 		icon: Receipt,
-		accent: "bg-foreground/5 text-foreground/70",
 	},
 ] as const;
 
 export function SendToPopover() {
 	return (
 		<Popover>
-			<PopoverTrigger asChild>
-				<button
-					type="button"
-					className="group inline-flex items-center gap-1 font-body text-[11px] text-grey-3 hover:text-grey-2 transition-colors duration-200 cursor-pointer"
-				>
-					<span className="uppercase tracking-widest">route to</span>
-					<ChevronRight className="size-2.5 transition-transform duration-200 group-hover:translate-x-0.5 group-data-[state=open]:rotate-90" />
-				</button>
-			</PopoverTrigger>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<PopoverTrigger asChild>
+						<motion.button
+							type="button"
+							whileTap={{ scale: 0.85 }}
+							className="size-8 rounded-full flex items-center justify-center text-grey-3 hover:text-foreground/60 hover:bg-secondary/30 transition-colors duration-200 cursor-pointer"
+						>
+							<CornerUpRight className="size-3.5" />
+							<span className="sr-only">Route to</span>
+						</motion.button>
+					</PopoverTrigger>
+				</TooltipTrigger>
+				<TooltipContent side="bottom">Route to</TooltipContent>
+			</Tooltip>
 			<PopoverContent align="end" sideOffset={8} className="w-52 p-2">
 				<div className="space-y-0.5">
 					{sendToOptions.map((opt, i) => (

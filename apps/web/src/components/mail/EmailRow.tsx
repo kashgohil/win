@@ -1,7 +1,19 @@
+import { MOTION_CONSTANTS } from "@/components/constant";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { mailKeys } from "@/hooks/use-mail";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
 import type { EmailCategory, SerializedEmail } from "@wingmnn/types";
-import { Paperclip, Star } from "lucide-react";
+import { Archive, Mail, MailOpen, Paperclip, Star } from "lucide-react";
+import { motion } from "motion/react";
+import { toast } from "sonner";
 
 function formatTimestamp(iso: string): string {
 	const date = new Date(iso);
@@ -90,83 +102,244 @@ export function groupEmailsByTime(emails: SerializedEmail[]): TimeCluster[] {
 	return clusters;
 }
 
+/* ── Cache helpers ── */
+
+function updateEmailInPages(old: any, emailId: string, patch: object) {
+	if (!old?.pages) return old;
+	return {
+		...old,
+		pages: old.pages.map((page: any) => ({
+			...page,
+			emails: page.emails.map((e: any) =>
+				e.id === emailId ? { ...e, ...patch } : e,
+			),
+		})),
+	};
+}
+
+function removeEmailFromPages(old: any, emailId: string) {
+	if (!old?.pages) return old;
+	return {
+		...old,
+		pages: old.pages.map((page: any) => ({
+			...page,
+			emails: page.emails.filter((e: any) => e.id !== emailId),
+			total: Math.max(0, (page.total ?? 0) - 1),
+		})),
+	};
+}
+
+/* ── Inline action button ── */
+
+function RowAction({
+	label,
+	onClick,
+	active,
+	delay = 0,
+	children,
+}: {
+	label: string;
+	onClick: () => void;
+	active?: boolean;
+	delay?: number;
+	children: React.ReactNode;
+}) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<motion.span
+					role="button"
+					tabIndex={-1}
+					onClick={(e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						onClick();
+					}}
+					variants={{
+						idle: { opacity: 0, x: 4, scale: 0.92 },
+						hovered: { opacity: 1, x: 0, scale: 1 },
+					}}
+					transition={{
+						duration: 0.2,
+						ease: MOTION_CONSTANTS.EASE,
+						delay,
+					}}
+					className={cn(
+						"p-1 rounded-md cursor-pointer transition-colors duration-150",
+						active
+							? "text-amber-500"
+							: "text-grey-3 hover:text-foreground hover:bg-foreground/5",
+					)}
+				>
+					{children}
+				</motion.span>
+			</TooltipTrigger>
+			<TooltipContent side="bottom">{label}</TooltipContent>
+		</Tooltip>
+	);
+}
+
 /* ── Email row component ── */
 
 export function EmailRow({ email }: { email: SerializedEmail }) {
 	const initial = getInitial(email.fromName, email.fromAddress);
 	const senderDisplay = email.fromName || email.fromAddress || "Unknown";
 	const isUrgent = email.category === "urgent";
-	const { categories, view } = useSearch({ strict: false }) as {
+	const queryClient = useQueryClient();
+	const { categories, view, showAll } = useSearch({ strict: false }) as {
 		categories?: EmailCategory[];
 		view?: "read";
+		showAll?: boolean;
 	};
 	const category = categories?.[0];
 
+	const handleArchive = () => {
+		queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+			removeEmailFromPages(old, email.id),
+		);
+		toast("Email archived");
+		api.mail.emails({ id: email.id }).archive.post();
+	};
+
+	const handleStar = () => {
+		const patch = { isStarred: !email.isStarred };
+		queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+			updateEmailInPages(old, email.id, patch),
+		);
+		api.mail.emails({ id: email.id }).star.patch();
+	};
+
+	const handleToggleRead = () => {
+		queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+			removeEmailFromPages(old, email.id),
+		);
+		api.mail.emails({ id: email.id }).read.patch();
+	};
+
 	return (
-		<Link
-			to="/module/mail/inbox/$emailId"
-			params={{ emailId: email.id }}
-			search={{ ...(category ? { category } : {}), ...(view ? { view } : {}) }}
+		<motion.div
+			initial="idle"
+			whileHover="hovered"
 			className={cn(
-				"group flex items-start gap-3 py-3.5 -mx-2 px-2 rounded-lg hover:bg-secondary/30 transition-colors duration-150 cursor-pointer border-b border-border/15 last:border-0",
+				"group -mx-2 rounded-lg border-b border-border/15 last:border-0",
+				"hover:bg-secondary/30 transition-colors duration-150",
 				!email.isRead && "bg-foreground/2",
 				isUrgent && !email.isRead && "bg-accent-red/3",
 			)}
 		>
-			{/* Sender initial */}
-			<div
-				className={cn(
-					"size-7 rounded-full flex items-center justify-center shrink-0 font-mono text-[10px] font-semibold mt-0.5",
-					email.isRead
-						? "bg-secondary/50 text-grey-2"
-						: "bg-foreground text-background",
-				)}
+			<Link
+				to="/module/mail/inbox/$emailId"
+				params={{ emailId: email.id }}
+				search={{
+					...(category ? { category } : {}),
+					...(view ? { view } : {}),
+					...(showAll ? { showAll: true } : {}),
+				}}
+				className="flex items-start gap-3 py-3.5 px-2 cursor-pointer"
 			>
-				{initial}
-			</div>
-
-			{/* Content */}
-			<div className="flex-1 min-w-0">
-				<div className="flex items-baseline justify-between gap-3">
-					<div className="flex items-center gap-1.5 min-w-0">
-						{isUrgent && (
-							<span className="size-2 rounded-full bg-accent-red shrink-0" />
-						)}
-						<span
-							className={cn(
-								"font-body text-[14px] tracking-[0.01em] truncate",
-								email.isRead ? "text-grey-2" : "text-foreground font-medium",
-							)}
-						>
-							{senderDisplay}
-						</span>
-					</div>
-					<div className="flex items-center gap-2 shrink-0">
-						{email.hasAttachments && (
-							<Paperclip className="size-3 text-grey-3" />
-						)}
-						{email.isStarred && (
-							<Star className="size-3 text-foreground/50 fill-foreground/50" />
-						)}
-						<span className="font-mono text-[11px] text-grey-3 tabular-nums">
-							{formatTimestamp(email.receivedAt)}
-						</span>
-					</div>
-				</div>
-				<p
+				{/* Sender initial */}
+				<div
 					className={cn(
-						"font-body text-[13px] truncate mt-0.5",
-						email.isRead ? "text-grey-3" : "text-foreground/60",
+						"size-7 rounded-full flex items-center justify-center shrink-0 font-mono text-[10px] font-semibold mt-0.5",
+						email.isRead
+							? "bg-secondary/50 text-grey-2"
+							: "bg-foreground text-background",
 					)}
 				>
-					<span className={cn(!email.isRead && "text-foreground/70")}>
-						{email.subject || "(no subject)"}
-					</span>
-					{email.snippet && (
-						<span className="text-grey-3"> — {email.snippet}</span>
-					)}
-				</p>
-			</div>
-		</Link>
+					{initial}
+				</div>
+
+				{/* Content */}
+				<div className="flex-1 min-w-0">
+					<div className="flex items-baseline justify-between gap-3">
+						<div className="flex items-center gap-1.5 min-w-0">
+							{isUrgent && (
+								<span className="size-2 rounded-full bg-accent-red shrink-0" />
+							)}
+							<span
+								className={cn(
+									"font-body text-[14px] tracking-[0.01em] truncate",
+									email.isRead ? "text-grey-2" : "text-foreground font-medium",
+								)}
+							>
+								{senderDisplay}
+							</span>
+						</div>
+
+						{/* Right side — metadata ↔ actions share a grid cell */}
+						<div className="shrink-0 grid items-center justify-items-end self-center">
+							{/* Metadata — fades out on hover */}
+							<motion.div
+								variants={{
+									idle: { opacity: 1 },
+									hovered: { opacity: 0 },
+								}}
+								transition={{
+									duration: 0.15,
+									ease: MOTION_CONSTANTS.EASE,
+								}}
+								className="col-start-1 row-start-1 flex items-center gap-2 pointer-events-none"
+							>
+								{email.hasAttachments && (
+									<Paperclip className="size-3 text-grey-3" />
+								)}
+								{email.isStarred && (
+									<Star className="size-3 text-foreground/50 fill-foreground/50" />
+								)}
+								<span className="font-mono text-[11px] text-grey-3 tabular-nums">
+									{formatTimestamp(email.receivedAt)}
+								</span>
+							</motion.div>
+
+							{/* Actions — animate in on hover */}
+							<TooltipProvider>
+								<div className="col-start-1 row-start-1 flex items-center gap-0.5 pointer-events-none group-hover:pointer-events-auto">
+									<RowAction label="Archive" onClick={handleArchive}>
+										<Archive className="size-3" />
+									</RowAction>
+									<RowAction
+										label={email.isStarred ? "Unstar" : "Star"}
+										onClick={handleStar}
+										active={email.isStarred}
+										delay={0.03}
+									>
+										<Star
+											className={cn(
+												"size-3",
+												email.isStarred && "fill-amber-400",
+											)}
+										/>
+									</RowAction>
+									<RowAction
+										label={email.isRead ? "Mark as unread" : "Mark as read"}
+										onClick={handleToggleRead}
+										delay={0.06}
+									>
+										{email.isRead ? (
+											<Mail className="size-3" />
+										) : (
+											<MailOpen className="size-3" />
+										)}
+									</RowAction>
+								</div>
+							</TooltipProvider>
+						</div>
+					</div>
+					<p
+						className={cn(
+							"font-body text-[13px] truncate mt-0.5",
+							email.isRead ? "text-grey-3" : "text-foreground/60",
+						)}
+					>
+						<span className={cn(!email.isRead && "text-foreground/70")}>
+							{email.subject || "(no subject)"}
+						</span>
+						{email.snippet && (
+							<span className="text-grey-3"> — {email.snippet}</span>
+						)}
+					</p>
+				</div>
+			</Link>
+		</motion.div>
 	);
 }

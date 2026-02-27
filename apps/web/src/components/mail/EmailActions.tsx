@@ -9,6 +9,7 @@ import { mailKeys } from "@/hooks/use-mail";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
+import type { EmailCategory } from "@wingmnn/types";
 import {
 	Archive,
 	Forward,
@@ -20,12 +21,15 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
+import { CategorizeSenderPopover } from "./CategorizeSenderPopover";
 import { SendToPopover } from "./SendToPopover";
 
 interface EmailActionsProps {
 	emailId: string;
 	isStarred: boolean;
 	isRead: boolean;
+	fromAddress: string | null;
+	category: EmailCategory;
 	onReply: () => void;
 	onForward: () => void;
 	onNavigateBack: () => void;
@@ -60,6 +64,8 @@ export function EmailActions({
 	emailId,
 	isStarred,
 	isRead,
+	fromAddress,
+	category,
 	onReply,
 	onForward,
 	onNavigateBack,
@@ -251,28 +257,40 @@ export function EmailActions({
 
 				<Tooltip>
 					<TooltipTrigger asChild>
-						<ConfirmButton
-							title="Delete email"
-							description="This email will be moved to trash. This action cannot be undone."
-							confirmLabel="Delete"
-							onConfirm={handleDelete}
-						>
-							<motion.button
-								type="button"
-								whileTap={{ scale: 0.85 }}
-								className="size-8 rounded-full flex items-center justify-center text-grey-3 hover:text-accent-red hover:bg-accent-red/5 transition-all duration-200 cursor-pointer"
+						<div className="inline-flex">
+							<ConfirmButton
+								title="Delete email"
+								description="This email will be moved to trash. This action cannot be undone."
+								confirmLabel="Delete"
+								onConfirm={handleDelete}
 							>
-								<Trash2 className="size-3.5" />
-								<span className="sr-only">Delete</span>
-							</motion.button>
-						</ConfirmButton>
+								<motion.button
+									type="button"
+									whileTap={{ scale: 0.85 }}
+									className="size-8 rounded-full flex items-center justify-center text-grey-3 hover:text-accent-red hover:bg-accent-red/5 transition-all duration-200 cursor-pointer"
+								>
+									<Trash2 className="size-3.5" />
+									<span className="sr-only">Delete</span>
+								</motion.button>
+							</ConfirmButton>
+						</div>
 					</TooltipTrigger>
 					<TooltipContent side="bottom">Delete</TooltipContent>
 				</Tooltip>
 
-				<Separator />
+				<div className="flex-1" />
 
 				<SendToPopover />
+
+				{fromAddress && (
+					<>
+						<Separator />
+						<CategorizeSenderPopover
+							fromAddress={fromAddress}
+							category={category}
+						/>
+					</>
+				)}
 			</div>
 		</TooltipProvider>
 	);
