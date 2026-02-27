@@ -12,7 +12,6 @@ import {
 	mailAutoHandled,
 	mailSenderRules,
 	mailTriageItems,
-	or,
 	sql,
 	syncStatusEnum,
 } from "@wingmnn/db";
@@ -402,20 +401,7 @@ class MailService {
 				);
 			}
 			if (options.unreadOnly) {
-				if (options.category) {
-					conditions.push(eq(emails.isRead, false));
-				} else {
-					conditions.push(
-						or(
-							eq(emails.isRead, false),
-							eq(emails.isStarred, true),
-							eq(
-								emails.category,
-								"urgent" as (typeof emails.category.enumValues)[number],
-							),
-						)!,
-					);
-				}
+				conditions.push(eq(emails.isRead, false));
 			}
 			if (options.readOnly) {
 				conditions.push(eq(emails.isRead, true));

@@ -79,30 +79,25 @@ function EmailDetail() {
 			return;
 		autoMarkedRef.current = emailId;
 
-		const patch = { isRead: true };
+		// Update detail cache
 		queryClient.setQueryData(mailKeys.email(emailId), (old: any) => {
 			if (!old?.email) return old;
-			return { ...old, email: { ...old.email, ...patch } };
+			return { ...old, email: { ...old.email, isRead: true } };
 		});
-		// Remove from unread list caches and decrement total
-		queryClient.setQueriesData(
-			{ queryKey: mailKeys.emails({ unreadOnly: true }) },
-			(old: any) => {
-				if (!old?.pages) return old;
-				return {
-					...old,
-					pages: old.pages.map((page: any) => ({
-						...page,
-						emails: page.emails.filter((e: any) => e.id !== emailId),
-						total: Math.max(0, (page.total ?? 0) - 1),
-					})),
-				};
-			},
-		);
-		// Invalidate read caches so newly-read email appears
-		queryClient.invalidateQueries({
-			queryKey: mailKeys.emails({ readOnly: true }),
+		// Remove from all email list caches (matches any filter combination)
+		queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) => {
+			if (!old?.pages) return old;
+			return {
+				...old,
+				pages: old.pages.map((page: any) => ({
+					...page,
+					emails: page.emails.filter((e: any) => e.id !== emailId),
+					total: Math.max(0, (page.total ?? 0) - 1),
+				})),
+			};
 		});
+		// Invalidate all email list caches to ensure fresh data on next visit
+		queryClient.invalidateQueries({ queryKey: ["mail", "emails"] });
 		api.mail.emails({ id: emailId }).read.patch();
 	}, [data?.email?.id, data?.email?.isRead, emailId, queryClient]);
 
