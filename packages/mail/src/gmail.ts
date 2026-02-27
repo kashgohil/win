@@ -434,7 +434,8 @@ function parseAddressList(raw: string | null): string[] {
 
 function decodeBase64Url(data: string): string {
 	const base64 = data.replace(/-/g, "+").replace(/_/g, "/");
-	return atob(base64);
+	const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+	return new TextDecoder("utf-8").decode(bytes);
 }
 
 function extractBody(

@@ -207,6 +207,30 @@ export const mailAutoHandled = pgTable(
 	],
 );
 
+/* ── Sender Category Rules ── */
+
+export const mailSenderRules = pgTable(
+	"mail_sender_rules",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		senderAddress: varchar("sender_address", { length: 255 }).notNull(),
+		category: emailCategoryEnum().notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("mail_sender_rules_user_sender_idx").on(
+			table.userId,
+			table.senderAddress,
+		),
+		index("mail_sender_rules_user_id_idx").on(table.userId),
+	],
+);
+
 /* ── Relations ── */
 
 export const emailAccountsRelations = relations(
@@ -241,6 +265,16 @@ export const mailTriageItemsRelations = relations(
 		email: one(emails, {
 			fields: [mailTriageItems.emailId],
 			references: [emails.id],
+		}),
+	}),
+);
+
+export const mailSenderRulesRelations = relations(
+	mailSenderRules,
+	({ one }) => ({
+		user: one(users, {
+			fields: [mailSenderRules.userId],
+			references: [users.id],
 		}),
 	}),
 );

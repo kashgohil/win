@@ -29,6 +29,13 @@
       "when": 1771096919422,
       "tag": "0003_curved_arclight",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1772091438109,
+      "tag": "0004_absurd_sumo",
+      "breakpoints": true
     }
   ]
 }
