@@ -10,8 +10,10 @@ import {
 	eq,
 	gte,
 	mailAutoHandled,
+	mailSenderRules,
 	mailTriageItems,
 	or,
+	sql,
 	syncStatusEnum,
 } from "@wingmnn/db";
 import { getProvider, getValidAccessToken } from "@wingmnn/mail";
@@ -109,6 +111,25 @@ type ReplyResult =
 type ForwardResult =
 	| { ok: true; message: string }
 	| { ok: false; error: string; status: 404 | 500 };
+
+type SerializedSenderRule = {
+	id: string;
+	senderAddress: string;
+	category: (typeof emailCategoryEnum.enumValues)[number];
+	createdAt: string;
+};
+
+type CreateSenderRuleResult =
+	| { ok: true; data: { rule: SerializedSenderRule; updatedCount: number } }
+	| { ok: false; error: string; status: 400 | 500 };
+
+type DeleteSenderRuleResult =
+	| { ok: true; message: string }
+	| { ok: false; error: string; status: 404 | 500 };
+
+type GetSenderRulesResult =
+	| { ok: true; data: SerializedSenderRule[] }
+	| { ok: false; error: string; status: 500 };
 
 type SerializedEmail = {
 	id: string;
@@ -381,16 +402,20 @@ class MailService {
 				);
 			}
 			if (options.unreadOnly) {
-				conditions.push(
-					or(
-						eq(emails.isRead, false),
-						eq(emails.isStarred, true),
-						eq(
-							emails.category,
-							"urgent" as (typeof emails.category.enumValues)[number],
-						),
-					)!,
-				);
+				if (options.category) {
+					conditions.push(eq(emails.isRead, false));
+				} else {
+					conditions.push(
+						or(
+							eq(emails.isRead, false),
+							eq(emails.isStarred, true),
+							eq(
+								emails.category,
+								"urgent" as (typeof emails.category.enumValues)[number],
+							),
+						)!,
+					);
+				}
 			}
 			if (options.readOnly) {
 				conditions.push(eq(emails.isRead, true));
@@ -796,6 +821,143 @@ class MailService {
 		} catch (err) {
 			console.error("[mail] forwardEmail failed:", err);
 			return { ok: false, error: "Failed to forward email", status: 500 };
+		}
+	}
+
+	async createSenderRule(
+		userId: string,
+		senderAddress: string,
+		category: string,
+	): Promise<CreateSenderRuleResult> {
+		const validCategories = emailCategoryEnum.enumValues as readonly string[];
+		if (!validCategories.includes(category)) {
+			return {
+				ok: false,
+				error: `Invalid category: ${category}`,
+				status: 400,
+			};
+		}
+
+		const typedCategory =
+			category as (typeof emailCategoryEnum.enumValues)[number];
+
+		try {
+			const [rule] = await db
+				.insert(mailSenderRules)
+				.values({
+					userId,
+					senderAddress: senderAddress.toLowerCase(),
+					category: typedCategory,
+				})
+				.onConflictDoUpdate({
+					target: [mailSenderRules.userId, mailSenderRules.senderAddress],
+					set: { category: typedCategory },
+				})
+				.returning();
+
+			if (!rule) {
+				return {
+					ok: false,
+					error: "Failed to create sender rule",
+					status: 500,
+				};
+			}
+
+			// Bulk-update all existing emails from this sender
+			const updated = await db
+				.update(emails)
+				.set({ category: typedCategory })
+				.where(
+					and(
+						eq(emails.userId, userId),
+						sql`lower(${emails.fromAddress}) = ${senderAddress.toLowerCase()}`,
+					),
+				)
+				.returning({ id: emails.id });
+
+			const updatedCount = updated.length;
+
+			await invalidateCache(`mail:briefing:${userId}`);
+
+			return {
+				ok: true,
+				data: {
+					rule: {
+						id: rule.id,
+						senderAddress: rule.senderAddress,
+						category: rule.category,
+						createdAt: rule.createdAt.toISOString(),
+					},
+					updatedCount,
+				},
+			};
+		} catch (err) {
+			console.error("[mail] createSenderRule failed:", err);
+			return {
+				ok: false,
+				error: "Failed to create sender rule",
+				status: 500,
+			};
+		}
+	}
+
+	async deleteSenderRule(
+		userId: string,
+		ruleId: string,
+	): Promise<DeleteSenderRuleResult> {
+		try {
+			const [deleted] = await db
+				.delete(mailSenderRules)
+				.where(
+					and(
+						eq(mailSenderRules.id, ruleId),
+						eq(mailSenderRules.userId, userId),
+					),
+				)
+				.returning();
+
+			if (!deleted) {
+				return {
+					ok: false,
+					error: "Sender rule not found",
+					status: 404,
+				};
+			}
+
+			return { ok: true, message: "Sender rule deleted" };
+		} catch (err) {
+			console.error("[mail] deleteSenderRule failed:", err);
+			return {
+				ok: false,
+				error: "Failed to delete sender rule",
+				status: 500,
+			};
+		}
+	}
+
+	async getSenderRules(userId: string): Promise<GetSenderRulesResult> {
+		try {
+			const rules = await db.query.mailSenderRules.findMany({
+				where: eq(mailSenderRules.userId, userId),
+				orderBy: [desc(mailSenderRules.createdAt)],
+			});
+
+			return {
+				ok: true,
+				data: rules.map((r) => ({
+					id: r.id,
+					senderAddress: r.senderAddress,
+					category: r.category,
+					createdAt: r.createdAt.toISOString(),
+				})),
+			};
+		} catch (err) {
+			console.error("[mail] getSenderRules failed:", err);
+			return {
+				ok: false,
+				error: "Failed to load sender rules",
+				status: 500,
+			};
 		}
 	}
 

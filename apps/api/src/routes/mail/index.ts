@@ -6,6 +6,8 @@ import {
 	accountListResponse,
 	composeBody,
 	connectResponse,
+	createSenderRuleBody,
+	createSenderRuleResponse,
 	disconnectResponse,
 	emailDetailResponse,
 	emailListResponse,
@@ -13,6 +15,7 @@ import {
 	forwardBody,
 	messageResponse,
 	moduleDataResponse,
+	senderRuleListResponse,
 	toggleReadResponse,
 	toggleStarResponse,
 	triageActionBody,
@@ -411,6 +414,94 @@ export const mail = new Elysia({
 			detail: {
 				summary: "Forward email",
 				description: "Forwards the email to specified recipients",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.get(
+		"/sender-rules",
+		async ({ user, set }) => {
+			const result = await mailService.getSenderRules(user.id);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return { rules: result.data };
+		},
+		{
+			auth: true,
+			response: {
+				200: senderRuleListResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "List sender rules",
+				description:
+					"Returns all sender category rules for the authenticated user",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.post(
+		"/sender-rules",
+		async ({ user, body, set }) => {
+			const result = await mailService.createSenderRule(
+				user.id,
+				body.senderAddress,
+				body.category,
+			);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return result.data;
+		},
+		{
+			auth: true,
+			body: createSenderRuleBody,
+			response: {
+				200: createSenderRuleResponse,
+				400: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Create or update sender rule",
+				description:
+					"Sets a category rule for a sender address and bulk-updates existing emails",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.delete(
+		"/sender-rules/:id",
+		async ({ user, params, set }) => {
+			const result = await mailService.deleteSenderRule(user.id, params.id);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Delete sender rule",
+				description:
+					"Removes a sender category rule (does not revert already-categorized emails)",
 				tags: ["Mail"],
 				security: [{ bearerAuth: [] }],
 			},

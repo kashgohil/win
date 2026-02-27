@@ -1,4 +1,13 @@
-import { db, emails, eq, inArray, mailTriageItems } from "@wingmnn/db";
+import {
+	and,
+	db,
+	emails,
+	eq,
+	inArray,
+	mailSenderRules,
+	mailTriageItems,
+	sql,
+} from "@wingmnn/db";
 import { Worker } from "bullmq";
 import { getAiEnv } from "../ai/env";
 import { getAiProvider } from "../ai/factory";
@@ -164,7 +173,30 @@ async function classifyEmail(
 		bodyPlain: string | null;
 	},
 	aiProvider: AiProvider | null,
+	userId?: string,
 ): Promise<ClassificationResult> {
+	// 0. Check user-defined sender rules (highest priority)
+	if (userId && email.fromAddress) {
+		const senderRule = await db.query.mailSenderRules.findFirst({
+			where: and(
+				eq(mailSenderRules.userId, userId),
+				sql`${mailSenderRules.senderAddress} = lower(${email.fromAddress})`,
+			),
+		});
+		if (senderRule) {
+			console.log(
+				`[mail-ai] Sender rule matched "${email.fromAddress}" → ${senderRule.category}`,
+			);
+			return {
+				category: senderRule.category,
+				priorityScore: senderRule.category === "urgent" ? 90 : 30,
+				summary: `Categorized by sender rule`,
+				shouldTriage: false,
+				shouldAutoHandle: false,
+			};
+		}
+	}
+
 	const input = toEmailInput(email);
 
 	// 1. Try keyword rules first (free, instant)
@@ -222,7 +254,7 @@ async function processClassify(
 		const batchResults = await Promise.all(
 			batch.map(async (email) => ({
 				email,
-				result: await classifyEmail(email, aiProvider),
+				result: await classifyEmail(email, aiProvider, userId),
 			})),
 		);
 		results.push(...batchResults);

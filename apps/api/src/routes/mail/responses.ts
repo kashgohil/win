@@ -155,6 +155,41 @@ export const forwardBody = t.Object({
 	body: t.String(),
 });
 
+/* ── Sender rules ── */
+
+export const emailCategoryLiteral = t.Union([
+	t.Literal("urgent"),
+	t.Literal("actionable"),
+	t.Literal("informational"),
+	t.Literal("newsletter"),
+	t.Literal("receipt"),
+	t.Literal("confirmation"),
+	t.Literal("promotional"),
+	t.Literal("spam"),
+	t.Literal("uncategorized"),
+]);
+
+export const senderRuleSchema = t.Object({
+	id: t.String({ format: "uuid" }),
+	senderAddress: t.String(),
+	category: emailCategoryLiteral,
+	createdAt: t.String({ format: "date-time" }),
+});
+
+export const createSenderRuleBody = t.Object({
+	senderAddress: t.String(),
+	category: emailCategoryLiteral,
+});
+
+export const createSenderRuleResponse = t.Object({
+	rule: senderRuleSchema,
+	updatedCount: t.Number(),
+});
+
+export const senderRuleListResponse = t.Object({
+	rules: t.Array(senderRuleSchema),
+});
+
 /* ── Triage action ── */
 
 export const triageActionBody = t.Object({
