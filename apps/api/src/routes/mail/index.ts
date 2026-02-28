@@ -15,6 +15,7 @@ import {
 	forwardBody,
 	messageResponse,
 	moduleDataResponse,
+	senderListResponse,
 	senderRuleListResponse,
 	toggleReadResponse,
 	toggleStarResponse,
@@ -105,6 +106,12 @@ export const mail = new Elysia({
 				category: query.category ?? undefined,
 				unreadOnly: query.unreadOnly === "true",
 				readOnly: query.readOnly === "true",
+				q: query.q ?? undefined,
+				from: query.from ?? undefined,
+				starred: query.starred === "true",
+				attachment: query.attachment === "true",
+				after: query.after ?? undefined,
+				before: query.before ?? undefined,
 			});
 
 			if (!result.ok) {
@@ -122,6 +129,12 @@ export const mail = new Elysia({
 				category: t.Optional(t.String()),
 				unreadOnly: t.Optional(t.String()),
 				readOnly: t.Optional(t.String()),
+				q: t.Optional(t.String()),
+				from: t.Optional(t.String()),
+				starred: t.Optional(t.String()),
+				attachment: t.Optional(t.String()),
+				after: t.Optional(t.String()),
+				before: t.Optional(t.String()),
 			}),
 			response: {
 				200: emailListResponse,
@@ -131,7 +144,7 @@ export const mail = new Elysia({
 			detail: {
 				summary: "List emails",
 				description:
-					"Returns paginated list of emails with optional category filter",
+					"Returns paginated list of emails with optional category, search, and date filters",
 				tags: ["Mail"],
 				security: [{ bearerAuth: [] }],
 			},
@@ -159,6 +172,39 @@ export const mail = new Elysia({
 			detail: {
 				summary: "Get email detail",
 				description: "Returns full email including body content",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.get(
+		"/senders",
+		async ({ user, query, set }) => {
+			const result = await mailService.getSenders(
+				user.id,
+				query.q ?? undefined,
+			);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return { senders: result.data };
+		},
+		{
+			auth: true,
+			query: t.Object({
+				q: t.Optional(t.String()),
+			}),
+			response: {
+				200: senderListResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "List senders",
+				description:
+					"Returns distinct senders for the authenticated user, optionally filtered by query",
 				tags: ["Mail"],
 				security: [{ bearerAuth: [] }],
 			},

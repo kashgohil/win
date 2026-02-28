@@ -194,6 +194,18 @@ export const senderRuleListResponse = t.Object({
 	rules: t.Array(senderRuleSchema),
 });
 
+/* ── Senders ── */
+
+const senderSchema = t.Object({
+	name: t.Union([t.String(), t.Null()]),
+	address: t.String(),
+	count: t.Number(),
+});
+
+export const senderListResponse = t.Object({
+	senders: t.Array(senderSchema),
+});
+
 /* ── Triage action ── */
 
 export const triageActionBody = t.Object({

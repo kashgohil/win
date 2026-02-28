@@ -9,9 +9,12 @@ import {
 	emails,
 	eq,
 	gte,
+	ilike,
 	inArray,
+	lte,
 	mailAutoHandled,
 	mailSenderRules,
+	or,
 	sql,
 	syncStatusEnum,
 } from "@wingmnn/db";
@@ -131,6 +134,16 @@ type DeleteSenderRuleResult =
 
 type GetSenderRulesResult =
 	| { ok: true; data: SerializedSenderRule[] }
+	| { ok: false; error: string; status: 500 };
+
+type SenderEntry = {
+	name: string | null;
+	address: string;
+	count: number;
+};
+
+type SenderListResult =
+	| { ok: true; data: SenderEntry[] }
 	| { ok: false; error: string; status: 500 };
 
 type SerializedEmail = {
@@ -412,6 +425,12 @@ class MailService {
 			category?: string;
 			unreadOnly?: boolean;
 			readOnly?: boolean;
+			q?: string;
+			from?: string;
+			starred?: boolean;
+			attachment?: boolean;
+			after?: string;
+			before?: string;
 		},
 	): Promise<EmailListResult> {
 		const limit = options.limit ?? 50;
@@ -442,6 +461,38 @@ class MailService {
 			if (options.readOnly) {
 				conditions.push(eq(emails.isRead, true));
 			}
+			if (options.q) {
+				const pattern = `%${options.q}%`;
+				conditions.push(
+					or(
+						ilike(emails.subject, pattern),
+						ilike(emails.snippet, pattern),
+						ilike(emails.fromName, pattern),
+						ilike(emails.fromAddress, pattern),
+					)!,
+				);
+			}
+			if (options.from) {
+				const fromPattern = `%${options.from}%`;
+				conditions.push(
+					or(
+						ilike(emails.fromAddress, fromPattern),
+						ilike(emails.fromName, fromPattern),
+					)!,
+				);
+			}
+			if (options.starred) {
+				conditions.push(eq(emails.isStarred, true));
+			}
+			if (options.attachment) {
+				conditions.push(eq(emails.hasAttachments, true));
+			}
+			if (options.after) {
+				conditions.push(gte(emails.receivedAt, new Date(options.after)));
+			}
+			if (options.before) {
+				conditions.push(lte(emails.receivedAt, new Date(options.before)));
+			}
 
 			const [emailRows, [totalResult]] = await Promise.all([
 				db.query.emails.findMany({
@@ -470,6 +521,47 @@ class MailService {
 		} catch (err) {
 			console.error("[mail] getEmails failed:", err);
 			return { ok: false, error: "Failed to load emails", status: 500 };
+		}
+	}
+
+	async getSenders(userId: string, q?: string): Promise<SenderListResult> {
+		try {
+			const conditions = [eq(emails.userId, userId)];
+			if (q) {
+				const pattern = `%${q}%`;
+				conditions.push(
+					or(
+						ilike(emails.fromAddress, pattern),
+						ilike(emails.fromName, pattern),
+					)!,
+				);
+			}
+
+			const rows = await db
+				.select({
+					address: emails.fromAddress,
+					name: emails.fromName,
+					count: count(),
+				})
+				.from(emails)
+				.where(and(...conditions))
+				.groupBy(emails.fromAddress, emails.fromName)
+				.orderBy(desc(count()))
+				.limit(10);
+
+			return {
+				ok: true,
+				data: rows
+					.filter((r) => r.address !== null)
+					.map((r) => ({
+						name: r.name,
+						address: r.address!,
+						count: r.count,
+					})),
+			};
+		} catch (err) {
+			console.error("[mail] getSenders failed:", err);
+			return { ok: false, error: "Failed to load senders", status: 500 };
 		}
 	}
 
