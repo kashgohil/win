@@ -128,6 +128,11 @@ export const emails = pgTable(
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),
+		triageStatus: triageStatusEnum("triage_status"),
+		triageReason: text("triage_reason"),
+		draftResponse: text("draft_response"),
+		snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
+		triageActedAt: timestamp("triage_acted_at", { withTimezone: true }),
 		updatedAt: timestamp("updated_at", { withTimezone: true })
 			.defaultNow()
 			.notNull()
@@ -141,44 +146,7 @@ export const emails = pgTable(
 		),
 		index("emails_user_category_idx").on(table.userId, table.category),
 		index("emails_user_priority_idx").on(table.userId, table.priorityScore),
-	],
-);
-
-/* ── Mail Triage Items ── */
-
-export const mailTriageItems = pgTable(
-	"mail_triage_items",
-	{
-		id: uuid().primaryKey().defaultRandom(),
-		userId: text("user_id")
-			.notNull()
-			.references(() => users.id, { onDelete: "cascade" }),
-		emailId: uuid("email_id").references(() => emails.id, {
-			onDelete: "set null",
-		}),
-		title: text().notNull(),
-		subtitle: text(),
-		urgent: boolean().default(false).notNull(),
-		sourceModule: varchar("source_module", { length: 20 }),
-		actions:
-			jsonb().$type<
-				{ label: string; variant?: "default" | "outline" | "ghost" }[]
-			>(),
-		status: triageStatusEnum().default("pending").notNull(),
-		draftResponse: text("draft_response"),
-		snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
-		actedAt: timestamp("acted_at", { withTimezone: true }),
-		createdAt: timestamp("created_at", { withTimezone: true })
-			.defaultNow()
-			.notNull(),
-		updatedAt: timestamp("updated_at", { withTimezone: true })
-			.defaultNow()
-			.notNull()
-			.$onUpdate(() => new Date()),
-	},
-	(table) => [
-		index("triage_user_status_idx").on(table.userId, table.status),
-		index("triage_user_created_idx").on(table.userId, table.createdAt),
+		index("emails_user_triage_status_idx").on(table.userId, table.triageStatus),
 	],
 );
 
@@ -254,20 +222,6 @@ export const emailsRelations = relations(emails, ({ one }) => ({
 		references: [users.id],
 	}),
 }));
-
-export const mailTriageItemsRelations = relations(
-	mailTriageItems,
-	({ one }) => ({
-		user: one(users, {
-			fields: [mailTriageItems.userId],
-			references: [users.id],
-		}),
-		email: one(emails, {
-			fields: [mailTriageItems.emailId],
-			references: [emails.id],
-		}),
-	}),
-);
 
 export const mailSenderRulesRelations = relations(
 	mailSenderRules,

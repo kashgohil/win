@@ -22,6 +22,7 @@ const ClassificationSchema = z.object({
 	priorityScore: z.number().int().min(0).max(100),
 	summary: z.string(),
 	shouldTriage: z.boolean(),
+	triageReason: z.string().nullable(),
 	shouldAutoHandle: z.boolean(),
 	autoHandleAction: z
 		.enum(["archived", "labeled", "forwarded", "auto-replied", "filtered"])
@@ -79,6 +80,7 @@ export class AnthropicProvider implements AiProvider {
 			priorityScore: result.priorityScore,
 			summary: result.summary,
 			shouldTriage: result.shouldTriage,
+			triageReason: result.triageReason ?? undefined,
 			shouldAutoHandle: result.shouldAutoHandle,
 			autoHandleAction: result.autoHandleAction ?? undefined,
 		};

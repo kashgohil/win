@@ -34,6 +34,7 @@ export interface ClassificationResult {
 	priorityScore: number;
 	summary: string;
 	shouldTriage: boolean;
+	triageReason?: string;
 	shouldAutoHandle: boolean;
 	autoHandleAction?: AutoHandleAction;
 }

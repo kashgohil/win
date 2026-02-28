@@ -36,6 +36,13 @@
       "when": 1772091438109,
       "tag": "0004_absurd_sumo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1772262794047,
+      "tag": "0005_skinny_turbo",
+      "breakpoints": true
     }
   ]
 }

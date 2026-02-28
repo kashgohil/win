@@ -5,7 +5,6 @@ import {
 	eq,
 	inArray,
 	mailSenderRules,
-	mailTriageItems,
 	sql,
 } from "@wingmnn/db";
 import { Worker } from "bullmq";
@@ -91,7 +90,7 @@ function stubClassify(email: {
 			category: "urgent",
 			priorityScore: 90,
 			summary: "Urgent email requiring attention",
-			shouldTriage: true,
+			shouldTriage: false,
 			shouldAutoHandle: false,
 		};
 	}
@@ -271,38 +270,21 @@ async function processClassify(
 			.where(eq(emails.id, email.id));
 
 		if (result.shouldTriage) {
-			const actions: {
-				label: string;
-				variant?: "default" | "outline" | "ghost";
-			}[] = [
-				{ label: "Reply", variant: "default" },
-				{ label: "Archive", variant: "outline" },
-				{ label: "Dismiss", variant: "ghost" },
-			];
-
-			const [triageItem] = await db
-				.insert(mailTriageItems)
-				.values({
-					userId,
-					emailId: email.id,
-					title: email.subject ?? "No subject",
-					subtitle: result.summary,
-					urgent: result.category === "urgent",
-					sourceModule: "mail",
-					actions,
-					status: "pending",
+			await db
+				.update(emails)
+				.set({
+					triageStatus: "pending",
+					triageReason: result.triageReason ?? result.summary,
 				})
-				.returning();
+				.where(eq(emails.id, email.id));
 
-			if (triageItem && result.category === "urgent") {
-				try {
-					await enqueueDraftResponse(email.id, triageItem.id, userId);
-				} catch (err) {
-					console.error(
-						`[mail-ai] Failed to enqueue draft-response for email ${email.id}:`,
-						err,
-					);
-				}
+			try {
+				await enqueueDraftResponse(email.id, userId);
+			} catch (err) {
+				console.error(
+					`[mail-ai] Failed to enqueue draft-response for email ${email.id}:`,
+					err,
+				);
 			}
 		}
 
@@ -330,7 +312,6 @@ async function processClassify(
 
 async function processDraftResponse(
 	emailId: string,
-	triageItemId: string,
 	_userId: string,
 ): Promise<void> {
 	const email = await db.query.emails.findFirst({
@@ -368,12 +349,12 @@ async function processDraftResponse(
 	}
 
 	await db
-		.update(mailTriageItems)
+		.update(emails)
 		.set({
 			draftResponse: draft,
-			subtitle: "Reply drafted — needs your review before sending",
+			triageReason: "Reply drafted — needs your review before sending",
 		})
-		.where(eq(mailTriageItems.id, triageItemId));
+		.where(eq(emails.id, emailId));
 }
 
 // ── Worker setup ──
@@ -389,11 +370,7 @@ export function createMailAiWorker() {
 					await processClassify(job.data.emailIds, job.data.userId);
 					break;
 				case "draft-response":
-					await processDraftResponse(
-						job.data.emailId,
-						job.data.triageItemId,
-						job.data.userId,
-					);
+					await processDraftResponse(job.data.emailId, job.data.userId);
 					break;
 			}
 		},

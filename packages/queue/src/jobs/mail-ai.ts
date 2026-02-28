@@ -9,7 +9,6 @@ export type MailAiJobData =
 	| {
 			type: "draft-response";
 			emailId: string;
-			triageItemId: string;
 			userId: string;
 	  };
 
@@ -21,15 +20,10 @@ export async function enqueueClassify(emailIds: string[], userId: string) {
 	});
 }
 
-export async function enqueueDraftResponse(
-	emailId: string,
-	triageItemId: string,
-	userId: string,
-) {
+export async function enqueueDraftResponse(emailId: string, userId: string) {
 	return mailAiQueue.add("draft-response", {
 		type: "draft-response",
 		emailId,
-		triageItemId,
 		userId,
 	});
 }

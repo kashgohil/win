@@ -11,7 +11,6 @@ import {
 	gte,
 	mailAutoHandled,
 	mailSenderRules,
-	mailTriageItems,
 	sql,
 	syncStatusEnum,
 } from "@wingmnn/db";
@@ -36,7 +35,6 @@ type TriageItem = {
 	timestamp: string;
 	urgent?: boolean;
 	actions: { label: string; variant?: "default" | "outline" | "ghost" }[];
-	sourceModule?: string;
 };
 
 type AutoHandledItem = {
@@ -289,12 +287,9 @@ class MailService {
 
 				const [triageResult] = await db
 					.select({ value: count() })
-					.from(mailTriageItems)
+					.from(emails)
 					.where(
-						and(
-							eq(mailTriageItems.userId, userId),
-							eq(mailTriageItems.status, "pending"),
-						),
+						and(eq(emails.userId, userId), eq(emails.triageStatus, "pending")),
 					);
 
 				const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -326,23 +321,28 @@ class MailService {
 	}
 
 	private async getTriageItems(userId: string): Promise<TriageItem[]> {
-		const items = await db.query.mailTriageItems.findMany({
-			where: and(
-				eq(mailTriageItems.userId, userId),
-				eq(mailTriageItems.status, "pending"),
-			),
-			orderBy: [desc(mailTriageItems.urgent), desc(mailTriageItems.createdAt)],
+		const items = await db.query.emails.findMany({
+			where: and(eq(emails.userId, userId), eq(emails.triageStatus, "pending")),
+			orderBy: [
+				desc(sql`(${emails.category} = 'urgent')`),
+				desc(emails.receivedAt),
+			],
 			limit: 20,
 		});
 
+		const actions: TriageItem["actions"] = [
+			{ label: "Reply", variant: "default" },
+			{ label: "Archive", variant: "outline" },
+			{ label: "Dismiss", variant: "ghost" },
+		];
+
 		return items.map((item) => ({
 			id: item.id,
-			title: item.title,
-			subtitle: item.subtitle ?? undefined,
-			timestamp: timeAgo(item.createdAt),
-			urgent: item.urgent || undefined,
-			actions: (item.actions as TriageItem["actions"]) ?? [],
-			sourceModule: item.sourceModule ?? undefined,
+			title: item.subject ?? "No subject",
+			subtitle: item.triageReason ?? undefined,
+			timestamp: timeAgo(item.receivedAt),
+			urgent: item.category === "urgent" || undefined,
+			actions,
 		}));
 	}
 
@@ -949,27 +949,24 @@ class MailService {
 
 	async executeTriageAction(
 		userId: string,
-		triageItemId: string,
+		emailId: string,
 		action: "send_draft" | "dismiss" | "archive" | "snooze",
 		snoozeDuration?: number,
 	): Promise<TriageActionResult> {
 		try {
-			const item = await db.query.mailTriageItems.findFirst({
-				where: and(
-					eq(mailTriageItems.id, triageItemId),
-					eq(mailTriageItems.userId, userId),
-				),
+			const email = await db.query.emails.findFirst({
+				where: and(eq(emails.id, emailId), eq(emails.userId, userId)),
 			});
 
-			if (!item) {
+			if (!email) {
 				return {
 					ok: false,
-					error: "Triage item not found",
+					error: "Email not found",
 					status: 404,
 				};
 			}
 
-			if (item.status !== "pending") {
+			if (email.triageStatus !== "pending") {
 				return {
 					ok: false,
 					error: "Triage item already handled",
@@ -979,53 +976,45 @@ class MailService {
 
 			switch (action) {
 				case "send_draft": {
-					if (!item.emailId || !item.draftResponse) {
+					if (!email.draftResponse) {
 						return {
 							ok: false,
-							error: "No email or draft response to send",
+							error: "No draft response to send",
 							status: 400,
 						};
 					}
 
-					const sendCtx = await getEmailProviderContext(item.emailId);
+					const sendCtx = await getEmailProviderContext(emailId);
 					if (!sendCtx.ok) {
 						console.error(`[mail] send_draft context failed: ${sendCtx.error}`);
 						return { ok: false, error: sendCtx.error, status: 500 };
 					}
 
 					await sendCtx.provider.sendDraft(sendCtx.accessToken, {
-						to: [sendCtx.email.fromAddress ?? ""],
-						subject: `Re: ${sendCtx.email.subject ?? ""}`,
-						body: item.draftResponse,
-						threadId: sendCtx.email.providerThreadId ?? undefined,
-						inReplyTo: sendCtx.email.providerMessageId,
+						to: [email.fromAddress ?? ""],
+						subject: `Re: ${email.subject ?? ""}`,
+						body: email.draftResponse,
+						threadId: email.providerThreadId ?? undefined,
+						inReplyTo: email.providerMessageId,
 					});
 
 					await db
-						.update(mailTriageItems)
-						.set({ status: "acted", actedAt: new Date() })
-						.where(eq(mailTriageItems.id, triageItemId));
+						.update(emails)
+						.set({ triageStatus: "acted", triageActedAt: new Date() })
+						.where(eq(emails.id, emailId));
 					break;
 				}
 
 				case "dismiss": {
 					await db
-						.update(mailTriageItems)
-						.set({ status: "dismissed", actedAt: new Date() })
-						.where(eq(mailTriageItems.id, triageItemId));
+						.update(emails)
+						.set({ triageStatus: "dismissed", triageActedAt: new Date() })
+						.where(eq(emails.id, emailId));
 					break;
 				}
 
 				case "archive": {
-					if (!item.emailId) {
-						return {
-							ok: false,
-							error: "No email to archive",
-							status: 400,
-						};
-					}
-
-					const archiveCtx = await getEmailProviderContext(item.emailId);
+					const archiveCtx = await getEmailProviderContext(emailId);
 					if (!archiveCtx.ok) {
 						console.error(`[mail] archive context failed: ${archiveCtx.error}`);
 						return { ok: false, error: archiveCtx.error, status: 500 };
@@ -1033,22 +1022,22 @@ class MailService {
 
 					await archiveCtx.provider.archive(
 						archiveCtx.accessToken,
-						archiveCtx.email.providerMessageId,
+						email.providerMessageId,
 					);
 
 					await db
-						.update(mailTriageItems)
-						.set({ status: "acted", actedAt: new Date() })
-						.where(eq(mailTriageItems.id, triageItemId));
+						.update(emails)
+						.set({ triageStatus: "acted", triageActedAt: new Date() })
+						.where(eq(emails.id, emailId));
 					break;
 				}
 
 				case "snooze": {
 					const until = new Date(Date.now() + (snoozeDuration ?? 3600) * 1000);
 					await db
-						.update(mailTriageItems)
-						.set({ status: "snoozed", snoozedUntil: until })
-						.where(eq(mailTriageItems.id, triageItemId));
+						.update(emails)
+						.set({ triageStatus: "snoozed", snoozedUntil: until })
+						.where(eq(emails.id, emailId));
 					break;
 				}
 			}
