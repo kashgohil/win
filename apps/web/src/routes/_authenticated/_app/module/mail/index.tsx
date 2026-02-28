@@ -44,11 +44,9 @@ export const Route = createFileRoute("/_authenticated/_app/module/mail/")({
 });
 
 const ACTION_MAP: Record<string, TriageAction> = {
-	"Send as-is": "send_draft",
-	"Send follow-up": "send_draft",
-	"Reply with summary": "send_draft",
-	Dismiss: "dismiss",
+	Reply: "send_draft",
 	Archive: "archive",
+	Dismiss: "dismiss",
 	Snooze: "snooze",
 };
 
@@ -113,11 +111,15 @@ function MailModule() {
 		api.mail.triage({ id: itemId }).action.post({ action: "dismiss" });
 	};
 
+	const handleViewEmail = (emailId: string) => {
+		navigate({ to: "/module/mail/inbox/$emailId", params: { emailId } });
+	};
+
 	const moduleData: ModuleData | undefined =
 		!isPending && !triageError
 			? {
 					briefing,
-					triage: triage.length > 0 ? triage : MODULE_DATA.mail.triage,
+					triage,
 					autoHandled: autoHandled.map((a) => ({
 						...a,
 						linkedModule: a.linkedModule as ModuleKey | undefined,
@@ -151,6 +153,7 @@ function MailModule() {
 				data={moduleData ?? MODULE_DATA.mail}
 				onAction={handleAction}
 				onDismiss={handleDismiss}
+				onViewEmail={handleViewEmail}
 				isLoading={isPending}
 				headerActions={<MailHeaderActions />}
 			>

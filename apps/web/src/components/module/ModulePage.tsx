@@ -1,10 +1,24 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { ModuleData, TriageItem } from "@/lib/module-data";
+import type {
+	AutoHandledItem,
+	ModuleData,
+	TriageItem,
+} from "@/lib/module-data";
 import { MODULES, type Module, type ModuleKey } from "@/lib/onboarding-data";
 import { cn } from "@/lib/utils";
-import { ArrowRight, Check, ChevronDown, Sparkles } from "lucide-react";
+import {
+	Archive,
+	ArrowRight,
+	Check,
+	ChevronDown,
+	Filter,
+	Forward,
+	Reply,
+	Sparkles,
+	Tag,
+} from "lucide-react";
 import {
 	AnimatePresence,
 	motion,
@@ -23,6 +37,8 @@ interface ModulePageProps {
 	onAction?: (itemId: string, actionLabel: string) => void;
 	/** Called when a triage item is dismissed (ghost button or swipe). Overrides local-only dismiss. */
 	onDismiss?: (itemId: string) => void;
+	/** Called when the user wants to view the source email of an auto-handled item */
+	onViewEmail?: (emailId: string) => void;
 	/** Optional loading state — renders skeleton when true */
 	isLoading?: boolean;
 	/** Optional empty state rendered when provided and data has no content */
@@ -81,6 +97,7 @@ export default function ModulePage({
 	data,
 	onAction,
 	onDismiss: onDismissProp,
+	onViewEmail,
 	isLoading,
 	emptyState,
 	headerActions,
@@ -331,33 +348,12 @@ export default function ModulePage({
 							>
 								<div className="mt-4 space-y-0">
 									{data.autoHandled.map((item, i) => (
-										<motion.div
+										<AutoHandledCard
 											key={item.id}
-											initial={{ opacity: 0, x: -8 }}
-											animate={{ opacity: 1, x: 0 }}
-											transition={{
-												delay: i * 0.04,
-												duration: 0.3,
-												ease: MOTION_CONSTANTS.EASE,
-											}}
-											className="group flex items-baseline gap-3 py-2.5 hover:bg-secondary/30 -mx-2 px-2 rounded-lg transition-colors duration-150"
-										>
-											<Check className="size-3 text-foreground/25 shrink-0 relative top-px" />
-											<span className="font-body text-[14px] text-foreground/60 tracking-[0.01em] flex-1 leading-snug">
-												{item.text}
-											</span>
-											{item.linkedModule && (
-												<Badge
-													variant="outline"
-													className="font-mono text-[9px] tracking-widest uppercase border-border/40 text-grey-3 px-1.5 py-0"
-												>
-													{getModuleCode(item.linkedModule)}
-												</Badge>
-											)}
-											<span className="font-mono text-[10px] text-grey-3 shrink-0">
-												{item.timestamp}
-											</span>
-										</motion.div>
+											item={item}
+											index={i}
+											onViewEmail={onViewEmail}
+										/>
 									))}
 								</div>
 							</motion.div>
@@ -532,6 +528,96 @@ function TriageCard({
 					</div>
 				</div>
 			</motion.div>
+		</motion.div>
+	);
+}
+
+/* ── Auto-handled card ── */
+
+const ACTION_META: Record<string, { label: string; icon: typeof Archive }> = {
+	archived: { label: "Archived", icon: Archive },
+	filtered: { label: "Filtered", icon: Filter },
+	labeled: { label: "Labeled", icon: Tag },
+	forwarded: { label: "Forwarded", icon: Forward },
+	"auto-replied": { label: "Replied", icon: Reply },
+};
+
+function AutoHandledCard({
+	item,
+	index,
+	onViewEmail,
+}: {
+	item: AutoHandledItem;
+	index: number;
+	onViewEmail?: (emailId: string) => void;
+}) {
+	const meta = (item.actionType && ACTION_META[item.actionType]) || {
+		label: "Handled",
+		icon: Check,
+	};
+	const ActionIcon = meta.icon;
+	const hasEmail = item.sender || item.subject;
+	const canView = item.emailId && onViewEmail;
+
+	/* Line 2 detail: category (why) + linked module */
+	const hasDetail = item.category || item.linkedModule;
+
+	return (
+		<motion.div
+			initial={{ opacity: 0, y: 8 }}
+			animate={{ opacity: 1, y: 0 }}
+			transition={{
+				delay: index * 0.04,
+				duration: 0.3,
+				ease: MOTION_CONSTANTS.EASE,
+			}}
+			className="mb-2 last:mb-0"
+		>
+			<div
+				className={cn(
+					"rounded-lg border border-border/30 hover:border-border/50 transition-colors duration-200 px-3.5 py-2.5",
+					canView && "cursor-pointer",
+				)}
+				onClick={canView ? () => onViewEmail(item.emailId!) : undefined}
+			>
+				{/* Line 1 — Action + what + when */}
+				<div className="flex items-center gap-2 min-w-0">
+					<ActionIcon className="size-3 text-foreground/40 shrink-0" />
+					<span className="font-mono text-[11px] font-medium tracking-[0.04em] text-foreground/60 shrink-0">
+						{meta.label}
+					</span>
+					<span className="font-body text-[13px] text-foreground/70 tracking-[0.01em] truncate min-w-0">
+						{hasEmail
+							? item.subject
+								? `${item.sender ?? "Unknown"} — ${item.subject}`
+								: (item.sender ?? "Unknown sender")
+							: item.text}
+					</span>
+					<span className="font-mono text-[10px] text-grey-3 tabular-nums shrink-0 ml-auto">
+						{item.timestamp}
+					</span>
+				</div>
+
+				{/* Line 2 — Why + linked module */}
+				{hasDetail && (
+					<div className="flex items-center gap-2 mt-1 ml-5">
+						{item.category && (
+							<span className="font-mono text-[10px] tracking-[0.06em] text-grey-3 lowercase">
+								{item.category}
+							</span>
+						)}
+						{item.linkedModule && (
+							<Badge
+								variant="outline"
+								className="font-mono text-[9px] tracking-widest uppercase border-border/40 text-grey-3 px-1.5 py-0"
+							>
+								<ArrowRight className="size-2.5" />
+								{getModuleCode(item.linkedModule)}
+							</Badge>
+						)}
+					</div>
+				)}
+			</div>
 		</motion.div>
 	);
 }

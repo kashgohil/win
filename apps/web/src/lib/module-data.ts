@@ -15,7 +15,12 @@ export interface TriageItem {
 export interface AutoHandledItem {
 	id: string;
 	text: string;
+	subject?: string;
+	sender?: string;
+	actionType?: string;
+	emailId?: string;
 	linkedModule?: ModuleKey;
+	category?: string;
 	timestamp: string;
 }
 
@@ -78,29 +83,49 @@ const MAIL_DATA: ModuleData = {
 	autoHandled: [
 		{
 			id: "ma1",
-			text: "5 newsletters archived",
+			text: "Archived newsletter from TechCrunch",
+			sender: "TechCrunch",
+			subject: "Your Daily Digest — AI roundup",
+			actionType: "archived",
+			category: "newsletter",
 			timestamp: "1h ago",
 		},
 		{
 			id: "ma2",
-			text: "2 receipts forwarded",
+			text: "Labeled receipt from Stripe",
+			sender: "Stripe",
+			subject: "Payment receipt for $49.00",
+			actionType: "labeled",
+			category: "receipt",
 			linkedModule: "fin",
 			timestamp: "2h ago",
 		},
 		{
 			id: "ma3",
-			text: "1 meeting confirmation synced",
+			text: "Labeled confirmation from Google Calendar",
+			sender: "Google Calendar",
+			subject: "Invitation: Product sync @ Tue 2pm",
+			actionType: "labeled",
+			category: "confirmation",
 			linkedModule: "cal",
 			timestamp: "3h ago",
 		},
 		{
 			id: "ma4",
-			text: "3 promotional emails filtered",
+			text: "Filtered promotional email from Figma",
+			sender: "Figma",
+			subject: "50% off Figma Pro — limited time",
+			actionType: "filtered",
+			category: "promotional",
 			timestamp: "4h ago",
 		},
 		{
 			id: "ma5",
-			text: "Auto-replied to delivery notification",
+			text: "Filtered spam from unknown sender",
+			sender: "noreply@deals99.biz",
+			subject: "You've won a $500 gift card!",
+			actionType: "filtered",
+			category: "spam",
 			timestamp: "5h ago",
 		},
 	],
