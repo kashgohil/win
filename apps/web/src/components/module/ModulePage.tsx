@@ -8,17 +8,7 @@ import type {
 } from "@/lib/module-data";
 import { MODULES, type Module, type ModuleKey } from "@/lib/onboarding-data";
 import { cn } from "@/lib/utils";
-import {
-	Archive,
-	ArrowRight,
-	Check,
-	ChevronDown,
-	Filter,
-	Forward,
-	Reply,
-	Sparkles,
-	Tag,
-} from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Sparkles } from "lucide-react";
 import {
 	AnimatePresence,
 	motion,
@@ -30,15 +20,15 @@ import { MOTION_CONSTANTS } from "../constant";
 
 /* ── Props ── */
 
-interface ModulePageProps {
+interface ModulePageProps<T extends AutoHandledItem = AutoHandledItem> {
 	moduleKey: ModuleKey;
-	data: ModuleData;
+	data: ModuleData<T>;
 	/** Called when a non-ghost triage action button is clicked */
 	onAction?: (itemId: string, actionLabel: string) => void;
 	/** Called when a triage item is dismissed (ghost button or swipe). Overrides local-only dismiss. */
 	onDismiss?: (itemId: string) => void;
-	/** Called when the user wants to view the source email of an auto-handled item */
-	onViewEmail?: (emailId: string) => void;
+	/** Custom renderer for auto-handled cards (module-specific rendering) */
+	renderAutoHandledCard?: (item: T, index: number) => React.ReactNode;
 	/** Optional loading state — renders skeleton when true */
 	isLoading?: boolean;
 	/** Optional empty state rendered when provided and data has no content */
@@ -92,17 +82,19 @@ function SectionRule({
 
 /* ── Main component ── */
 
-export default function ModulePage({
+export default function ModulePage<
+	T extends AutoHandledItem = AutoHandledItem,
+>({
 	moduleKey,
 	data,
 	onAction,
 	onDismiss: onDismissProp,
-	onViewEmail,
+	renderAutoHandledCard,
 	isLoading,
 	emptyState,
 	headerActions,
 	children,
-}: ModulePageProps) {
+}: ModulePageProps<T>) {
 	const mod = getModule(moduleKey);
 	const [autoExpanded, setAutoExpanded] = useState(false);
 	const [dismissedItems, setDismissedItems] = useState<Set<string>>(new Set());
@@ -347,14 +339,17 @@ export default function ModulePage({
 								className="overflow-hidden"
 							>
 								<div className="mt-4 space-y-0">
-									{data.autoHandled.map((item, i) => (
-										<AutoHandledCard
-											key={item.id}
-											item={item}
-											index={i}
-											onViewEmail={onViewEmail}
-										/>
-									))}
+									{data.autoHandled.map((item, i) =>
+										renderAutoHandledCard ? (
+											renderAutoHandledCard(item, i)
+										) : (
+											<DefaultAutoHandledCard
+												key={item.id}
+												item={item}
+												index={i}
+											/>
+										),
+									)}
 								</div>
 							</motion.div>
 						)}
@@ -532,36 +527,15 @@ function TriageCard({
 	);
 }
 
-/* ── Auto-handled card ── */
+/* ── Default auto-handled card (generic, module-agnostic) ── */
 
-const ACTION_META: Record<string, { label: string; icon: typeof Archive }> = {
-	archived: { label: "Archived", icon: Archive },
-	filtered: { label: "Filtered", icon: Filter },
-	labeled: { label: "Labeled", icon: Tag },
-	forwarded: { label: "Forwarded", icon: Forward },
-	"auto-replied": { label: "Replied", icon: Reply },
-};
-
-function AutoHandledCard({
+function DefaultAutoHandledCard({
 	item,
 	index,
-	onViewEmail,
 }: {
 	item: AutoHandledItem;
 	index: number;
-	onViewEmail?: (emailId: string) => void;
 }) {
-	const meta = (item.actionType && ACTION_META[item.actionType]) || {
-		label: "Handled",
-		icon: Check,
-	};
-	const ActionIcon = meta.icon;
-	const hasEmail = item.sender || item.subject;
-	const canView = item.emailId && onViewEmail;
-
-	/* Line 2 detail: category (why) + linked module */
-	const hasDetail = item.category || item.linkedModule;
-
 	return (
 		<motion.div
 			initial={{ opacity: 0, y: 8 }}
@@ -573,50 +547,16 @@ function AutoHandledCard({
 			}}
 			className="mb-2 last:mb-0"
 		>
-			<div
-				className={cn(
-					"rounded-lg border border-border/30 hover:border-border/50 transition-colors duration-200 px-3.5 py-2.5",
-					canView && "cursor-pointer",
-				)}
-				onClick={canView ? () => onViewEmail(item.emailId!) : undefined}
-			>
-				{/* Line 1 — Action + what + when */}
+			<div className="rounded-lg border border-border/30 hover:border-border/50 transition-colors duration-200 px-3.5 py-2.5">
 				<div className="flex items-center gap-2 min-w-0">
-					<ActionIcon className="size-3 text-foreground/40 shrink-0" />
-					<span className="font-mono text-[11px] font-medium tracking-[0.04em] text-foreground/60 shrink-0">
-						{meta.label}
-					</span>
+					<Check className="size-3 text-foreground/25 shrink-0" />
 					<span className="font-body text-[13px] text-foreground/70 tracking-[0.01em] truncate min-w-0">
-						{hasEmail
-							? item.subject
-								? `${item.sender ?? "Unknown"} — ${item.subject}`
-								: (item.sender ?? "Unknown sender")
-							: item.text}
+						{item.text}
 					</span>
 					<span className="font-mono text-[10px] text-grey-3 tabular-nums shrink-0 ml-auto">
 						{item.timestamp}
 					</span>
 				</div>
-
-				{/* Line 2 — Why + linked module */}
-				{hasDetail && (
-					<div className="flex items-center gap-2 mt-1 ml-5">
-						{item.category && (
-							<span className="font-mono text-[10px] tracking-[0.06em] text-grey-3 lowercase">
-								{item.category}
-							</span>
-						)}
-						{item.linkedModule && (
-							<Badge
-								variant="outline"
-								className="font-mono text-[9px] tracking-widest uppercase border-border/40 text-grey-3 px-1.5 py-0"
-							>
-								<ArrowRight className="size-2.5" />
-								{getModuleCode(item.linkedModule)}
-							</Badge>
-						)}
-					</div>
-				)}
 			</div>
 		</motion.div>
 	);

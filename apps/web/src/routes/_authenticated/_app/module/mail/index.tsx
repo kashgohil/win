@@ -1,4 +1,8 @@
 import {
+	MailAutoHandledCard,
+	type MailAutoHandledItem,
+} from "@/components/mail/MailAutoHandledCard";
+import {
 	getProviderStyle,
 	getSyncIndicator,
 } from "@/components/mail/provider-utils";
@@ -115,7 +119,7 @@ function MailModule() {
 		navigate({ to: "/module/mail/inbox/$emailId", params: { emailId } });
 	};
 
-	const moduleData: ModuleData | undefined =
+	const moduleData: ModuleData<MailAutoHandledItem> | undefined =
 		!isPending && !triageError
 			? {
 					briefing,
@@ -153,7 +157,14 @@ function MailModule() {
 				data={moduleData ?? MODULE_DATA.mail}
 				onAction={handleAction}
 				onDismiss={handleDismiss}
-				onViewEmail={handleViewEmail}
+				renderAutoHandledCard={(item, i) => (
+					<MailAutoHandledCard
+						key={item.id}
+						item={item}
+						index={i}
+						onViewEmail={handleViewEmail}
+					/>
+				)}
 				isLoading={isPending}
 				headerActions={<MailHeaderActions />}
 			>
