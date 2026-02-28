@@ -9,6 +9,7 @@ import {
 	emails,
 	eq,
 	gte,
+	inArray,
 	mailAutoHandled,
 	mailSenderRules,
 	sql,
@@ -40,6 +41,10 @@ type TriageItem = {
 type AutoHandledItem = {
 	id: string;
 	text: string;
+	subject?: string;
+	sender?: string;
+	actionType: string;
+	emailId?: string;
 	linkedModule?: string;
 	timestamp: string;
 };
@@ -360,12 +365,43 @@ class MailService {
 			limit: 20,
 		});
 
-		return items.map((item) => ({
-			id: item.id,
-			text: item.text,
-			linkedModule: item.linkedModule ?? undefined,
-			timestamp: timeAgo(item.createdAt),
-		}));
+		// Batch-fetch linked emails for subject/sender context
+		const emailIds = items
+			.map((item) => item.emailId)
+			.filter((id): id is string => id !== null);
+		const emailRows =
+			emailIds.length > 0
+				? await db.query.emails.findMany({
+						where: inArray(emails.id, emailIds),
+						columns: {
+							id: true,
+							subject: true,
+							fromName: true,
+							fromAddress: true,
+						},
+					})
+				: [];
+		const emailMap = new Map(emailRows.map((e) => [e.id, e]));
+
+		return items.map((item) => {
+			const email = item.emailId ? emailMap.get(item.emailId) : undefined;
+			const metadata = item.metadata as {
+				category?: string;
+				emailAccountId?: string;
+			} | null;
+			return {
+				id: item.id,
+				text: item.text,
+				subject: email?.subject ?? undefined,
+				sender:
+					email?.fromName || email?.fromAddress?.split("@")[0] || undefined,
+				actionType: item.actionType,
+				emailId: item.emailId ?? undefined,
+				linkedModule: item.linkedModule ?? undefined,
+				category: metadata?.category ?? undefined,
+				timestamp: timeAgo(item.createdAt),
+			};
+		});
 	}
 
 	async getEmails(

@@ -40,7 +40,12 @@ const triageItemSchema = t.Object({
 const autoHandledItemSchema = t.Object({
 	id: t.String(),
 	text: t.String(),
+	subject: t.Optional(t.String()),
+	sender: t.Optional(t.String()),
+	actionType: t.String(),
+	emailId: t.Optional(t.String()),
 	linkedModule: t.Optional(t.String()),
+	category: t.Optional(t.String()),
 	timestamp: t.String(),
 });
 

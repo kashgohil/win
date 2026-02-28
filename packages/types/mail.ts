@@ -44,7 +44,12 @@ export type TriageItem = {
 export type AutoHandledItem = {
 	id: string;
 	text: string;
+	subject?: string;
+	sender?: string;
+	actionType: string;
+	emailId?: string;
 	linkedModule?: string;
+	category?: string;
 	timestamp: string;
 };
 
