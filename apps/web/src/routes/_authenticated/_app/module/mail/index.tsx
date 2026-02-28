@@ -117,13 +117,7 @@ function MailModule() {
 		!isPending && !triageError
 			? {
 					briefing,
-					triage:
-						triage.length > 0
-							? triage.map((t) => ({
-									...t,
-									sourceModule: t.sourceModule as ModuleKey | undefined,
-								}))
-							: MODULE_DATA.mail.triage,
+					triage: triage.length > 0 ? triage : MODULE_DATA.mail.triage,
 					autoHandled: autoHandled.map((a) => ({
 						...a,
 						linkedModule: a.linkedModule as ModuleKey | undefined,

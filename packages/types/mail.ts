@@ -39,7 +39,6 @@ export type TriageItem = {
 	timestamp: string;
 	urgent?: boolean;
 	actions: TriageActionButton[];
-	sourceModule?: string;
 };
 
 export type AutoHandledItem = {

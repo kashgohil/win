@@ -33,7 +33,6 @@ const triageItemSchema = t.Object({
 	timestamp: t.String(),
 	urgent: t.Optional(t.Boolean()),
 	actions: t.Array(triageActionSchema),
-	sourceModule: t.Optional(t.String()),
 });
 
 /* ── Auto-handled ── */
