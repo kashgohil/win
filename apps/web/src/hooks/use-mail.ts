@@ -22,9 +22,16 @@ export const mailKeys = {
 		offset?: number;
 		unreadOnly?: boolean;
 		readOnly?: boolean;
+		q?: string;
+		from?: string;
+		starred?: boolean;
+		attachment?: boolean;
+		after?: string;
+		before?: string;
 	}) => [...mailKeys.all, "emails", params] as const,
 	email: (id: string) => [...mailKeys.all, "email", id] as const,
 	accounts: () => [...mailKeys.all, "accounts"] as const,
+	senders: (q?: string) => [...mailKeys.all, "senders", q] as const,
 };
 
 /* ── Queries ── */
@@ -45,6 +52,12 @@ export function useMailEmailsInfinite(params?: {
 	limit?: number;
 	unreadOnly?: boolean;
 	readOnly?: boolean;
+	q?: string;
+	from?: string;
+	starred?: boolean;
+	attachment?: boolean;
+	after?: string;
+	before?: string;
 }) {
 	const pageSize = params?.limit ?? 30;
 
@@ -53,6 +66,12 @@ export function useMailEmailsInfinite(params?: {
 			category: params?.category,
 			unreadOnly: params?.unreadOnly,
 			readOnly: params?.readOnly,
+			q: params?.q,
+			from: params?.from,
+			starred: params?.starred,
+			attachment: params?.attachment,
+			after: params?.after,
+			before: params?.before,
 		}),
 		queryFn: async ({ pageParam = 0 }) => {
 			const { data, error } = await api.mail.emails.get({
@@ -62,6 +81,12 @@ export function useMailEmailsInfinite(params?: {
 					offset: pageParam.toString(),
 					unreadOnly: params?.unreadOnly ? "true" : undefined,
 					readOnly: params?.readOnly ? "true" : undefined,
+					q: params?.q,
+					from: params?.from,
+					starred: params?.starred ? "true" : undefined,
+					attachment: params?.attachment ? "true" : undefined,
+					after: params?.after,
+					before: params?.before,
 				},
 			});
 			if (error) throw new Error("Failed to load emails");
@@ -70,6 +95,20 @@ export function useMailEmailsInfinite(params?: {
 		initialPageParam: 0,
 		getNextPageParam: (lastPage, _allPages, lastPageParam) =>
 			lastPage?.hasMore ? lastPageParam + pageSize : undefined,
+	});
+}
+
+export function useMailSenders(q: string) {
+	return useQuery({
+		queryKey: mailKeys.senders(q),
+		queryFn: async () => {
+			const { data, error } = await api.mail.senders.get({
+				query: { q: q || undefined },
+			});
+			if (error) throw new Error("Failed to load senders");
+			return data;
+		},
+		enabled: q.length >= 1,
 	});
 }
 
