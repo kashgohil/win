@@ -545,33 +545,17 @@ class MailService {
 				}
 			}
 
-			// Only run count query for search/filtered requests
-			const hasFilters = !!(
-				options.q ||
-				options.from ||
-				options.subject ||
-				options.to ||
-				options.cc ||
-				options.label ||
-				options.starred ||
-				options.attachment ||
-				options.after ||
-				options.before
-			);
-
 			const [emailRows, totalResult] = await Promise.all([
 				db.query.emails.findMany({
 					where: and(...conditions),
 					orderBy: [desc(emails.receivedAt), desc(emails.id)],
 					limit: limit + 1,
 				}),
-				hasFilters
-					? db
-							.select({ value: count() })
-							.from(emails)
-							.where(and(...baseConditions))
-							.then((r) => r[0]?.value ?? 0)
-					: Promise.resolve(0),
+				db
+					.select({ value: count() })
+					.from(emails)
+					.where(and(...baseConditions))
+					.then((r) => r[0]?.value ?? 0),
 			]);
 
 			const hasMore = emailRows.length > limit;
