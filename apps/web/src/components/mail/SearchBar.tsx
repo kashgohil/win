@@ -274,7 +274,7 @@ export function SearchCommand({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
 				showCloseButton={false}
-				className="p-0 gap-0 overflow-hidden sm:max-w-lg top-[20%] translate-y-0"
+				className="p-0 gap-0 overflow-hidden sm:max-w-2xl w-full top-[18%] translate-y-0"
 			>
 				<DialogTitle className="sr-only">Search emails</DialogTitle>
 				<Command shouldFilter={false} loop>
@@ -342,7 +342,7 @@ export function SearchCommand({
 						</div>
 					)}
 
-					<CommandList className="max-h-72">
+					<CommandList className="max-h-96">
 						<CommandEmpty className="py-8 text-center font-body text-[13px] text-grey-3">
 							No results
 						</CommandEmpty>
