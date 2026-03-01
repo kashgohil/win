@@ -1,11 +1,8 @@
-import type { EmailCategory } from "@wingmnn/types";
-import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { MOTION_CONSTANTS } from "@/components/constant";
 import { cn } from "@/lib/utils";
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CATEGORIES, CATEGORY_CONFIG } from "./category-colors";
-
-const ALL_KEYS = ["all", ...CATEGORIES.map((c) => c.value)] as const;
 
 function ChipCount({
 	count,
@@ -32,12 +29,11 @@ export function CategoryFilter({
 	onChange,
 	total,
 }: {
-	value: EmailCategory | null;
-	onChange: (category: EmailCategory | null) => void;
+	value: string | null;
+	onChange: (category: string | null) => void;
 	total?: number;
 }) {
 	const containerRef = useRef<HTMLFieldSetElement>(null);
-	const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 	const labelRefs = useRef<Map<string, HTMLLabelElement>>(new Map());
 	const [rect, setRect] = useState<{ left: number; width: number } | null>(
 		null,
@@ -67,42 +63,14 @@ export function CategoryFilter({
 		return () => ro.disconnect();
 	}, [measure, activeKey]);
 
-	const handleKeyDown = (e: React.KeyboardEvent) => {
-		const currentIndex = ALL_KEYS.indexOf(activeKey);
-		let nextIndex: number | null = null;
-
-		switch (e.key) {
-			case "ArrowRight":
-				e.preventDefault();
-				nextIndex = (currentIndex + 1) % ALL_KEYS.length;
-				break;
-			case "ArrowLeft":
-				e.preventDefault();
-				nextIndex = (currentIndex - 1 + ALL_KEYS.length) % ALL_KEYS.length;
-				break;
-			case "Home":
-				e.preventDefault();
-				nextIndex = 0;
-				break;
-			case "End":
-				e.preventDefault();
-				nextIndex = ALL_KEYS.length - 1;
-				break;
-			default:
-				return;
-		}
-
-		const nextKey = ALL_KEYS[nextIndex];
-		onChange(nextKey === "all" ? null : (nextKey as EmailCategory));
-		inputRefs.current.get(nextKey)?.focus();
-	};
-
-	const bgClass = isAll ? "bg-foreground" : CATEGORY_CONFIG[value].bg;
+	const bgClass = isAll
+		? "bg-foreground"
+		: (CATEGORY_CONFIG[value as keyof typeof CATEGORY_CONFIG]?.bg ??
+			"bg-foreground/5");
 
 	return (
 		<fieldset
 			ref={containerRef}
-			onKeyDown={handleKeyDown}
 			className="relative flex flex-wrap items-center gap-1.5 border-none m-0 p-0"
 		>
 			<legend className="sr-only">Filter by category</legend>
@@ -134,13 +102,9 @@ export function CategoryFilter({
 				)}
 			>
 				<input
-					ref={(el) => {
-						if (el) inputRefs.current.set("all", el);
-					}}
 					type="radio"
 					name="category-filter"
 					checked={isAll}
-					tabIndex={isAll ? 0 : -1}
 					onChange={() => onChange(null)}
 					className="sr-only"
 				/>
@@ -172,13 +136,9 @@ export function CategoryFilter({
 						)}
 					>
 						<input
-							ref={(el) => {
-								if (el) inputRefs.current.set(cat.value, el);
-							}}
 							type="radio"
 							name="category-filter"
 							checked={active}
-							tabIndex={active ? 0 : -1}
 							onChange={() => onChange(active ? null : cat.value)}
 							className="sr-only"
 						/>

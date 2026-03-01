@@ -17,13 +17,16 @@ export const mailKeys = {
 	all: ["mail"] as const,
 	data: () => [...mailKeys.all, "data"] as const,
 	emails: (params?: {
-		category?: EmailCategory;
+		category?: string;
 		limit?: number;
-		offset?: number;
 		unreadOnly?: boolean;
 		readOnly?: boolean;
 		q?: string;
 		from?: string;
+		subject?: string;
+		to?: string;
+		cc?: string;
+		label?: string;
 		starred?: boolean;
 		attachment?: boolean;
 		after?: string;
@@ -48,12 +51,16 @@ export function useMailData() {
 }
 
 export function useMailEmailsInfinite(params?: {
-	category?: EmailCategory;
+	category?: string;
 	limit?: number;
 	unreadOnly?: boolean;
 	readOnly?: boolean;
 	q?: string;
 	from?: string;
+	subject?: string;
+	to?: string;
+	cc?: string;
+	label?: string;
 	starred?: boolean;
 	attachment?: boolean;
 	after?: string;
@@ -68,21 +75,29 @@ export function useMailEmailsInfinite(params?: {
 			readOnly: params?.readOnly,
 			q: params?.q,
 			from: params?.from,
+			subject: params?.subject,
+			to: params?.to,
+			cc: params?.cc,
+			label: params?.label,
 			starred: params?.starred,
 			attachment: params?.attachment,
 			after: params?.after,
 			before: params?.before,
 		}),
-		queryFn: async ({ pageParam = 0 }) => {
+		queryFn: async ({ pageParam }) => {
 			const { data, error } = await api.mail.emails.get({
 				query: {
 					category: params?.category,
 					limit: pageSize.toString(),
-					offset: pageParam.toString(),
+					cursor: pageParam,
 					unreadOnly: params?.unreadOnly ? "true" : undefined,
 					readOnly: params?.readOnly ? "true" : undefined,
 					q: params?.q,
 					from: params?.from,
+					subject: params?.subject,
+					to: params?.to,
+					cc: params?.cc,
+					label: params?.label,
 					starred: params?.starred ? "true" : undefined,
 					attachment: params?.attachment ? "true" : undefined,
 					after: params?.after,
@@ -92,9 +107,8 @@ export function useMailEmailsInfinite(params?: {
 			if (error) throw new Error("Failed to load emails");
 			return data;
 		},
-		initialPageParam: 0,
-		getNextPageParam: (lastPage, _allPages, lastPageParam) =>
-			lastPage?.hasMore ? lastPageParam + pageSize : undefined,
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
 	});
 }
 
