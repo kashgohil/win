@@ -30,9 +30,9 @@ import { useLiveQuery } from "@tanstack/react-db";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { TriageAction } from "@wingmnn/types";
-import { ArrowRight, CheckCircle, Inbox, Plus, XCircle } from "lucide-react";
-import { motion } from "motion/react";
+import { ArrowRight, Inbox, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 type MailSearch = {
 	connected?: string;
@@ -74,17 +74,10 @@ function MailModule() {
 	const { connected, error } = Route.useSearch();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	const [status, setStatus] = useState<{
-		type: "success" | "error";
-		message: string;
-	} | null>(null);
 
 	useEffect(() => {
 		if (connected) {
-			setStatus({
-				type: "success",
-				message: "Gmail connected successfully. Syncing your inbox...",
-			});
+			toast.success("Gmail connected — syncing your inbox...");
 			queryClient.invalidateQueries({ queryKey: mailKeys.accounts() });
 			navigate({ replace: true });
 		} else if (error) {
@@ -92,16 +85,10 @@ function MailModule() {
 				error === "access_denied"
 					? "Access was denied. Please try again."
 					: `Connection failed: ${error}`;
-			setStatus({ type: "error", message });
+			toast.error(message);
 			navigate({ replace: true });
 		}
 	}, [connected, error, navigate, queryClient]);
-
-	useEffect(() => {
-		if (!status) return;
-		const timer = setTimeout(() => setStatus(null), 5000);
-		return () => clearTimeout(timer);
-	}, [status]);
 
 	const handleAction = (itemId: string, actionLabel: string) => {
 		const action = ACTION_MAP[actionLabel] ?? "dismiss";
@@ -116,7 +103,11 @@ function MailModule() {
 	};
 
 	const handleViewEmail = (emailId: string) => {
-		navigate({ to: "/module/mail/inbox/$emailId", params: { emailId } });
+		navigate({
+			to: "/module/mail/inbox/$emailId",
+			params: { emailId },
+			search: { view: undefined, category: undefined },
+		});
 	};
 
 	const moduleData: ModuleData<MailAutoHandledItem> | undefined =
@@ -132,58 +123,42 @@ function MailModule() {
 			: undefined;
 
 	return (
-		<>
-			{status && (
-				<motion.div
-					initial={{ opacity: 0, y: -8 }}
-					animate={{ opacity: 1, y: 0 }}
-					exit={{ opacity: 0, y: -8 }}
-					className={`mb-4 flex items-center gap-2 rounded-lg border px-4 py-3 text-[13px] font-body ${
-						status.type === "success"
-							? "border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400"
-							: "border-red-500/20 bg-red-500/5 text-red-700 dark:text-red-400"
-					}`}
-				>
-					{status.type === "success" ? (
-						<CheckCircle className="size-4 shrink-0" />
-					) : (
-						<XCircle className="size-4 shrink-0" />
-					)}
-					{status.message}
-				</motion.div>
+		<ModulePage
+			moduleKey="mail"
+			data={moduleData ?? MODULE_DATA.mail}
+			onAction={handleAction}
+			onDismiss={handleDismiss}
+			renderAutoHandledCard={(item, i) => (
+				<MailAutoHandledCard
+					key={item.id}
+					item={item}
+					index={i}
+					onViewEmail={handleViewEmail}
+				/>
 			)}
-			<ModulePage
-				moduleKey="mail"
-				data={moduleData ?? MODULE_DATA.mail}
-				onAction={handleAction}
-				onDismiss={handleDismiss}
-				renderAutoHandledCard={(item, i) => (
-					<MailAutoHandledCard
-						key={item.id}
-						item={item}
-						index={i}
-						onViewEmail={handleViewEmail}
-					/>
-				)}
-				isLoading={isPending}
-				headerActions={<MailHeaderActions />}
-			>
-				<div className="px-(--page-px) max-w-5xl mx-auto pb-16">
-					<Link
-						to="/module/mail/inbox"
-						className="group flex items-center justify-between rounded-lg border border-border/40 hover:border-border/70 bg-secondary/5 hover:bg-secondary/15 px-5 py-4 transition-colors duration-200"
-					>
-						<div className="flex items-center gap-3">
-							<Inbox className="size-4 text-grey-2 group-hover:text-foreground transition-colors duration-200" />
-							<span className="font-body text-[14px] text-foreground/80 group-hover:text-foreground transition-colors duration-200">
-								View all emails
-							</span>
-						</div>
-						<ArrowRight className="size-3.5 text-grey-3 group-hover:text-foreground group-hover:translate-x-0.5 transition-all duration-200" />
-					</Link>
-				</div>
-			</ModulePage>
-		</>
+			isLoading={isPending}
+			headerActions={<MailHeaderActions />}
+		>
+			<div className="px-(--page-px) max-w-5xl mx-auto pb-16">
+				<Link
+					to="/module/mail/inbox"
+					search={{
+						view: undefined,
+						starred: undefined,
+						attachment: undefined,
+					}}
+					className="group flex items-center justify-between rounded-lg border border-border/40 hover:border-border/70 bg-secondary/5 hover:bg-secondary/15 px-5 py-4 transition-colors duration-200"
+				>
+					<div className="flex items-center gap-3">
+						<Inbox className="size-4 text-grey-2 group-hover:text-foreground transition-colors duration-200" />
+						<span className="font-body text-[14px] text-foreground/80 group-hover:text-foreground transition-colors duration-200">
+							View all emails
+						</span>
+					</div>
+					<ArrowRight className="size-3.5 text-grey-3 group-hover:text-foreground group-hover:translate-x-0.5 transition-all duration-200" />
+				</Link>
+			</div>
+		</ModulePage>
 	);
 }
 
@@ -217,6 +192,11 @@ function MailHeaderActions() {
 			<div className="flex items-center gap-3">
 				<Link
 					to="/module/mail/inbox"
+					search={{
+						view: undefined,
+						starred: undefined,
+						attachment: undefined,
+					}}
 					className="group inline-flex items-center gap-1.5 font-body text-[12px] text-grey-2 hover:text-foreground transition-colors duration-150"
 				>
 					<Inbox className="size-3.5" />

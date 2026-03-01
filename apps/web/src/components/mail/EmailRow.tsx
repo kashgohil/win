@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/tooltip";
 import { mailKeys } from "@/hooks/use-mail";
 import { api } from "@/lib/api";
+import { HighlightMatches } from "@/lib/highlight-text";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
@@ -181,17 +182,21 @@ function RowAction({
 
 /* ── Email row component ── */
 
-export function EmailRow({ email }: { email: SerializedEmail }) {
+export function EmailRow({
+	email,
+	highlightTerms,
+}: {
+	email: SerializedEmail;
+	highlightTerms?: string[];
+}) {
 	const initial = getInitial(email.fromName, email.fromAddress);
 	const senderDisplay = email.fromName || email.fromAddress || "Unknown";
 	const isUrgent = email.category === "urgent";
 	const queryClient = useQueryClient();
-	const { categories, view, showAll } = useSearch({ strict: false }) as {
-		categories?: EmailCategory[];
+	const { category, view } = useSearch({ strict: false }) as {
+		category?: EmailCategory;
 		view?: "read";
-		showAll?: boolean;
 	};
-	const category = categories?.[0];
 
 	const handleArchive = () => {
 		queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
@@ -231,9 +236,8 @@ export function EmailRow({ email }: { email: SerializedEmail }) {
 				to="/module/mail/inbox/$emailId"
 				params={{ emailId: email.id }}
 				search={{
-					...(category ? { category } : {}),
-					...(view ? { view } : {}),
-					...(showAll ? { showAll: true } : {}),
+					view: view ?? undefined,
+					category: category ?? undefined,
 				}}
 				className="flex items-start gap-3 py-3.5 px-2 cursor-pointer"
 			>
@@ -332,10 +336,16 @@ export function EmailRow({ email }: { email: SerializedEmail }) {
 						)}
 					>
 						<span className={cn(!email.isRead && "text-foreground/70")}>
-							{email.subject || "(no subject)"}
+							<HighlightMatches
+								text={email.subject || "(no subject)"}
+								terms={highlightTerms}
+							/>
 						</span>
 						{email.snippet && (
-							<span className="text-grey-3"> — {email.snippet}</span>
+							<span className="text-grey-3">
+								{" — "}
+								<HighlightMatches text={email.snippet} terms={highlightTerms} />
+							</span>
 						)}
 					</p>
 				</div>
