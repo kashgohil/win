@@ -8,54 +8,36 @@ import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import type { EmailCategory } from "@wingmnn/types";
 import { ArrowLeft, ChevronDown, Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 
-const VALID_CATEGORIES: Set<string> = new Set([
-	"urgent",
-	"actionable",
-	"informational",
-	"newsletter",
-	"receipt",
-	"confirmation",
-	"promotional",
-	"spam",
-	"uncategorized",
-]);
-
-type DetailSearch = {
-	category?: EmailCategory;
-	view?: "read";
-	showAll?: boolean;
-};
+const detailSearchSchema = z.object({
+	category: z.string().optional(),
+	view: z
+		.string()
+		.optional()
+		.transform((v) => (v === "read" ? ("read" as const) : undefined)),
+});
 
 export const Route = createFileRoute(
 	"/_authenticated/_app/module/mail/inbox/$emailId",
 )({
 	component: EmailDetail,
-	validateSearch: (search: Record<string, unknown>): DetailSearch => ({
-		category:
-			typeof search.category === "string" &&
-			VALID_CATEGORIES.has(search.category)
-				? (search.category as EmailCategory)
-				: undefined,
-		view: search.view === "read" ? "read" : undefined,
-		showAll:
-			search.showAll === true || search.showAll === "true" ? true : undefined,
-	}),
+	validateSearch: (search) => detailSearchSchema.parse(search),
 });
 
 function EmailDetail() {
 	const { emailId } = Route.useParams();
-	const { category, view, showAll } = Route.useSearch();
+	const { category, view } = Route.useSearch();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const inboxSearch = {
-		...(category ? { categories: [category] } : {}),
-		...(view ? { view } : {}),
-		...(showAll ? { showAll: true } : {}),
+		view: view ?? undefined,
+		starred: undefined,
+		attachment: undefined,
+		...(category ? { category } : {}),
 	};
 	const { data, isPending } = useMailEmailDetail(emailId);
 	const [composeMode, setComposeMode] = useState<"reply" | "forward" | null>(
