@@ -3,6 +3,7 @@ import {
 	Command,
 	CommandEmpty,
 	CommandGroup,
+	CommandInput,
 	CommandItem,
 	CommandList,
 	CommandSeparator,
@@ -278,19 +279,13 @@ export function SearchCommand({
 				<DialogTitle className="sr-only">Search emails</DialogTitle>
 				<Command shouldFilter={false} loop>
 					<div className="flex items-center border-b px-3">
-						<Search className="size-4 shrink-0 text-grey-3" />
-						<input
+						<CommandInput
 							ref={inputRef}
 							value={inputValue}
-							onChange={(e) => handleInputChange(e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") {
-									e.preventDefault();
-									submitSearch(inputValue);
-								}
-							}}
+							onValueChange={handleInputChange}
 							placeholder="Search emails..."
 							className="flex-1 h-11 px-3 font-body text-[13px] text-foreground placeholder:text-grey-3 bg-transparent outline-none"
+							wrapperClassName="flex-1 border-none pl-0"
 							autoFocus
 						/>
 						{showSaveButton && (
@@ -354,6 +349,18 @@ export function SearchCommand({
 
 						{inputValue ? (
 							<>
+								<CommandGroup heading="Search">
+									<CommandItem
+										value={inputValue}
+										onSelect={() => submitSearch(inputValue)}
+										className="gap-2 cursor-pointer"
+									>
+										<Search className="size-3 shrink-0 text-grey-3" />
+										<span className="font-body text-[13px] truncate">
+											Search for "{inputValue}"
+										</span>
+									</CommandItem>
+								</CommandGroup>
 								{senders.length > 0 && (
 									<CommandGroup heading="Senders">
 										{senders.slice(0, 5).map((sender) => (
