@@ -1,11 +1,13 @@
 export {
 	and,
+	arrayContains,
 	count,
 	desc,
 	eq,
 	gte,
 	ilike,
 	inArray,
+	lt,
 	lte,
 	or,
 	sql,

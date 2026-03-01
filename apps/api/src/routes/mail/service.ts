@@ -11,6 +11,7 @@ import {
 	gte,
 	ilike,
 	inArray,
+	lt,
 	lte,
 	mailAutoHandled,
 	mailSenderRules,
@@ -21,6 +22,7 @@ import {
 import { getProvider, getValidAccessToken } from "@wingmnn/mail";
 import { enqueueInitialSync, scheduleRecurringSync } from "@wingmnn/queue";
 import { cacheable, invalidateCache } from "@wingmnn/redis";
+import { sanitizeEmailHtml } from "../../lib/sanitize-email";
 import { createOAuthState, verifyOAuthState } from "./oauth-state";
 
 /* ── Types ── */
@@ -69,6 +71,7 @@ type EmailListResult =
 				emails: SerializedEmail[];
 				total: number;
 				hasMore: boolean;
+				nextCursor?: string;
 			};
 	  }
 	| { ok: false; error: string; status: 400 | 500 };
@@ -421,12 +424,16 @@ class MailService {
 		userId: string,
 		options: {
 			limit?: number;
-			offset?: number;
+			cursor?: string;
 			category?: string;
 			unreadOnly?: boolean;
 			readOnly?: boolean;
 			q?: string;
 			from?: string;
+			subject?: string;
+			to?: string;
+			cc?: string;
+			label?: string;
 			starred?: boolean;
 			attachment?: boolean;
 			after?: string;
@@ -434,7 +441,6 @@ class MailService {
 		},
 	): Promise<EmailListResult> {
 		const limit = options.limit ?? 50;
-		const offset = options.offset ?? 0;
 
 		try {
 			const conditions = [eq(emails.userId, userId)];
@@ -469,7 +475,26 @@ class MailService {
 						ilike(emails.snippet, pattern),
 						ilike(emails.fromName, pattern),
 						ilike(emails.fromAddress, pattern),
+						ilike(emails.bodyPlain, pattern),
 					)!,
+				);
+			}
+			if (options.subject) {
+				conditions.push(ilike(emails.subject, `%${options.subject}%`));
+			}
+			if (options.to) {
+				conditions.push(
+					sql`${emails.toAddresses}::text[] @> ARRAY[${options.to}]::text[]`,
+				);
+			}
+			if (options.cc) {
+				conditions.push(
+					sql`${emails.ccAddresses}::text[] @> ARRAY[${options.cc}]::text[]`,
+				);
+			}
+			if (options.label) {
+				conditions.push(
+					sql`${emails.labels}::text[] @> ARRAY[${options.label}]::text[]`,
 				);
 			}
 			if (options.from) {
@@ -494,28 +519,83 @@ class MailService {
 				conditions.push(lte(emails.receivedAt, new Date(options.before)));
 			}
 
-			const [emailRows, [totalResult]] = await Promise.all([
+			// Base conditions (without cursor) — used for count query
+			const baseConditions = [...conditions];
+
+			// Decode cursor for keyset pagination
+			if (options.cursor) {
+				try {
+					const decoded = JSON.parse(atob(options.cursor)) as {
+						receivedAt: string;
+						id: string;
+					};
+					const cursorDate = new Date(decoded.receivedAt);
+					conditions.push(
+						or(
+							lt(emails.receivedAt, cursorDate),
+							and(eq(emails.receivedAt, cursorDate), lt(emails.id, decoded.id)),
+						)!,
+					);
+				} catch {
+					return {
+						ok: false,
+						error: "Invalid cursor",
+						status: 400,
+					};
+				}
+			}
+
+			// Only run count query for search/filtered requests
+			const hasFilters = !!(
+				options.q ||
+				options.from ||
+				options.subject ||
+				options.to ||
+				options.cc ||
+				options.label ||
+				options.starred ||
+				options.attachment ||
+				options.after ||
+				options.before
+			);
+
+			const [emailRows, totalResult] = await Promise.all([
 				db.query.emails.findMany({
 					where: and(...conditions),
-					orderBy: [desc(emails.receivedAt)],
+					orderBy: [desc(emails.receivedAt), desc(emails.id)],
 					limit: limit + 1,
-					offset,
 				}),
-				db
-					.select({ value: count() })
-					.from(emails)
-					.where(and(...conditions)),
+				hasFilters
+					? db
+							.select({ value: count() })
+							.from(emails)
+							.where(and(...baseConditions))
+							.then((r) => r[0]?.value ?? 0)
+					: Promise.resolve(0),
 			]);
 
 			const hasMore = emailRows.length > limit;
 			const trimmed = hasMore ? emailRows.slice(0, limit) : emailRows;
 
+			// Build next cursor from last row
+			let nextCursor: string | undefined;
+			if (hasMore && trimmed.length > 0) {
+				const last = trimmed[trimmed.length - 1]!;
+				nextCursor = btoa(
+					JSON.stringify({
+						receivedAt: last.receivedAt.toISOString(),
+						id: last.id,
+					}),
+				);
+			}
+
 			return {
 				ok: true,
 				data: {
 					emails: trimmed.map(serializeEmail),
-					total: totalResult?.value ?? 0,
+					total: totalResult,
 					hasMore,
+					nextCursor,
 				},
 			};
 		} catch (err) {
@@ -583,7 +663,7 @@ class MailService {
 				data: {
 					...serializeEmail(email),
 					bodyPlain: email.bodyPlain,
-					bodyHtml: email.bodyHtml,
+					bodyHtml: email.bodyHtml ? sanitizeEmailHtml(email.bodyHtml) : null,
 				},
 			};
 		} catch (err) {
@@ -673,7 +753,21 @@ class MailService {
 
 			const tokens = await provider.exchangeCode(code);
 
-			// Upsert: update tokens if same user+provider+email already exists
+			// Upsert: update tokens if same user+provider+email already exists.
+			// Google only returns refresh_token on the first authorization.
+			// On re-auth it's undefined — preserve the existing one.
+			const conflictSet: Record<string, unknown> = {
+				accessToken: tokens.accessToken,
+				tokenExpiresAt: tokens.expiresAt,
+				scopes: tokens.scopes,
+				syncStatus: "pending" as const,
+				active: true,
+				syncError: null,
+			};
+			if (tokens.refreshToken) {
+				conflictSet.refreshToken = tokens.refreshToken;
+			}
+
 			const rows = await db
 				.insert(emailAccounts)
 				.values({
@@ -693,15 +787,7 @@ class MailService {
 						emailAccounts.provider,
 						emailAccounts.email,
 					],
-					set: {
-						accessToken: tokens.accessToken,
-						refreshToken: tokens.refreshToken,
-						tokenExpiresAt: tokens.expiresAt,
-						scopes: tokens.scopes,
-						syncStatus: "pending",
-						active: true,
-						syncError: null,
-					},
+					set: conflictSet,
 				})
 				.returning();
 

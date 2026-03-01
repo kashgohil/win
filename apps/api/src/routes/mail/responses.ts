@@ -100,6 +100,7 @@ export const emailListResponse = t.Object({
 	emails: t.Array(emailSchema),
 	total: t.Number(),
 	hasMore: t.Boolean(),
+	nextCursor: t.Optional(t.String()),
 });
 
 export const emailDetailResponse = t.Object({
