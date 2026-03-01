@@ -1,83 +1,75 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
 import { CategoryFilter } from "@/components/mail/CategoryFilter";
 import { EmailRow, groupEmailsByTime } from "@/components/mail/EmailRow";
-import { SearchBar } from "@/components/mail/SearchBar";
+import {
+	hasActiveFilters,
+	SearchCommand,
+	SearchFilterChips,
+	type SearchFilters,
+} from "@/components/mail/SearchBar";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMailEmailsInfinite } from "@/hooks/use-mail";
-import { cn } from "@/lib/utils";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import type { EmailCategory } from "@wingmnn/types";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
 import { motion } from "motion/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 
 const PAGE_SIZE = 30;
 
-const VALID_CATEGORIES: Set<string> = new Set([
-	"urgent",
-	"actionable",
-	"informational",
-	"newsletter",
-	"receipt",
-	"confirmation",
-	"promotional",
-	"spam",
-	"uncategorized",
-]);
-
-type InboxSearch = {
-	categories?: EmailCategory[];
-	view?: "read";
-	showAll?: boolean;
-	q?: string;
-	from?: string;
-	starred?: boolean;
-	attachment?: boolean;
-	after?: string;
-	before?: string;
-};
-
-function parseCategories(raw: unknown): EmailCategory[] | undefined {
-	if (typeof raw === "string" && VALID_CATEGORIES.has(raw))
-		return [raw as EmailCategory];
-	if (Array.isArray(raw)) {
-		const valid = raw.filter(
-			(v): v is EmailCategory =>
-				typeof v === "string" && VALID_CATEGORIES.has(v),
-		);
-		return valid.length > 0 ? valid : undefined;
-	}
-	return undefined;
-}
+const inboxSearchSchema = z.object({
+	view: z
+		.string()
+		.optional()
+		.transform((v) => (v === "read" ? ("read" as const) : undefined)),
+	category: z.string().optional(),
+	q: z.string().optional(),
+	from: z.string().optional(),
+	subject: z.string().optional(),
+	to: z.string().optional(),
+	cc: z.string().optional(),
+	label: z.string().optional(),
+	starred: z
+		.union([z.literal("true"), z.literal("false"), z.boolean()])
+		.optional()
+		.transform((v) =>
+			v === true || v === "true"
+				? true
+				: v === false || v === "false"
+					? false
+					: undefined,
+		),
+	attachment: z
+		.union([z.literal("true"), z.literal("false"), z.boolean()])
+		.optional()
+		.transform((v) =>
+			v === true || v === "true"
+				? true
+				: v === false || v === "false"
+					? false
+					: undefined,
+		),
+	after: z.string().optional(),
+	before: z.string().optional(),
+});
 
 export const Route = createFileRoute("/_authenticated/_app/module/mail/inbox/")(
 	{
 		component: MailInbox,
-		validateSearch: (search: Record<string, unknown>): InboxSearch => ({
-			categories: parseCategories(search.categories),
-			view: search.view === "read" ? "read" : undefined,
-			showAll:
-				search.showAll === true || search.showAll === "true" ? true : undefined,
-			q: typeof search.q === "string" ? search.q : undefined,
-			from: typeof search.from === "string" ? search.from : undefined,
-			starred:
-				search.starred === true || search.starred === "true" ? true : undefined,
-			attachment:
-				search.attachment === true || search.attachment === "true"
-					? true
-					: undefined,
-			after: typeof search.after === "string" ? search.after : undefined,
-			before: typeof search.before === "string" ? search.before : undefined,
-		}),
+		validateSearch: (search) => inboxSearchSchema.parse(search),
 	},
 );
 
 function MailInbox() {
 	const {
-		categories = [],
 		view,
-		showAll,
+		category,
 		q,
 		from,
+		subject,
+		to,
+		cc,
+		label,
 		starred,
 		attachment,
 		after,
@@ -86,16 +78,40 @@ function MailInbox() {
 	const navigate = useNavigate();
 	const activeView = view ?? "unread";
 	const sentinelRef = useRef<HTMLDivElement>(null);
-	const searchInputRef = useRef<HTMLInputElement>(null);
+	const [searchOpen, setSearchOpen] = useState(false);
 
-	const isSearching = !!(q || from || starred || attachment || after || before);
+	const activeCategory = category ?? null;
 
-	// Default to urgent when no explicit selection
-	const activeCategory: EmailCategory | null = showAll
-		? null
-		: categories.length > 0
-			? categories[0]
-			: "urgent";
+	const searchFilters: SearchFilters = useMemo(
+		() => ({
+			q,
+			from,
+			subject,
+			to,
+			cc,
+			label,
+			category,
+			starred,
+			attachment,
+			after,
+			before,
+		}),
+		[
+			q,
+			from,
+			subject,
+			to,
+			cc,
+			label,
+			category,
+			starred,
+			attachment,
+			after,
+			before,
+		],
+	);
+
+	const isSearching = hasActiveFilters(searchFilters);
 
 	const { data, isPending, hasNextPage, isFetchingNextPage, fetchNextPage } =
 		useMailEmailsInfinite({
@@ -105,6 +121,10 @@ function MailInbox() {
 			readOnly: activeView === "read",
 			q,
 			from,
+			subject,
+			to,
+			cc,
+			label,
 			starred,
 			attachment,
 			after,
@@ -128,12 +148,12 @@ function MailInbox() {
 		return () => observer.disconnect();
 	}, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-	// Cmd+K / Ctrl+K to focus search
+	// Cmd+K / Ctrl+K to open search
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
 			if ((e.metaKey || e.ctrlKey) && e.key === "k") {
 				e.preventDefault();
-				searchInputRef.current?.focus();
+				setSearchOpen(true);
 			}
 		};
 		document.addEventListener("keydown", handler);
@@ -143,69 +163,93 @@ function MailInbox() {
 	const emails = data?.pages.flatMap((page) => page?.emails ?? []) ?? [];
 	const total = data?.pages[0]?.total;
 
-	const searchFilters = { q, from, starred, attachment, after, before };
+	const searchTerms = useMemo(
+		() => (q ? q.split(/\s+/).filter(Boolean) : []),
+		[q],
+	);
 
-	const handleCategoryChange = (cat: EmailCategory | null) => {
-		navigate({
-			to: "/module/mail/inbox",
-			search: {
-				...(cat === null ? { showAll: true } : { categories: [cat] }),
-				...(view ? { view } : {}),
-				...searchFilters,
-			},
-			replace: true,
-		});
-	};
+	const toInboxSearch = useCallback(
+		(
+			filters: SearchFilters,
+			overrides?: { view?: "read"; category?: string | null },
+		) => ({
+			view:
+				overrides && "view" in overrides ? overrides.view : (view ?? undefined),
+			starred: filters.starred ?? undefined,
+			attachment: filters.attachment ?? undefined,
+			category:
+				overrides && "category" in overrides
+					? (overrides.category ?? undefined)
+					: (filters.category ?? category ?? undefined),
+			q: filters.q,
+			from: filters.from,
+			subject: filters.subject,
+			to: filters.to,
+			cc: filters.cc,
+			label: filters.label,
+			after: filters.after,
+			before: filters.before,
+		}),
+		[view, category],
+	);
+
+	const handleFiltersChange = useCallback(
+		(filters: SearchFilters) => {
+			navigate({
+				to: "/module/mail/inbox",
+				search: toInboxSearch({
+					...filters,
+					category: filters.category ?? category ?? undefined,
+				}),
+				replace: true,
+			});
+		},
+		[navigate, toInboxSearch, category],
+	);
+
+	const handleCategoryChange = useCallback(
+		(cat: string | null) => {
+			navigate({
+				to: "/module/mail/inbox",
+				search: toInboxSearch(searchFilters, { category: cat }),
+				replace: true,
+			});
+		},
+		[navigate, searchFilters, toInboxSearch],
+	);
 
 	const switchView = (v: "unread" | "read") => {
 		navigate({
 			to: "/module/mail/inbox",
-			search: {
-				...(activeCategory !== null
-					? { categories: [activeCategory] }
-					: { showAll: true }),
+			search: toInboxSearch(searchFilters, {
 				view: v === "unread" ? undefined : v,
-				...searchFilters,
-			},
+			}),
 			replace: true,
 		});
 	};
 
-	const handleFiltersChange = useCallback(
-		(filters: {
-			q?: string;
-			from?: string;
-			starred?: boolean;
-			attachment?: boolean;
-			after?: string;
-			before?: string;
-		}) => {
-			navigate({
-				to: "/module/mail/inbox",
-				search: {
-					...(activeCategory !== null
-						? { categories: [activeCategory] }
-						: { showAll: true }),
-					...(view ? { view } : {}),
-					...filters,
-				},
-				replace: true,
-			});
+	const handleRemoveFilter = useCallback(
+		(key: keyof SearchFilters) => {
+			const next = { ...searchFilters };
+			delete next[key];
+			handleFiltersChange(next);
 		},
-		[navigate, activeCategory, view],
+		[searchFilters, handleFiltersChange],
 	);
+
+	const handleClearFilters = useCallback(() => {
+		handleFiltersChange({});
+	}, [handleFiltersChange]);
 
 	const emptyMessage = isSearching
 		? "No emails matching your search."
-		: activeCategory
-			? "No emails matching filters."
-			: activeView === "read"
-				? "No read emails yet."
-				: "No unread emails.";
+		: activeView === "read"
+			? "No read emails yet."
+			: "No unread emails.";
 
 	return (
 		<div className="px-(--page-px) py-8 max-w-5xl mx-auto">
-			{/* Header — back link + view toggle */}
+			{/* Header — back link + search trigger + view toggle */}
 			<motion.div
 				initial={{ opacity: 0, x: -8 }}
 				animate={{ opacity: 1, x: 0 }}
@@ -219,48 +263,51 @@ function MailInbox() {
 					<ArrowLeft className="size-3.5 group-hover:-translate-x-0.5 transition-transform duration-150" />
 					Mail
 				</Link>
-				<div className="flex items-center gap-0.5 rounded-md bg-secondary/30 p-0.5">
+
+				<div className="flex items-center gap-3">
 					<button
 						type="button"
-						onClick={() => switchView("unread")}
-						className={cn(
-							"px-2.5 py-1 rounded-sm font-mono text-[11px] cursor-pointer transition-colors duration-150",
-							activeView === "unread"
-								? "bg-background text-foreground shadow-xs"
-								: "text-grey-3 hover:text-grey-2",
-						)}
+						onClick={() => setSearchOpen(true)}
+						className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer"
 					>
-						Unread
+						<Search className="size-3" />
+						<span className="font-body text-[12px]">Search</span>
+						<kbd className="font-mono text-[10px] bg-secondary/40 px-1.5 py-0.5 rounded ml-1">
+							{navigator.platform?.includes("Mac") ? "\u2318K" : "Ctrl+K"}
+						</kbd>
 					</button>
-					<button
-						type="button"
-						onClick={() => switchView("read")}
-						className={cn(
-							"px-2.5 py-1 rounded-sm font-mono text-[11px] cursor-pointer transition-colors duration-150",
-							activeView === "read"
-								? "bg-background text-foreground shadow-xs"
-								: "text-grey-3 hover:text-grey-2",
-						)}
+
+					<Tabs
+						value={activeView}
+						onValueChange={(v) => switchView(v as "unread" | "read")}
 					>
-						Read
-					</button>
+						<TabsList size="sm">
+							<TabsTrigger size="sm" value="unread">
+								Unread
+							</TabsTrigger>
+							<TabsTrigger size="sm" value="read">
+								Read
+							</TabsTrigger>
+						</TabsList>
+					</Tabs>
 				</div>
 			</motion.div>
 
-			{/* Search bar */}
-			<motion.div
-				initial={{ opacity: 0, y: 8 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.35, ease: MOTION_CONSTANTS.EASE }}
-				className="mb-4"
-			>
-				<SearchBar
-					filters={{ q, from, starred, attachment, after, before }}
-					onFiltersChange={handleFiltersChange}
-					activeCategory={activeCategory}
-					inputRef={searchInputRef}
-				/>
-			</motion.div>
+			{/* Active filter chips */}
+			{isSearching && (
+				<motion.div
+					initial={{ opacity: 0, y: 8 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.35, ease: MOTION_CONSTANTS.EASE }}
+					className="mb-4"
+				>
+					<SearchFilterChips
+						filters={searchFilters}
+						onRemoveFilter={handleRemoveFilter}
+						onClearAll={handleClearFilters}
+					/>
+				</motion.div>
+			)}
 
 			{/* Category chips — always visible */}
 			<motion.div
@@ -320,7 +367,11 @@ function MailInbox() {
 								</div>
 							)}
 							{cluster.emails.map((email) => (
-								<EmailRow key={email.id} email={email} />
+								<EmailRow
+									key={email.id}
+									email={email}
+									highlightTerms={searchTerms}
+								/>
 							))}
 						</div>
 					))}
@@ -335,6 +386,15 @@ function MailInbox() {
 					)}
 				</motion.div>
 			)}
+
+			{/* Search command dialog */}
+			<SearchCommand
+				open={searchOpen}
+				onOpenChange={setSearchOpen}
+				filters={searchFilters}
+				onFiltersChange={handleFiltersChange}
+				activeCategory={activeCategory}
+			/>
 		</div>
 	);
 }
