@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 export function EmailBody({
 	html,
@@ -29,28 +29,33 @@ export function EmailBody({
 function SandboxedHtml({ html }: { html: string }) {
 	const iframeRef = useRef<HTMLIFrameElement>(null);
 
-	const updateHeight = useCallback(() => {
-		const iframe = iframeRef.current;
-		if (!iframe?.contentDocument?.body) return;
-		const height = iframe.contentDocument.body.scrollHeight;
-		iframe.style.height = `${height + 16}px`;
-	}, []);
-
 	useEffect(() => {
 		const iframe = iframeRef.current;
 		if (!iframe) return;
 
-		const blob = new Blob(
-			[
-				`<!DOCTYPE html>
+		const doc = iframe.contentDocument;
+		if (!doc) return;
+
+		doc.open();
+		doc.write(`<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-	body {
+	html {
+		color-scheme: light;
+	}
+	html, body {
+		width: 100%;
+		min-width: 100%;
+		box-sizing: border-box;
 		margin: 0;
 		padding: 0;
+		overflow: hidden;
+	}
+	body {
+		background-color: #ffffff;
 		font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
 		font-size: 14px;
 		line-height: 1.6;
@@ -65,36 +70,35 @@ function SandboxedHtml({ html }: { html: string }) {
 </style>
 </head>
 <body>${html}</body>
-</html>`,
-			],
-			{ type: "text/html" },
-		);
-		const url = URL.createObjectURL(blob);
-		iframe.src = url;
+</html>`);
+		doc.close();
 
-		const handleLoad = () => {
-			updateHeight();
-			// Re-measure after images load
-			const images = iframe.contentDocument?.querySelectorAll("img") ?? [];
-			for (const img of images) {
-				img.addEventListener("load", updateHeight);
-			}
+		const syncHeight = () => {
+			if (!doc.body) return;
+			iframe.style.height = `${doc.body.scrollHeight}px`;
 		};
 
-		iframe.addEventListener("load", handleLoad);
+		// Measure immediately after writing content
+		syncHeight();
+
+		// ResizeObserver catches async changes (images, fonts, CSS reflows)
+		const observer = new ResizeObserver(syncHeight);
+		observer.observe(doc.body);
 
 		return () => {
-			iframe.removeEventListener("load", handleLoad);
-			URL.revokeObjectURL(url);
+			observer.disconnect();
 		};
-	}, [html, updateHeight]);
+	}, [html]);
 
 	return (
-		<iframe
-			ref={iframeRef}
-			title="Email content"
-			sandbox="allow-same-origin"
-			className="w-full border-0 min-h-[200px]"
-		/>
+		<div className="min-w-0 w-full py-4 bg-white rounded-lg">
+			<iframe
+				ref={iframeRef}
+				title="Email content"
+				sandbox="allow-same-origin"
+				className="w-full border-0"
+				style={{ width: "100%" }}
+			/>
+		</div>
 	);
 }
