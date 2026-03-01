@@ -6,7 +6,6 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-	CommandSeparator,
 } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
@@ -117,6 +116,13 @@ export function hasActiveFilters(filters: SearchFilters): boolean {
 		filters.after ||
 		filters.before
 	);
+}
+
+function parseCategoryFromRecent(query: string) {
+	const match = query.match(/^category:(\w+)$/);
+	if (!match) return null;
+	const config = CATEGORY_CONFIG[match[1] as keyof typeof CATEGORY_CONFIG];
+	return config ? { value: match[1], ...config } : null;
 }
 
 const OPERATOR_HINTS = [
@@ -342,7 +348,7 @@ export function SearchCommand({
 						</div>
 					)}
 
-					<CommandList className="max-h-96">
+					<CommandList className="max-h-96 [&_[cmdk-group]+[cmdk-group]]:border-t [&_[cmdk-group]+[cmdk-group]]:border-border">
 						<CommandEmpty className="py-8 text-center font-body text-[13px] text-grey-3">
 							No results
 						</CommandEmpty>
@@ -412,7 +418,6 @@ export function SearchCommand({
 										</span>
 									</CommandItem>
 								</CommandGroup>
-								<CommandSeparator />
 								<CommandGroup heading="Operators">
 									{OPERATOR_HINTS.map((op) => (
 										<CommandItem
@@ -421,9 +426,9 @@ export function SearchCommand({
 											onSelect={() => insertOperator(op.value)}
 											className="gap-2 cursor-pointer"
 										>
-											<span className="font-mono text-[11px] text-grey-3 shrink-0 w-28 truncate">
+											<code className="font-mono text-[11px] text-muted-foreground shrink-0 w-28 truncate">
 												{op.label}
-											</span>
+											</code>
 											<span className="font-body text-[11px] text-grey-3">
 												{op.description}
 											</span>
@@ -435,19 +440,42 @@ export function SearchCommand({
 							<>
 								{recentSearches.length > 0 && (
 									<CommandGroup heading="Recent">
-										{recentSearches.map((query) => (
-											<CommandItem
-												key={query}
-												value={`recent:${query}`}
-												onSelect={() => selectRecentSearch(query)}
-												className="gap-2 cursor-pointer"
-											>
-												<Clock className="size-3 shrink-0 text-grey-3" />
-												<span className="font-body text-[13px] truncate">
-													{query}
-												</span>
-											</CommandItem>
-										))}
+										{recentSearches.map((query) => {
+											const cat = parseCategoryFromRecent(query);
+											if (cat) {
+												return (
+													<CommandItem
+														key={query}
+														value={`recent:${query}`}
+														onSelect={() => selectRecentSearch(query)}
+														className="gap-2 cursor-pointer"
+													>
+														<span
+															className={cn(
+																"size-2 rounded-full shrink-0",
+																cat.dot,
+															)}
+														/>
+														<span className="font-body text-[13px]">
+															{cat.label}
+														</span>
+													</CommandItem>
+												);
+											}
+											return (
+												<CommandItem
+													key={query}
+													value={`recent:${query}`}
+													onSelect={() => selectRecentSearch(query)}
+													className="gap-2 cursor-pointer"
+												>
+													<Clock className="size-3 shrink-0 text-grey-3/50" />
+													<span className="font-body text-[12px] text-muted-foreground truncate">
+														{query}
+													</span>
+												</CommandItem>
+											);
+										})}
 									</CommandGroup>
 								)}
 								{savedSearches.length > 0 && (
@@ -514,7 +542,6 @@ export function SearchCommand({
 										</CommandItem>
 									))}
 								</CommandGroup>
-								<CommandSeparator />
 								<CommandGroup heading="Operators">
 									{OPERATOR_HINTS.map((op) => (
 										<CommandItem
@@ -523,9 +550,9 @@ export function SearchCommand({
 											onSelect={() => insertOperator(op.value)}
 											className="gap-2 cursor-pointer"
 										>
-											<span className="font-mono text-[11px] text-grey-3 shrink-0 w-28 truncate">
+											<code className="font-mono text-[11px] text-muted-foreground shrink-0 w-28 truncate">
 												{op.label}
-											</span>
+											</code>
 											<span className="font-body text-[11px] text-grey-3">
 												{op.description}
 											</span>
