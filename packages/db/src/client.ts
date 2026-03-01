@@ -4,7 +4,11 @@ import * as schema from "./schema";
 
 import { env } from "./env";
 
-const client = new SQL(env.DATABASE_URL);
+const client = new SQL({
+	url: env.DATABASE_URL,
+	max: 20,
+	idleTimeout: 30,
+});
 
 export const db = drizzle({ client, schema });
 
