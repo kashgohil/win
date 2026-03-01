@@ -36,9 +36,9 @@ function formatTimestamp(iso: string): string {
 }
 
 function getInitial(name: string | null, email: string | null): string {
-	if (name) return name.charAt(0).toUpperCase();
-	if (email) return email.charAt(0).toUpperCase();
-	return "?";
+	const raw = name || email || "";
+	const match = raw.match(/[a-zA-Z0-9]/);
+	return match ? match[0].toUpperCase() : "?";
 }
 
 /* ── Time clustering ── */
