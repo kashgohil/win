@@ -114,6 +114,8 @@ export const mail = new Elysia({
 				label: query.label ?? undefined,
 				starred: query.starred === "true",
 				attachment: query.attachment === "true",
+				filename: query.filename ?? undefined,
+				filetype: query.filetype ?? undefined,
 				after: query.after ?? undefined,
 				before: query.before ?? undefined,
 			});
@@ -141,6 +143,8 @@ export const mail = new Elysia({
 				label: t.Optional(t.String()),
 				starred: t.Optional(t.String()),
 				attachment: t.Optional(t.String()),
+				filename: t.Optional(t.String()),
+				filetype: t.Optional(t.String()),
 				after: t.Optional(t.String()),
 				before: t.Optional(t.String()),
 			}),
@@ -180,6 +184,34 @@ export const mail = new Elysia({
 			detail: {
 				summary: "Get email detail",
 				description: "Returns full email including body content",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.get(
+		"/attachments/:id/download",
+		async ({ user, params, set }) => {
+			const result = await mailService.downloadAttachment(user.id, params.id);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return new Response(result.data, {
+				headers: {
+					"Content-Type": result.mimeType,
+					"Content-Disposition": `attachment; filename="${result.filename.replace(/"/g, '\\"')}"`,
+					"Content-Length": result.data.byteLength.toString(),
+				},
+			});
+		},
+		{
+			auth: true,
+			detail: {
+				summary: "Download attachment",
+				description: "Downloads the file content of an email attachment",
 				tags: ["Mail"],
 				security: [{ bearerAuth: [] }],
 			},

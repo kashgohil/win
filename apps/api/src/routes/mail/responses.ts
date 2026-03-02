@@ -88,11 +88,19 @@ export const emailSchema = t.Object({
 	aiSummary: t.Union([t.String(), t.Null()]),
 });
 
+export const attachmentSchema = t.Object({
+	id: t.String({ format: "uuid" }),
+	filename: t.String(),
+	mimeType: t.String(),
+	size: t.Number(),
+});
+
 export const emailDetailSchema = t.Intersect([
 	emailSchema,
 	t.Object({
 		bodyPlain: t.Union([t.String(), t.Null()]),
 		bodyHtml: t.Union([t.String(), t.Null()]),
+		attachments: t.Array(attachmentSchema),
 	}),
 ]);
 

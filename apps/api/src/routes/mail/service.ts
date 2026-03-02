@@ -4,6 +4,7 @@ import {
 	db,
 	desc,
 	emailAccounts,
+	emailAttachments,
 	emailCategoryEnum,
 	emailProviderEnum,
 	emails,
@@ -168,10 +169,22 @@ type SerializedEmail = {
 	aiSummary: string | null;
 };
 
+type SerializedAttachment = {
+	id: string;
+	filename: string;
+	mimeType: string;
+	size: number;
+};
+
 type SerializedEmailDetail = SerializedEmail & {
 	bodyPlain: string | null;
 	bodyHtml: string | null;
+	attachments: SerializedAttachment[];
 };
+
+type DownloadAttachmentResult =
+	| { ok: true; data: Uint8Array; filename: string; mimeType: string }
+	| { ok: false; error: string; status: 403 | 404 | 500 };
 
 type SerializedAccount = {
 	id: string;
@@ -436,6 +449,8 @@ class MailService {
 			label?: string;
 			starred?: boolean;
 			attachment?: boolean;
+			filename?: string;
+			filetype?: string;
 			after?: string;
 			before?: string;
 		},
@@ -511,6 +526,17 @@ class MailService {
 			}
 			if (options.attachment) {
 				conditions.push(eq(emails.hasAttachments, true));
+			}
+			if (options.filename) {
+				conditions.push(
+					sql`EXISTS (SELECT 1 FROM email_attachments WHERE email_attachments.email_id = ${emails.id} AND email_attachments.filename ILIKE ${"%" + options.filename + "%"})`,
+				);
+			}
+			if (options.filetype) {
+				const ft = options.filetype;
+				conditions.push(
+					sql`EXISTS (SELECT 1 FROM email_attachments WHERE email_attachments.email_id = ${emails.id} AND (email_attachments.mime_type ILIKE ${"%" + ft + "%"} OR email_attachments.filename ILIKE ${"%" + "." + ft}))`,
+				);
 			}
 			if (options.after) {
 				conditions.push(gte(emails.receivedAt, new Date(options.after)));
@@ -636,6 +662,7 @@ class MailService {
 		try {
 			const email = await db.query.emails.findFirst({
 				where: and(eq(emails.id, emailId), eq(emails.userId, userId)),
+				with: { attachments: true },
 			});
 
 			if (!email) {
@@ -648,11 +675,70 @@ class MailService {
 					...serializeEmail(email),
 					bodyPlain: email.bodyPlain,
 					bodyHtml: email.bodyHtml ? sanitizeEmailHtml(email.bodyHtml) : null,
+					attachments: (email.attachments ?? []).map((a) => ({
+						id: a.id,
+						filename: a.filename,
+						mimeType: a.mimeType,
+						size: a.size,
+					})),
 				},
 			};
 		} catch (err) {
 			console.error("[mail] getEmailDetail failed:", err);
 			return { ok: false, error: "Failed to load email", status: 500 };
+		}
+	}
+
+	async downloadAttachment(
+		userId: string,
+		attachmentId: string,
+	): Promise<DownloadAttachmentResult> {
+		try {
+			const attachment = await db.query.emailAttachments.findFirst({
+				where: eq(emailAttachments.id, attachmentId),
+				with: { email: true },
+			});
+
+			if (!attachment) {
+				return { ok: false, error: "Attachment not found", status: 404 };
+			}
+
+			if (attachment.email.userId !== userId) {
+				return { ok: false, error: "Forbidden", status: 403 };
+			}
+
+			const ctx = await getEmailProviderContext(attachment.email.id);
+			if (!ctx.ok) {
+				return { ok: false, error: ctx.error, status: 500 };
+			}
+
+			const content = await ctx.provider.getAttachmentContent(
+				ctx.accessToken,
+				attachment.email.providerMessageId,
+				attachment.providerAttachmentId,
+			);
+
+			if (!content) {
+				return {
+					ok: false,
+					error: "Failed to fetch attachment content",
+					status: 500,
+				};
+			}
+
+			return {
+				ok: true,
+				data: content.data,
+				filename: attachment.filename,
+				mimeType: attachment.mimeType,
+			};
+		} catch (err) {
+			console.error("[mail] downloadAttachment failed:", err);
+			return {
+				ok: false,
+				error: "Failed to download attachment",
+				status: 500,
+			};
 		}
 	}
 
