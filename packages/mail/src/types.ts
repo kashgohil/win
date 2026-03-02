@@ -11,6 +11,14 @@ export interface RefreshResult {
 	expiresAt: Date;
 }
 
+export interface SyncedAttachment {
+	filename: string;
+	mimeType: string;
+	size: number;
+	providerAttachmentId: string;
+	contentId: string | null;
+}
+
 export interface SyncedEmail {
 	providerMessageId: string;
 	providerThreadId: string | null;
@@ -24,6 +32,7 @@ export interface SyncedEmail {
 	isRead: boolean;
 	isStarred: boolean;
 	hasAttachments: boolean;
+	attachments: SyncedAttachment[];
 	labels: string[];
 	bodyPlain: string | null;
 	bodyHtml: string | null;
@@ -57,4 +66,9 @@ export interface EmailProvider {
 	star(accessToken: string, messageId: string): Promise<void>;
 	unstar(accessToken: string, messageId: string): Promise<void>;
 	trash(accessToken: string, messageId: string): Promise<void>;
+	getAttachmentContent(
+		accessToken: string,
+		messageId: string,
+		attachmentId: string,
+	): Promise<{ data: Uint8Array } | null>;
 }

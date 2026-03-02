@@ -78,9 +78,17 @@ export type SerializedEmail = {
 	aiSummary: string | null;
 };
 
+export type SerializedAttachment = {
+	id: string;
+	filename: string;
+	mimeType: string;
+	size: number;
+};
+
 export type SerializedEmailDetail = SerializedEmail & {
 	bodyPlain: string | null;
 	bodyHtml: string | null;
+	attachments: SerializedAttachment[];
 };
 
 export type SerializedAccount = {

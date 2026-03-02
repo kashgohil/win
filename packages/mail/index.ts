@@ -5,6 +5,7 @@ export type {
 	EmailProvider,
 	RefreshResult,
 	SendParams,
+	SyncedAttachment,
 	SyncedEmail,
 	SyncResult,
 	TokenResult,

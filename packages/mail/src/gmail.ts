@@ -3,6 +3,7 @@ import type {
 	EmailProvider,
 	RefreshResult,
 	SendParams,
+	SyncedAttachment,
 	SyncedEmail,
 	SyncResult,
 	TokenResult,
@@ -335,6 +336,24 @@ export class GmailProvider implements EmailProvider {
 		}
 	}
 
+	async getAttachmentContent(
+		accessToken: string,
+		messageId: string,
+		attachmentId: string,
+	): Promise<{ data: Uint8Array } | null> {
+		const res = await fetch(
+			`${GMAIL_API}/users/me/messages/${messageId}/attachments/${attachmentId}`,
+			{ headers: { Authorization: `Bearer ${accessToken}` } },
+		);
+
+		if (!res.ok) return null;
+
+		const json = (await res.json()) as { data: string };
+		const base64 = json.data.replace(/-/g, "+").replace(/_/g, "/");
+		const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+		return { data: bytes };
+	}
+
 	private async getMessagesBatched(
 		accessToken: string,
 		messageIds: string[],
@@ -403,7 +422,9 @@ interface GmailMessage {
 
 interface GmailPart {
 	mimeType: string;
-	body?: { data?: string; size: number };
+	filename?: string;
+	headers?: { name: string; value: string }[];
+	body?: { data?: string; size: number; attachmentId?: string };
 	parts?: GmailPart[];
 }
 
@@ -464,14 +485,39 @@ function extractBody(
 	return null;
 }
 
+function extractAttachments(
+	payload: GmailMessage["payload"],
+): SyncedAttachment[] {
+	const attachments: SyncedAttachment[] = [];
+
+	function walk(parts: GmailPart[] | undefined) {
+		if (!parts) return;
+		for (const part of parts) {
+			if (part.filename && part.body?.attachmentId) {
+				const contentIdHeader = part.headers?.find(
+					(h) => h.name.toLowerCase() === "content-id",
+				);
+				const contentId = contentIdHeader?.value?.replace(/[<>]/g, "") ?? null;
+
+				attachments.push({
+					filename: part.filename,
+					mimeType: part.mimeType,
+					size: part.body.size,
+					providerAttachmentId: part.body.attachmentId,
+					contentId,
+				});
+			}
+			if (part.parts) walk(part.parts);
+		}
+	}
+
+	walk(payload.parts);
+	return attachments;
+}
+
 function parseGmailMessage(msg: GmailMessage): SyncedEmail {
 	const from = parseAddress(getHeader(msg, "From"));
-	const hasAttachments =
-		msg.payload.parts?.some(
-			(p) =>
-				p.mimeType.startsWith("application/") ||
-				p.mimeType.startsWith("image/"),
-		) ?? false;
+	const attachments = extractAttachments(msg.payload);
 
 	return {
 		providerMessageId: msg.id,
@@ -485,7 +531,8 @@ function parseGmailMessage(msg: GmailMessage): SyncedEmail {
 		receivedAt: new Date(Number(msg.internalDate)),
 		isRead: !msg.labelIds.includes("UNREAD"),
 		isStarred: msg.labelIds.includes("STARRED"),
-		hasAttachments,
+		hasAttachments: attachments.length > 0,
+		attachments,
 		labels: msg.labelIds,
 		bodyPlain: extractBody(msg.payload, "text/plain"),
 		bodyHtml: extractBody(msg.payload, "text/html"),

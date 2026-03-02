@@ -1,4 +1,12 @@
-import { db, emailAccounts, emails, eq } from "@wingmnn/db";
+import {
+	and,
+	db,
+	emailAccounts,
+	emailAttachments,
+	emails,
+	eq,
+	inArray,
+} from "@wingmnn/db";
 import type { SyncedEmail } from "@wingmnn/mail";
 import { getProvider, getValidAccessToken } from "@wingmnn/mail";
 import { Worker } from "bullmq";
@@ -41,7 +49,63 @@ async function upsertSyncedEmails(
 		})
 		.returning({ id: emails.id });
 
-	return inserted.map((r) => r.id);
+	const insertedIds = inserted.map((r) => r.id);
+
+	// Resolve DB IDs for all synced emails (both new and existing)
+	const emailsWithAttachments = syncedEmails.filter(
+		(e) => e.attachments.length > 0,
+	);
+
+	if (emailsWithAttachments.length > 0) {
+		const resolved = await db.query.emails.findMany({
+			where: and(
+				eq(emails.emailAccountId, emailAccountId),
+				inArray(
+					emails.providerMessageId,
+					emailsWithAttachments.map((e) => e.providerMessageId),
+				),
+			),
+			columns: { id: true, providerMessageId: true },
+		});
+
+		const idMap = new Map(resolved.map((r) => [r.providerMessageId, r.id]));
+
+		const attachmentRows: {
+			emailId: string;
+			filename: string;
+			mimeType: string;
+			size: number;
+			providerAttachmentId: string;
+			contentId: string | null;
+		}[] = [];
+
+		for (const synced of emailsWithAttachments) {
+			const dbId = idMap.get(synced.providerMessageId);
+			if (!dbId) continue;
+			for (const att of synced.attachments) {
+				attachmentRows.push({
+					emailId: dbId,
+					filename: att.filename,
+					mimeType: att.mimeType,
+					size: att.size,
+					providerAttachmentId: att.providerAttachmentId,
+					contentId: att.contentId,
+				});
+			}
+		}
+
+		if (attachmentRows.length > 0) {
+			const emailIdsWithAttachments = [
+				...new Set(attachmentRows.map((r) => r.emailId)),
+			];
+			await db
+				.delete(emailAttachments)
+				.where(inArray(emailAttachments.emailId, emailIdsWithAttachments));
+			await db.insert(emailAttachments).values(attachmentRows);
+		}
+	}
+
+	return insertedIds;
 }
 
 async function processMailSync(data: MailSyncJobData): Promise<void> {

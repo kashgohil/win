@@ -7,6 +7,7 @@ export type {
 	EmailProvider,
 	MailModuleData,
 	SerializedAccount,
+	SerializedAttachment,
 	SerializedEmail,
 	SerializedEmailDetail,
 	SyncStatus,

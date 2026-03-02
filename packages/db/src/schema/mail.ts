@@ -199,6 +199,30 @@ export const mailSenderRules = pgTable(
 	],
 );
 
+/* ── Email Attachments ── */
+
+export const emailAttachments = pgTable(
+	"email_attachments",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		emailId: uuid("email_id")
+			.notNull()
+			.references(() => emails.id, { onDelete: "cascade" }),
+		filename: varchar({ length: 512 }).notNull(),
+		mimeType: varchar("mime_type", { length: 255 }).notNull(),
+		size: integer().notNull(),
+		providerAttachmentId: text("provider_attachment_id").notNull(),
+		contentId: varchar("content_id", { length: 255 }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		index("email_attachments_email_id_idx").on(table.emailId),
+		index("email_attachments_filename_idx").on(table.filename),
+	],
+);
+
 /* ── Relations ── */
 
 export const emailAccountsRelations = relations(
@@ -212,7 +236,7 @@ export const emailAccountsRelations = relations(
 	}),
 );
 
-export const emailsRelations = relations(emails, ({ one }) => ({
+export const emailsRelations = relations(emails, ({ one, many }) => ({
 	emailAccount: one(emailAccounts, {
 		fields: [emails.emailAccountId],
 		references: [emailAccounts.id],
@@ -221,7 +245,18 @@ export const emailsRelations = relations(emails, ({ one }) => ({
 		fields: [emails.userId],
 		references: [users.id],
 	}),
+	attachments: many(emailAttachments),
 }));
+
+export const emailAttachmentsRelations = relations(
+	emailAttachments,
+	({ one }) => ({
+		email: one(emails, {
+			fields: [emailAttachments.emailId],
+			references: [emails.id],
+		}),
+	}),
+);
 
 export const mailSenderRulesRelations = relations(
 	mailSenderRules,
