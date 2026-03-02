@@ -45,6 +45,8 @@ export type SearchFilters = {
 	category?: string;
 	starred?: boolean;
 	attachment?: boolean;
+	filename?: string;
+	filetype?: string;
 	after?: string;
 	before?: string;
 };
@@ -113,6 +115,8 @@ export function hasActiveFilters(filters: SearchFilters): boolean {
 		filters.label ||
 		filters.starred ||
 		filters.attachment ||
+		filters.filename ||
+		filters.filetype ||
 		filters.after ||
 		filters.before
 	);
@@ -144,6 +148,16 @@ const OPERATOR_HINTS = [
 		value: "has:attachment",
 		label: "has:attachment",
 		description: "Has attachments",
+	},
+	{
+		value: "filename:",
+		label: "filename:",
+		description: "Search by attachment name",
+	},
+	{
+		value: "filetype:",
+		label: "filetype:",
+		description: "Search by file type (e.g. pdf)",
 	},
 	{ value: "is:starred", label: "is:starred", description: "Starred emails" },
 	{ value: "is:unread", label: "is:unread", description: "Unread emails" },
@@ -216,6 +230,10 @@ export function SearchCommand({
 			else if (filters.starred) merged.starred = filters.starred;
 			if (parsed.attachment) merged.attachment = parsed.attachment;
 			else if (filters.attachment) merged.attachment = filters.attachment;
+			if (parsed.filename) merged.filename = parsed.filename;
+			else if (filters.filename) merged.filename = filters.filename;
+			if (parsed.filetype) merged.filetype = parsed.filetype;
+			else if (filters.filetype) merged.filetype = filters.filetype;
 			if (parsed.after) merged.after = parsed.after;
 			else if (filters.after) merged.after = filters.after;
 			if (parsed.before) merged.before = parsed.before;
@@ -642,6 +660,20 @@ export function SearchFilterChips({
 					icon={<Paperclip className="size-3" />}
 					label="has attachment"
 					onRemove={() => onRemoveFilter("attachment")}
+				/>
+			)}
+			{filters.filename && (
+				<FilterChip
+					icon={<Paperclip className="size-3" />}
+					label={`filename: ${filters.filename}`}
+					onRemove={() => onRemoveFilter("filename")}
+				/>
+			)}
+			{filters.filetype && (
+				<FilterChip
+					icon={<Paperclip className="size-3" />}
+					label={`filetype: ${filters.filetype}`}
+					onRemove={() => onRemoveFilter("filetype")}
 				/>
 			)}
 			{filters.after && (

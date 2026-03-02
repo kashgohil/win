@@ -1,4 +1,5 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
+import { AttachmentList } from "@/components/mail/AttachmentList";
 import { CATEGORY_CONFIG } from "@/components/mail/category-colors";
 import { ComposeSheet } from "@/components/mail/ComposeSheet";
 import { EmailActions } from "@/components/mail/EmailActions";
@@ -257,6 +258,21 @@ function EmailDetail() {
 			>
 				<EmailBody html={email.bodyHtml} plain={email.bodyPlain} />
 			</motion.div>
+
+			{email.attachments && email.attachments.length > 0 && (
+				<motion.div
+					initial={{ opacity: 0, y: 8 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{
+						duration: 0.4,
+						delay: 0.14,
+						ease: MOTION_CONSTANTS.EASE,
+					}}
+					className="mt-6"
+				>
+					<AttachmentList attachments={email.attachments} />
+				</motion.div>
+			)}
 
 			<ComposeSheet
 				open={composeMode !== null}

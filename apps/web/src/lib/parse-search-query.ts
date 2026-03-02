@@ -25,12 +25,14 @@ export type ParsedSearch = {
 	starred?: boolean;
 	unread?: boolean;
 	attachment?: boolean;
+	filename?: string;
+	filetype?: string;
 	after?: string;
 	before?: string;
 };
 
 const OPERATOR_RE =
-	/(?:from|to|cc|subject|after|before|has|is|category|label):"[^"]*"|(?:from|to|cc|subject|after|before|has|is|category|label):\S+/gi;
+	/(?:from|to|cc|subject|after|before|has|is|category|label|filename|filetype):"[^"]*"|(?:from|to|cc|subject|after|before|has|is|category|label|filename|filetype):\S+/gi;
 
 /**
  * Parse a Gmail-style query string into structured search filters.
@@ -83,6 +85,12 @@ export function parseSearchQuery(raw: string): ParsedSearch {
 				break;
 			case "label":
 				result.label = value;
+				break;
+			case "filename":
+				result.filename = value;
+				break;
+			case "filetype":
+				result.filetype = value;
 				break;
 			case "has":
 				if (value === "attachment") result.attachment = true;

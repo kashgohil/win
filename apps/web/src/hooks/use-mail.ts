@@ -29,6 +29,8 @@ export const mailKeys = {
 		label?: string;
 		starred?: boolean;
 		attachment?: boolean;
+		filename?: string;
+		filetype?: string;
 		after?: string;
 		before?: string;
 	}) => [...mailKeys.all, "emails", params] as const,
@@ -63,6 +65,8 @@ export function useMailEmailsInfinite(params?: {
 	label?: string;
 	starred?: boolean;
 	attachment?: boolean;
+	filename?: string;
+	filetype?: string;
 	after?: string;
 	before?: string;
 }) {
@@ -81,6 +85,8 @@ export function useMailEmailsInfinite(params?: {
 			label: params?.label,
 			starred: params?.starred,
 			attachment: params?.attachment,
+			filename: params?.filename,
+			filetype: params?.filetype,
 			after: params?.after,
 			before: params?.before,
 		}),
@@ -100,6 +106,8 @@ export function useMailEmailsInfinite(params?: {
 					label: params?.label,
 					starred: params?.starred ? "true" : undefined,
 					attachment: params?.attachment ? "true" : undefined,
+					filename: params?.filename,
+					filetype: params?.filetype,
 					after: params?.after,
 					before: params?.before,
 				},

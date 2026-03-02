@@ -91,7 +91,7 @@ function SandboxedHtml({ html }: { html: string }) {
 	}, [html]);
 
 	return (
-		<div className="min-w-0 w-full py-4 bg-white rounded-lg">
+		<div className="min-w-0 w-full p-4 bg-white rounded-lg">
 			<iframe
 				ref={iframeRef}
 				title="Email content"

@@ -49,6 +49,8 @@ const inboxSearchSchema = z.object({
 					? false
 					: undefined,
 		),
+	filename: z.string().optional(),
+	filetype: z.string().optional(),
 	after: z.string().optional(),
 	before: z.string().optional(),
 });
@@ -72,6 +74,8 @@ function MailInbox() {
 		label,
 		starred,
 		attachment,
+		filename,
+		filetype,
 		after,
 		before,
 	} = Route.useSearch();
@@ -93,6 +97,8 @@ function MailInbox() {
 			category,
 			starred,
 			attachment,
+			filename,
+			filetype,
 			after,
 			before,
 		}),
@@ -106,6 +112,8 @@ function MailInbox() {
 			category,
 			starred,
 			attachment,
+			filename,
+			filetype,
 			after,
 			before,
 		],
@@ -127,6 +135,8 @@ function MailInbox() {
 			label,
 			starred,
 			attachment,
+			filename,
+			filetype,
 			after,
 			before,
 		});
@@ -177,6 +187,8 @@ function MailInbox() {
 				overrides && "view" in overrides ? overrides.view : (view ?? undefined),
 			starred: filters.starred ?? undefined,
 			attachment: filters.attachment ?? undefined,
+			filename: filters.filename,
+			filetype: filters.filetype,
 			category:
 				overrides && "category" in overrides
 					? (overrides.category ?? undefined)
