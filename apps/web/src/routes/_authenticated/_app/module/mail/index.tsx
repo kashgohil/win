@@ -30,7 +30,7 @@ import { useLiveQuery } from "@tanstack/react-db";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { TriageAction } from "@wingmnn/types";
-import { ArrowRight, Inbox, Plus } from "lucide-react";
+import { ArrowRight, Inbox, Paperclip, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -139,7 +139,7 @@ function MailModule() {
 			isLoading={isPending}
 			headerActions={<MailHeaderActions />}
 		>
-			<div className="px-(--page-px) max-w-5xl mx-auto pb-16">
+			<div className="px-(--page-px) max-w-5xl mx-auto pb-16 space-y-2">
 				<Link
 					to="/module/mail/inbox"
 					search={{
@@ -153,6 +153,19 @@ function MailModule() {
 						<Inbox className="size-4 text-grey-2 group-hover:text-foreground transition-colors duration-200" />
 						<span className="font-body text-[14px] text-foreground/80 group-hover:text-foreground transition-colors duration-200">
 							View all emails
+						</span>
+					</div>
+					<ArrowRight className="size-3.5 text-grey-3 group-hover:text-foreground group-hover:translate-x-0.5 transition-all duration-200" />
+				</Link>
+
+				<Link
+					to="/module/mail/attachments"
+					className="group flex items-center justify-between rounded-lg border border-border/40 hover:border-border/70 bg-secondary/5 hover:bg-secondary/15 px-5 py-4 transition-colors duration-200"
+				>
+					<div className="flex items-center gap-3">
+						<Paperclip className="size-4 text-grey-2 group-hover:text-foreground transition-colors duration-200" />
+						<span className="font-body text-[14px] text-foreground/80 group-hover:text-foreground transition-colors duration-200">
+							All attachments
 						</span>
 					</div>
 					<ArrowRight className="size-3.5 text-grey-3 group-hover:text-foreground group-hover:translate-x-0.5 transition-all duration-200" />
@@ -201,6 +214,15 @@ function MailHeaderActions() {
 				>
 					<Inbox className="size-3.5" />
 					Inbox
+					<ArrowRight className="size-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150" />
+				</Link>
+
+				<Link
+					to="/module/mail/attachments"
+					className="group inline-flex items-center gap-1.5 font-body text-[12px] text-grey-2 hover:text-foreground transition-colors duration-150"
+				>
+					<Paperclip className="size-3.5" />
+					Attachments
 					<ArrowRight className="size-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150" />
 				</Link>
 

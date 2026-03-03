@@ -33,6 +33,7 @@ import { Route as AuthenticatedAppModuleCrmRouteImport } from './routes/_authent
 import { Route as AuthenticatedAppModuleCalRouteImport } from './routes/_authenticated/_app/module/cal'
 import { Route as AuthenticatedAppModuleMailIndexRouteImport } from './routes/_authenticated/_app/module/mail/index'
 import { Route as AuthenticatedAppModuleMailInboxIndexRouteImport } from './routes/_authenticated/_app/module/mail/inbox.index'
+import { Route as AuthenticatedAppModuleMailAttachmentsIndexRouteImport } from './routes/_authenticated/_app/module/mail/attachments.index'
 import { Route as AuthenticatedAppModuleMailInboxEmailIdRouteImport } from './routes/_authenticated/_app/module/mail/inbox.$emailId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -171,6 +172,12 @@ const AuthenticatedAppModuleMailInboxIndexRoute =
     path: '/inbox/',
     getParentRoute: () => AuthenticatedAppModuleMailRoute,
   } as any)
+const AuthenticatedAppModuleMailAttachmentsIndexRoute =
+  AuthenticatedAppModuleMailAttachmentsIndexRouteImport.update({
+    id: '/attachments/',
+    path: '/attachments/',
+    getParentRoute: () => AuthenticatedAppModuleMailRoute,
+  } as any)
 const AuthenticatedAppModuleMailInboxEmailIdRoute =
   AuthenticatedAppModuleMailInboxEmailIdRouteImport.update({
     id: '/inbox/$emailId',
@@ -201,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/module/travel': typeof AuthenticatedAppModuleTravelRoute
   '/module/mail/': typeof AuthenticatedAppModuleMailIndexRoute
   '/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
+  '/module/mail/attachments/': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/module/mail/inbox/': typeof AuthenticatedAppModuleMailInboxIndexRoute
 }
 export interface FileRoutesByTo {
@@ -224,6 +232,7 @@ export interface FileRoutesByTo {
   '/module/travel': typeof AuthenticatedAppModuleTravelRoute
   '/module/mail': typeof AuthenticatedAppModuleMailIndexRoute
   '/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
+  '/module/mail/attachments': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/module/mail/inbox': typeof AuthenticatedAppModuleMailInboxIndexRoute
 }
 export interface FileRoutesById {
@@ -252,6 +261,7 @@ export interface FileRoutesById {
   '/_authenticated/_app/module/travel': typeof AuthenticatedAppModuleTravelRoute
   '/_authenticated/_app/module/mail/': typeof AuthenticatedAppModuleMailIndexRoute
   '/_authenticated/_app/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
+  '/_authenticated/_app/module/mail/attachments/': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/_authenticated/_app/module/mail/inbox/': typeof AuthenticatedAppModuleMailInboxIndexRoute
 }
 export interface FileRouteTypes {
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/module/travel'
     | '/module/mail/'
     | '/module/mail/inbox/$emailId'
+    | '/module/mail/attachments/'
     | '/module/mail/inbox/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -302,6 +313,7 @@ export interface FileRouteTypes {
     | '/module/travel'
     | '/module/mail'
     | '/module/mail/inbox/$emailId'
+    | '/module/mail/attachments'
     | '/module/mail/inbox'
   id:
     | '__root__'
@@ -329,6 +341,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/module/travel'
     | '/_authenticated/_app/module/mail/'
     | '/_authenticated/_app/module/mail/inbox/$emailId'
+    | '/_authenticated/_app/module/mail/attachments/'
     | '/_authenticated/_app/module/mail/inbox/'
   fileRoutesById: FileRoutesById
 }
@@ -507,6 +520,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppModuleMailInboxIndexRouteImport
       parentRoute: typeof AuthenticatedAppModuleMailRoute
     }
+    '/_authenticated/_app/module/mail/attachments/': {
+      id: '/_authenticated/_app/module/mail/attachments/'
+      path: '/attachments'
+      fullPath: '/module/mail/attachments/'
+      preLoaderRoute: typeof AuthenticatedAppModuleMailAttachmentsIndexRouteImport
+      parentRoute: typeof AuthenticatedAppModuleMailRoute
+    }
     '/_authenticated/_app/module/mail/inbox/$emailId': {
       id: '/_authenticated/_app/module/mail/inbox/$emailId'
       path: '/inbox/$emailId'
@@ -520,6 +540,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAppModuleMailRouteChildren {
   AuthenticatedAppModuleMailIndexRoute: typeof AuthenticatedAppModuleMailIndexRoute
   AuthenticatedAppModuleMailInboxEmailIdRoute: typeof AuthenticatedAppModuleMailInboxEmailIdRoute
+  AuthenticatedAppModuleMailAttachmentsIndexRoute: typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   AuthenticatedAppModuleMailInboxIndexRoute: typeof AuthenticatedAppModuleMailInboxIndexRoute
 }
 
@@ -528,6 +549,8 @@ const AuthenticatedAppModuleMailRouteChildren: AuthenticatedAppModuleMailRouteCh
     AuthenticatedAppModuleMailIndexRoute: AuthenticatedAppModuleMailIndexRoute,
     AuthenticatedAppModuleMailInboxEmailIdRoute:
       AuthenticatedAppModuleMailInboxEmailIdRoute,
+    AuthenticatedAppModuleMailAttachmentsIndexRoute:
+      AuthenticatedAppModuleMailAttachmentsIndexRoute,
     AuthenticatedAppModuleMailInboxIndexRoute:
       AuthenticatedAppModuleMailInboxIndexRoute,
   }

@@ -37,6 +37,13 @@ export const mailKeys = {
 	email: (id: string) => [...mailKeys.all, "email", id] as const,
 	accounts: () => [...mailKeys.all, "accounts"] as const,
 	senders: (q?: string) => [...mailKeys.all, "senders", q] as const,
+	attachments: (params?: {
+		q?: string;
+		filetype?: string;
+		from?: string;
+		after?: string;
+		before?: string;
+	}) => [...mailKeys.all, "attachments", params] as const,
 };
 
 /* ── Queries ── */
@@ -113,6 +120,43 @@ export function useMailEmailsInfinite(params?: {
 				},
 			});
 			if (error) throw new Error("Failed to load emails");
+			return data;
+		},
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
+	});
+}
+
+export function useMailAttachmentsInfinite(params?: {
+	q?: string;
+	filetype?: string;
+	from?: string;
+	after?: string;
+	before?: string;
+}) {
+	const pageSize = 30;
+
+	return useInfiniteQuery({
+		queryKey: mailKeys.attachments({
+			q: params?.q,
+			filetype: params?.filetype,
+			from: params?.from,
+			after: params?.after,
+			before: params?.before,
+		}),
+		queryFn: async ({ pageParam }) => {
+			const { data, error } = await api.mail.attachments.get({
+				query: {
+					limit: pageSize.toString(),
+					cursor: pageParam,
+					q: params?.q,
+					filetype: params?.filetype,
+					from: params?.from,
+					after: params?.after,
+					before: params?.before,
+				},
+			});
+			if (error) throw new Error("Failed to load attachments");
 			return data;
 		},
 		initialPageParam: undefined as string | undefined,
