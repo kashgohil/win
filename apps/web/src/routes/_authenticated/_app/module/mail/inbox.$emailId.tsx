@@ -177,6 +177,10 @@ function EmailDetail() {
 
 	const handleReply = useCallback(() => setComposeMode("reply"), []);
 	const handleForward = useCallback(() => setComposeMode("forward"), []);
+	const handleNavigateAttachments = useCallback(
+		() => navigate({ to: "/module/mail/attachments" }),
+		[navigate],
+	);
 
 	useEmailDetailKeyboard({
 		disabled: composeMode !== null,
@@ -187,6 +191,7 @@ function EmailDetail() {
 		onArchive: handleArchive,
 		onDelete: handleDelete,
 		onBack: navigateBack,
+		onNavigateAttachments: handleNavigateAttachments,
 	});
 
 	if (isPending) {

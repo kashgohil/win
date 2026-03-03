@@ -9,6 +9,7 @@ type UseEmailDetailKeyboardOptions = {
 	onArchive: () => void;
 	onDelete: () => void;
 	onBack: () => void;
+	onNavigateAttachments: () => void;
 };
 
 export function useEmailDetailKeyboard({
@@ -20,6 +21,7 @@ export function useEmailDetailKeyboard({
 	onArchive,
 	onDelete,
 	onBack,
+	onNavigateAttachments,
 }: UseEmailDetailKeyboardOptions) {
 	useEffect(() => {
 		if (disabled) return;
@@ -58,11 +60,16 @@ export function useEmailDetailKeyboard({
 					e.preventDefault();
 					onArchive();
 					break;
+				case "a":
+					e.preventDefault();
+					onNavigateAttachments();
+					break;
 				case "#":
 					e.preventDefault();
 					onDelete();
 					break;
 				case "Escape":
+				case "[":
 					e.preventDefault();
 					onBack();
 					break;
@@ -80,5 +87,6 @@ export function useEmailDetailKeyboard({
 		onArchive,
 		onDelete,
 		onBack,
+		onNavigateAttachments,
 	]);
 }
