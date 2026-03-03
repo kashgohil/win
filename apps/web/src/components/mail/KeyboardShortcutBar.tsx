@@ -34,11 +34,7 @@ function GroupSeparator() {
 }
 
 export const INBOX_SHORTCUTS: ShortcutGroup[] = [
-	[
-		{ keys: ["\u2191\u2193"], label: "navigate" },
-		{ keys: ["\u2190\u2192"], label: "header / categories" },
-		{ keys: ["\u23CE"], label: "select" },
-	],
+	[{ keys: ["\u23CE"], label: "select" }],
 	[
 		{ keys: ["E"], label: "archive" },
 		{ keys: ["S"], label: "star" },
@@ -51,10 +47,7 @@ export const INBOX_SHORTCUTS: ShortcutGroup[] = [
 ];
 
 export const EMAIL_DETAIL_SHORTCUTS: ShortcutGroup[] = [
-	[
-		{ keys: ["ESC"], label: "back" },
-		{ keys: ["["], label: "back" },
-	],
+	[{ keys: ["ESC", "["], label: "back" }],
 ];
 
 export const MAIL_HUB_SHORTCUTS: ShortcutGroup[] = [
