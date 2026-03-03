@@ -1,3 +1,11 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, Paperclip, Search } from "lucide-react";
+import { motion } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { z } from "zod";
+
 import { MOTION_CONSTANTS } from "@/components/constant";
 import { CATEGORIES } from "@/components/mail/category-colors";
 import { CategoryFilter } from "@/components/mail/CategoryFilter";
@@ -17,37 +25,46 @@ import { useInboxKeyboard } from "@/hooks/use-inbox-keyboard";
 import { mailKeys, useMailEmailsInfinite } from "@/hooks/use-mail";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Paperclip, Search } from "lucide-react";
-import { motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
-import { z } from "zod";
 
 const PAGE_SIZE = 30;
+const HEADER_ITEMS = ["back", "attachments", "search", "view"] as const;
 
 /* ── Cache helpers (shared with EmailRow) ── */
 
-function removeEmailFromPages(old: any, emailId: string) {
-	if (!old?.pages) return old;
+type EmailPageData = {
+	emails: Array<{ id: string; [key: string]: unknown }>;
+	total?: number;
+};
+
+type PaginatedEmailData = {
+	pages: EmailPageData[];
+};
+
+function removeEmailFromPages(old: unknown, emailId: string): unknown {
+	const data = old as PaginatedEmailData | undefined;
+	if (!data?.pages) return old;
 	return {
-		...old,
-		pages: old.pages.map((page: any) => ({
+		...data,
+		pages: data.pages.map((page) => ({
 			...page,
-			emails: page.emails.filter((e: any) => e.id !== emailId),
+			emails: page.emails.filter((e) => e.id !== emailId),
 			total: Math.max(0, (page.total ?? 0) - 1),
 		})),
 	};
 }
 
-function updateEmailInPages(old: any, emailId: string, patch: object) {
-	if (!old?.pages) return old;
+function updateEmailInPages(
+	old: unknown,
+	emailId: string,
+	patch: object,
+): unknown {
+	const data = old as PaginatedEmailData | undefined;
+	if (!data?.pages) return old;
 	return {
-		...old,
-		pages: old.pages.map((page: any) => ({
+		...data,
+		pages: data.pages.map((page) => ({
 			...page,
-			emails: page.emails.map((e: any) =>
+			emails: page.emails.map((e) =>
 				e.id === emailId ? { ...e, ...patch } : e,
 			),
 		})),
@@ -283,7 +300,6 @@ function MailInbox() {
 		[navigate, toInboxSearch, searchFilters],
 	);
 
-	const HEADER_ITEMS = ["back", "attachments", "search", "view"] as const;
 	const headerCount = HEADER_ITEMS.length;
 	const categoryCount = CATEGORIES.length + 1; // +1 for "All"
 
@@ -336,7 +352,7 @@ function MailInbox() {
 		(index: number) => {
 			const email = emails[index];
 			if (!email) return;
-			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: unknown) =>
 				removeEmailFromPages(old, email.id),
 			);
 			toast("Email archived");
@@ -350,7 +366,7 @@ function MailInbox() {
 			const email = emails[index];
 			if (!email) return;
 			const patch = { isStarred: !email.isStarred };
-			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: unknown) =>
 				updateEmailInPages(old, email.id, patch),
 			);
 			api.mail.emails({ id: email.id }).star.patch();
@@ -362,7 +378,7 @@ function MailInbox() {
 		(index: number) => {
 			const email = emails[index];
 			if (!email) return;
-			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: unknown) =>
 				removeEmailFromPages(old, email.id),
 			);
 			api.mail.emails({ id: email.id }).read.patch();
@@ -373,6 +389,18 @@ function MailInbox() {
 	const handleOpenSearch = useCallback(() => {
 		setSearchOpen(true);
 	}, []);
+
+	const handleGoBack = useCallback(() => {
+		navigate({ to: "/module/mail" });
+	}, [navigate]);
+
+	const handleNavigateAttachments = useCallback(() => {
+		navigate({ to: "/module/mail/attachments" });
+	}, [navigate]);
+
+	const handleToggleView = useCallback(() => {
+		switchView(activeView === "unread" ? "read" : "unread");
+	}, [activeView, switchView]);
 
 	const keyboard = useInboxKeyboard({
 		emailCount: emails.length,
@@ -386,6 +414,9 @@ function MailInbox() {
 		onToggleReadEmail: handleKeyboardToggleRead,
 		onActivateHeader: handleActivateHeader,
 		onOpenSearch: handleOpenSearch,
+		onNavigateAttachments: handleNavigateAttachments,
+		onToggleView: handleToggleView,
+		onGoBack: handleGoBack,
 	});
 
 	const handleRemoveFilter = useCallback(
@@ -411,6 +442,7 @@ function MailInbox() {
 		<div className="px-(--page-px) py-8 max-w-5xl mx-auto">
 			{/* Header — back link + search trigger + view toggle */}
 			<motion.div
+				ref={keyboard.headerRef}
 				initial={{ opacity: 0, x: -8 }}
 				animate={{ opacity: 1, x: 0 }}
 				transition={{ duration: 0.3, ease: MOTION_CONSTANTS.EASE }}
@@ -443,6 +475,9 @@ function MailInbox() {
 					>
 						<Paperclip className="size-3" />
 						<span className="font-body text-[12px]">Attachments</span>
+						<kbd className="font-mono text-[10px] bg-secondary/40 px-1.5 py-0.5 rounded ml-1">
+							A
+						</kbd>
 					</Link>
 
 					<button
@@ -459,7 +494,7 @@ function MailInbox() {
 						<Search className="size-3" />
 						<span className="font-body text-[12px]">Search</span>
 						<kbd className="font-mono text-[10px] bg-secondary/40 px-1.5 py-0.5 rounded ml-1">
-							{navigator.platform?.includes("Mac") ? "\u2318K" : "Ctrl+K"}
+							K
 						</kbd>
 					</button>
 
@@ -479,9 +514,19 @@ function MailInbox() {
 							<TabsList size="sm">
 								<TabsTrigger size="sm" value="unread">
 									Unread
+									{activeView === "read" && (
+										<kbd className="font-mono text-[10px] bg-secondary/40 text-grey-3 px-1 py-0.5 rounded ml-1">
+											V
+										</kbd>
+									)}
 								</TabsTrigger>
 								<TabsTrigger size="sm" value="read">
 									Read
+									{activeView === "unread" && (
+										<kbd className="font-mono text-[10px] bg-secondary/40 text-grey-3 px-1 py-0.5 rounded ml-1">
+											V
+										</kbd>
+									)}
 								</TabsTrigger>
 							</TabsList>
 						</Tabs>
@@ -507,6 +552,7 @@ function MailInbox() {
 
 			{/* Category chips — always visible */}
 			<motion.div
+				ref={keyboard.categoriesRef}
 				initial={{ opacity: 0, y: 8 }}
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.4, ease: MOTION_CONSTANTS.EASE }}
@@ -614,11 +660,13 @@ function MailInbox() {
 	);
 }
 
+const SKELETON_KEYS = ["a", "b", "c", "d", "e", "f", "g", "h"] as const;
+
 function InboxSkeleton() {
 	return (
 		<div className="animate-pulse mt-4">
-			{Array.from({ length: 8 }).map((_, i) => (
-				<div key={i} className="flex items-start gap-3 py-3.5">
+			{SKELETON_KEYS.map((key) => (
+				<div key={key} className="flex items-start gap-3 py-3.5">
 					<div className="size-7 rounded-full bg-secondary/40" />
 					<div className="flex-1 space-y-1.5">
 						<div className="h-3.5 w-32 bg-secondary/40 rounded" />

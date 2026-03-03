@@ -15,6 +15,9 @@ type UseInboxKeyboardOptions = {
 	onToggleReadEmail: (index: number) => void;
 	onActivateHeader: (index: number) => void;
 	onOpenSearch?: () => void;
+	onNavigateAttachments?: () => void;
+	onToggleView?: () => void;
+	onGoBack?: () => void;
 };
 
 type UseInboxKeyboardReturn = {
@@ -26,6 +29,10 @@ type UseInboxKeyboardReturn = {
 	focusedEmailIndex: number;
 	/** Ref callback for email row elements (for scrollIntoView) */
 	emailRowRef: (index: number, el: HTMLElement | null) => void;
+	/** Ref callback for the header section element */
+	headerRef: (el: HTMLElement | null) => void;
+	/** Ref callback for the categories section element */
+	categoriesRef: (el: HTMLElement | null) => void;
 };
 
 export function useInboxKeyboard({
@@ -40,6 +47,9 @@ export function useInboxKeyboard({
 	onToggleReadEmail,
 	onActivateHeader,
 	onOpenSearch,
+	onNavigateAttachments,
+	onToggleView,
+	onGoBack,
 }: UseInboxKeyboardOptions): UseInboxKeyboardReturn {
 	const [isActive, setIsActive] = useState(false);
 	const [activeSection, setActiveSection] = useState<Section>("emails");
@@ -47,6 +57,8 @@ export function useInboxKeyboard({
 	const [focusedCategoryIndex, setFocusedCategoryIndex] = useState(0);
 	const [focusedEmailIndex, setFocusedEmailIndex] = useState(0);
 	const emailRowRefs = useRef<Map<number, HTMLElement>>(new Map());
+	const headerElRef = useRef<HTMLElement | null>(null);
+	const categoriesElRef = useRef<HTMLElement | null>(null);
 
 	// Reset state when email list changes significantly
 	const prevEmailCount = useRef(emailCount);
@@ -66,12 +78,28 @@ export function useInboxKeyboard({
 		}
 	}, []);
 
+	const scrollSectionIntoView = useCallback((section: Section) => {
+		const el =
+			section === "header" ? headerElRef.current : categoriesElRef.current;
+		if (el) {
+			el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+		}
+	}, []);
+
 	const emailRowRef = useCallback((index: number, el: HTMLElement | null) => {
 		if (el) {
 			emailRowRefs.current.set(index, el);
 		} else {
 			emailRowRefs.current.delete(index);
 		}
+	}, []);
+
+	const headerRef = useCallback((el: HTMLElement | null) => {
+		headerElRef.current = el;
+	}, []);
+
+	const categoriesRef = useCallback((el: HTMLElement | null) => {
+		categoriesElRef.current = el;
 	}, []);
 
 	// Deactivate on mouse movement
@@ -110,10 +138,38 @@ export function useInboxKeyboard({
 				return;
 			}
 
+			// Global shortcut: a to open attachments
+			if (key === "a") {
+				e.preventDefault();
+				onNavigateAttachments?.();
+				return;
+			}
+
+			// Global shortcut: v to toggle read/unread view
+			if (key === "v") {
+				e.preventDefault();
+				onToggleView?.();
+				return;
+			}
+
+			// Global shortcut: [ to go back
+			if (key === "[") {
+				e.preventDefault();
+				onGoBack?.();
+				return;
+			}
+
+			// Global shortcut: k to open search (only when keyboard nav is inactive)
+			if (key === "k" && !isActive) {
+				e.preventDefault();
+				onOpenSearch?.();
+				return;
+			}
+
 			// Activate keyboard mode on first relevant keypress
 			if (
 				!isActive &&
-				(key === "ArrowDown" || key === "ArrowUp" || key === "j" || key === "k")
+				(key === "ArrowDown" || key === "ArrowUp" || key === "j")
 			) {
 				e.preventDefault();
 				setIsActive(true);
@@ -129,6 +185,7 @@ export function useInboxKeyboard({
 				if (activeSection === "header") {
 					// Move from header to categories
 					setActiveSection("categories");
+					scrollSectionIntoView("categories");
 				} else if (activeSection === "categories") {
 					// Move from categories to email list
 					setActiveSection("emails");
@@ -150,6 +207,7 @@ export function useInboxKeyboard({
 				if (activeSection === "emails" && focusedEmailIndex === 0) {
 					// Move from top of emails to categories
 					setActiveSection("categories");
+					scrollSectionIntoView("categories");
 				} else if (activeSection === "emails") {
 					setFocusedEmailIndex((prev) => {
 						const next = Math.max(prev - 1, 0);
@@ -159,6 +217,7 @@ export function useInboxKeyboard({
 				} else if (activeSection === "categories") {
 					// Move from categories to header
 					setActiveSection("header");
+					scrollSectionIntoView("header");
 				}
 				return;
 			}
@@ -247,7 +306,11 @@ export function useInboxKeyboard({
 		onToggleReadEmail,
 		onActivateHeader,
 		onOpenSearch,
+		onNavigateAttachments,
+		onToggleView,
+		onGoBack,
 		scrollEmailIntoView,
+		scrollSectionIntoView,
 	]);
 
 	return {
@@ -257,5 +320,7 @@ export function useInboxKeyboard({
 		focusedCategoryIndex,
 		focusedEmailIndex,
 		emailRowRef,
+		headerRef,
+		categoriesRef,
 	};
 }
