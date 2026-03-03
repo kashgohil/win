@@ -1,5 +1,9 @@
 import { FileTypeFilter } from "@/components/mail/FileTypeFilter";
 import {
+	ATTACHMENTS_SHORTCUTS,
+	KeyboardShortcutBar,
+} from "@/components/mail/KeyboardShortcutBar";
+import {
 	Dialog,
 	DialogClose,
 	DialogContent,
@@ -17,7 +21,7 @@ import {
 	truncateFilename,
 } from "@/lib/file-utils";
 import { cn } from "@/lib/utils";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { SerializedAttachmentWithContext } from "@wingmnn/types";
 import { ArrowLeft, Download, Paperclip, Search, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -157,6 +161,7 @@ function SkeletonCard() {
 function AttachmentsPage() {
 	const { q, filetype, from, after, before } = Route.useSearch();
 	const navigate = Route.useNavigate();
+	const appNavigate = useNavigate();
 	const sentinelRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [searchValue, setSearchValue] = useState(q ?? "");
@@ -195,6 +200,49 @@ function AttachmentsPage() {
 		observer.observe(el);
 		return () => observer.disconnect();
 	}, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+	// Keyboard shortcuts
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => {
+			const target = e.target as HTMLElement;
+			if (
+				target.tagName === "INPUT" ||
+				target.tagName === "TEXTAREA" ||
+				target.isContentEditable ||
+				e.metaKey ||
+				e.ctrlKey ||
+				e.altKey
+			) {
+				return;
+			}
+
+			switch (e.key) {
+				case "[":
+					e.preventDefault();
+					appNavigate({ to: "/module/mail" });
+					break;
+				case "/":
+				case "k":
+					e.preventDefault();
+					inputRef.current?.focus();
+					break;
+				case "i":
+					e.preventDefault();
+					appNavigate({
+						to: "/module/mail/inbox",
+						search: {
+							view: undefined,
+							starred: undefined,
+							attachment: undefined,
+						},
+					});
+					break;
+			}
+		};
+
+		document.addEventListener("keydown", handler);
+		return () => document.removeEventListener("keydown", handler);
+	}, [appNavigate]);
 
 	const attachments =
 		data?.pages.flatMap((page) => page?.attachments ?? []) ?? [];
@@ -458,6 +506,8 @@ function AttachmentsPage() {
 					</div>
 				</DialogContent>
 			</Dialog>
+
+			<KeyboardShortcutBar shortcuts={ATTACHMENTS_SHORTCUTS} />
 		</>
 	);
 }
