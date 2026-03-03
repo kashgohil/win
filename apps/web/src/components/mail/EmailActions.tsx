@@ -5,10 +5,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { mailKeys } from "@/hooks/use-mail";
-import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
 import type { EmailCategory } from "@wingmnn/types";
 import {
 	Archive,
@@ -20,100 +17,34 @@ import {
 	Trash2,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { toast } from "sonner";
 import { CategorizeSenderPopover } from "./CategorizeSenderPopover";
 import { SendToPopover } from "./SendToPopover";
 
 interface EmailActionsProps {
-	emailId: string;
 	isStarred: boolean;
 	isRead: boolean;
 	fromAddress: string | null;
 	category: EmailCategory;
 	onReply: () => void;
 	onForward: () => void;
-	onNavigateBack: () => void;
-}
-
-function updateEmailInPages(old: any, emailId: string, patch: object) {
-	if (!old?.pages) return old;
-	return {
-		...old,
-		pages: old.pages.map((page: any) => ({
-			...page,
-			emails: page.emails.map((e: any) =>
-				e.id === emailId ? { ...e, ...patch } : e,
-			),
-		})),
-	};
-}
-
-function removeEmailFromPages(old: any, emailId: string) {
-	if (!old?.pages) return old;
-	return {
-		...old,
-		pages: old.pages.map((page: any) => ({
-			...page,
-			emails: page.emails.filter((e: any) => e.id !== emailId),
-			total: Math.max(0, (page.total ?? 0) - 1),
-		})),
-	};
+	onStar: () => void;
+	onToggleRead: () => void;
+	onArchive: () => void;
+	onDelete: () => void;
 }
 
 export function EmailActions({
-	emailId,
 	isStarred,
 	isRead,
 	fromAddress,
 	category,
 	onReply,
 	onForward,
-	onNavigateBack,
+	onStar,
+	onToggleRead,
+	onArchive,
+	onDelete,
 }: EmailActionsProps) {
-	const queryClient = useQueryClient();
-
-	const handleStar = () => {
-		const patch = { isStarred: !isStarred };
-		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) =>
-			updateEmailInPages(old, emailId, patch),
-		);
-		queryClient.setQueryData(mailKeys.email(emailId), (old: any) => {
-			if (!old?.email) return old;
-			return { ...old, email: { ...old.email, ...patch } };
-		});
-		api.mail.emails({ id: emailId }).star.patch();
-	};
-
-	const handleToggleRead = () => {
-		const patch = { isRead: !isRead };
-		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) =>
-			updateEmailInPages(old, emailId, patch),
-		);
-		queryClient.setQueryData(mailKeys.email(emailId), (old: any) => {
-			if (!old?.email) return old;
-			return { ...old, email: { ...old.email, ...patch } };
-		});
-		api.mail.emails({ id: emailId }).read.patch();
-	};
-
-	const handleArchive = () => {
-		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) =>
-			removeEmailFromPages(old, emailId),
-		);
-		toast("Email archived");
-		onNavigateBack();
-		api.mail.emails({ id: emailId }).archive.post();
-	};
-
-	const handleDelete = () => {
-		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) =>
-			removeEmailFromPages(old, emailId),
-		);
-		toast("Email deleted");
-		onNavigateBack();
-		api.mail.emails({ id: emailId }).delete();
-	};
-
 	return (
 		<TooltipProvider sliding>
 			<div className="flex items-center gap-1 py-2">
@@ -129,7 +60,7 @@ export function EmailActions({
 							<span className="sr-only">Reply</span>
 						</motion.button>
 					</TooltipTrigger>
-					<TooltipContent side="bottom">Reply</TooltipContent>
+					<TooltipWithShortcut label="Reply" shortcut="R" />
 				</Tooltip>
 
 				<Tooltip>
@@ -144,7 +75,7 @@ export function EmailActions({
 							<span className="sr-only">Forward</span>
 						</motion.button>
 					</TooltipTrigger>
-					<TooltipContent side="bottom">Forward</TooltipContent>
+					<TooltipWithShortcut label="Forward" shortcut="F" />
 				</Tooltip>
 
 				<Separator />
@@ -153,7 +84,7 @@ export function EmailActions({
 					<TooltipTrigger asChild>
 						<motion.button
 							type="button"
-							onClick={handleStar}
+							onClick={onStar}
 							whileTap={{ scale: 0.85 }}
 							className={cn(
 								"relative size-8 rounded-full flex items-center justify-center transition-colors duration-300 cursor-pointer",
@@ -194,16 +125,17 @@ export function EmailActions({
 							<span className="sr-only">{isStarred ? "Unstar" : "Star"}</span>
 						</motion.button>
 					</TooltipTrigger>
-					<TooltipContent side="bottom">
-						{isStarred ? "Unstar" : "Star"}
-					</TooltipContent>
+					<TooltipWithShortcut
+						label={isStarred ? "Unstar" : "Star"}
+						shortcut="S"
+					/>
 				</Tooltip>
 
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<motion.button
 							type="button"
-							onClick={handleToggleRead}
+							onClick={onToggleRead}
 							whileTap={{ scale: 0.85 }}
 							className={cn(
 								"size-8 rounded-full flex items-center justify-center transition-colors duration-200 cursor-pointer",
@@ -233,9 +165,10 @@ export function EmailActions({
 							</span>
 						</motion.button>
 					</TooltipTrigger>
-					<TooltipContent side="bottom">
-						{isRead ? "Mark as unread" : "Mark as read"}
-					</TooltipContent>
+					<TooltipWithShortcut
+						label={isRead ? "Mark as unread" : "Mark as read"}
+						shortcut="U"
+					/>
 				</Tooltip>
 
 				<Separator />
@@ -244,7 +177,7 @@ export function EmailActions({
 					<TooltipTrigger asChild>
 						<motion.button
 							type="button"
-							onClick={handleArchive}
+							onClick={onArchive}
 							whileTap={{ scale: 0.85 }}
 							className="size-8 rounded-full flex items-center justify-center text-grey-3 hover:text-foreground/60 hover:bg-secondary/30 transition-colors duration-200 cursor-pointer"
 						>
@@ -252,7 +185,7 @@ export function EmailActions({
 							<span className="sr-only">Archive</span>
 						</motion.button>
 					</TooltipTrigger>
-					<TooltipContent side="bottom">Archive</TooltipContent>
+					<TooltipWithShortcut label="Archive" shortcut="E" />
 				</Tooltip>
 
 				<Tooltip>
@@ -262,7 +195,7 @@ export function EmailActions({
 								title="Delete email"
 								description="This email will be moved to trash. This action cannot be undone."
 								confirmLabel="Delete"
-								onConfirm={handleDelete}
+								onConfirm={onDelete}
 							>
 								<motion.button
 									type="button"
@@ -275,7 +208,7 @@ export function EmailActions({
 							</ConfirmButton>
 						</div>
 					</TooltipTrigger>
-					<TooltipContent side="bottom">Delete</TooltipContent>
+					<TooltipWithShortcut label="Delete" shortcut="#" />
 				</Tooltip>
 
 				<div className="flex-1" />
@@ -298,4 +231,21 @@ export function EmailActions({
 
 function Separator() {
 	return <span className="w-px h-4 bg-border/60 mx-1.5" aria-hidden />;
+}
+
+function TooltipWithShortcut({
+	label,
+	shortcut,
+}: {
+	label: string;
+	shortcut: string;
+}) {
+	return (
+		<TooltipContent side="bottom" className="flex items-center gap-2">
+			{label}
+			<kbd className="font-mono text-[10px] text-foreground/40 bg-foreground/[0.06] border border-foreground/[0.08] px-1 py-px rounded leading-none">
+				{shortcut}
+			</kbd>
+		</TooltipContent>
+	);
 }

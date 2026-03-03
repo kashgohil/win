@@ -1,6 +1,11 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
+import { CATEGORIES } from "@/components/mail/category-colors";
 import { CategoryFilter } from "@/components/mail/CategoryFilter";
 import { EmailRow, groupEmailsByTime } from "@/components/mail/EmailRow";
+import {
+	INBOX_SHORTCUTS,
+	KeyboardShortcutBar,
+} from "@/components/mail/KeyboardShortcutBar";
 import {
 	hasActiveFilters,
 	SearchCommand,
@@ -8,14 +13,46 @@ import {
 	type SearchFilters,
 } from "@/components/mail/SearchBar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useMailEmailsInfinite } from "@/hooks/use-mail";
+import { useInboxKeyboard } from "@/hooks/use-inbox-keyboard";
+import { mailKeys, useMailEmailsInfinite } from "@/hooks/use-mail";
+import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Paperclip, Search } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
 
 const PAGE_SIZE = 30;
+
+/* ── Cache helpers (shared with EmailRow) ── */
+
+function removeEmailFromPages(old: any, emailId: string) {
+	if (!old?.pages) return old;
+	return {
+		...old,
+		pages: old.pages.map((page: any) => ({
+			...page,
+			emails: page.emails.filter((e: any) => e.id !== emailId),
+			total: Math.max(0, (page.total ?? 0) - 1),
+		})),
+	};
+}
+
+function updateEmailInPages(old: any, emailId: string, patch: object) {
+	if (!old?.pages) return old;
+	return {
+		...old,
+		pages: old.pages.map((page: any) => ({
+			...page,
+			emails: page.emails.map((e: any) =>
+				e.id === emailId ? { ...e, ...patch } : e,
+			),
+		})),
+	};
+}
 
 const inboxSearchSchema = z.object({
 	view: z
@@ -170,6 +207,7 @@ function MailInbox() {
 		return () => document.removeEventListener("keydown", handler);
 	}, []);
 
+	const queryClient = useQueryClient();
 	const emails = data?.pages.flatMap((page) => page?.emails ?? []) ?? [];
 	const total = data?.pages[0]?.total;
 
@@ -230,15 +268,125 @@ function MailInbox() {
 		[navigate, searchFilters, toInboxSearch],
 	);
 
-	const switchView = (v: "unread" | "read") => {
-		navigate({
-			to: "/module/mail/inbox",
-			search: toInboxSearch(searchFilters, {
-				view: v === "unread" ? undefined : v,
-			}),
-			replace: true,
-		});
-	};
+	// ── Keyboard navigation ──
+
+	const switchView = useCallback(
+		(v: "unread" | "read") => {
+			navigate({
+				to: "/module/mail/inbox",
+				search: toInboxSearch(searchFilters, {
+					view: v === "unread" ? undefined : v,
+				}),
+				replace: true,
+			});
+		},
+		[navigate, toInboxSearch, searchFilters],
+	);
+
+	const HEADER_ITEMS = ["back", "attachments", "search", "view"] as const;
+	const headerCount = HEADER_ITEMS.length;
+	const categoryCount = CATEGORIES.length + 1; // +1 for "All"
+
+	const handleActivateHeader = useCallback(
+		(index: number) => {
+			const item = HEADER_ITEMS[index];
+			if (item === "back") {
+				navigate({ to: "/module/mail" });
+			} else if (item === "attachments") {
+				navigate({ to: "/module/mail/attachments" });
+			} else if (item === "search") {
+				setSearchOpen(true);
+			} else if (item === "view") {
+				switchView(activeView === "unread" ? "read" : "unread");
+			}
+		},
+		[navigate, activeView, switchView],
+	);
+
+	const handleKeyboardSelectCategory = useCallback(
+		(index: number) => {
+			if (index === 0) {
+				handleCategoryChange(null);
+			} else {
+				const cat = CATEGORIES[index - 1];
+				if (cat) handleCategoryChange(cat.value);
+			}
+		},
+		[handleCategoryChange],
+	);
+
+	const handleKeyboardOpenEmail = useCallback(
+		(index: number) => {
+			const email = emails[index];
+			if (email) {
+				navigate({
+					to: "/module/mail/inbox/$emailId",
+					params: { emailId: email.id },
+					search: {
+						view: view ?? undefined,
+						category: category ?? undefined,
+					},
+				});
+			}
+		},
+		[emails, navigate, view, category],
+	);
+
+	const handleKeyboardArchive = useCallback(
+		(index: number) => {
+			const email = emails[index];
+			if (!email) return;
+			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+				removeEmailFromPages(old, email.id),
+			);
+			toast("Email archived");
+			api.mail.emails({ id: email.id }).archive.post();
+		},
+		[emails, queryClient],
+	);
+
+	const handleKeyboardStar = useCallback(
+		(index: number) => {
+			const email = emails[index];
+			if (!email) return;
+			const patch = { isStarred: !email.isStarred };
+			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+				updateEmailInPages(old, email.id, patch),
+			);
+			api.mail.emails({ id: email.id }).star.patch();
+		},
+		[emails, queryClient],
+	);
+
+	const handleKeyboardToggleRead = useCallback(
+		(index: number) => {
+			const email = emails[index];
+			if (!email) return;
+			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+				removeEmailFromPages(old, email.id),
+			);
+			api.mail.emails({ id: email.id }).read.patch();
+		},
+		[emails, queryClient],
+	);
+
+	const handleOpenSearch = useCallback(() => {
+		setSearchOpen(true);
+	}, []);
+
+	const keyboard = useInboxKeyboard({
+		emailCount: emails.length,
+		categoryCount,
+		headerCount,
+		disabled: searchOpen,
+		onSelectCategory: handleKeyboardSelectCategory,
+		onOpenEmail: handleKeyboardOpenEmail,
+		onArchiveEmail: handleKeyboardArchive,
+		onStarEmail: handleKeyboardStar,
+		onToggleReadEmail: handleKeyboardToggleRead,
+		onActivateHeader: handleActivateHeader,
+		onOpenSearch: handleOpenSearch,
+	});
 
 	const handleRemoveFilter = useCallback(
 		(key: keyof SearchFilters) => {
@@ -270,17 +418,43 @@ function MailInbox() {
 			>
 				<Link
 					to="/module/mail"
-					className="group inline-flex items-center gap-1.5 font-body text-[13px] text-grey-3 hover:text-foreground transition-colors duration-150"
+					className={cn(
+						"group inline-flex items-center gap-1.5 font-body text-[13px] text-grey-3 hover:text-foreground transition-all duration-150 rounded-lg px-2 py-1 -mx-2",
+						keyboard.isActive &&
+							keyboard.activeSection === "header" &&
+							keyboard.focusedHeaderIndex === 0 &&
+							"ring-2 ring-foreground/30 text-foreground",
+					)}
 				>
 					<ArrowLeft className="size-3.5 group-hover:-translate-x-0.5 transition-transform duration-150" />
 					Mail
 				</Link>
 
 				<div className="flex items-center gap-3">
+					<Link
+						to="/module/mail/attachments"
+						className={cn(
+							"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
+							keyboard.isActive &&
+								keyboard.activeSection === "header" &&
+								keyboard.focusedHeaderIndex === 1 &&
+								"ring-2 ring-foreground/30 text-foreground",
+						)}
+					>
+						<Paperclip className="size-3" />
+						<span className="font-body text-[12px]">Attachments</span>
+					</Link>
+
 					<button
 						type="button"
 						onClick={() => setSearchOpen(true)}
-						className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer"
+						className={cn(
+							"inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer",
+							keyboard.isActive &&
+								keyboard.activeSection === "header" &&
+								keyboard.focusedHeaderIndex === 2 &&
+								"ring-2 ring-foreground/30 text-foreground",
+						)}
 					>
 						<Search className="size-3" />
 						<span className="font-body text-[12px]">Search</span>
@@ -289,19 +463,29 @@ function MailInbox() {
 						</kbd>
 					</button>
 
-					<Tabs
-						value={activeView}
-						onValueChange={(v) => switchView(v as "unread" | "read")}
+					<div
+						className={cn(
+							"rounded-lg transition-all duration-150",
+							keyboard.isActive &&
+								keyboard.activeSection === "header" &&
+								keyboard.focusedHeaderIndex === 3 &&
+								"ring-2 ring-foreground/30",
+						)}
 					>
-						<TabsList size="sm">
-							<TabsTrigger size="sm" value="unread">
-								Unread
-							</TabsTrigger>
-							<TabsTrigger size="sm" value="read">
-								Read
-							</TabsTrigger>
-						</TabsList>
-					</Tabs>
+						<Tabs
+							value={activeView}
+							onValueChange={(v) => switchView(v as "unread" | "read")}
+						>
+							<TabsList size="sm">
+								<TabsTrigger size="sm" value="unread">
+									Unread
+								</TabsTrigger>
+								<TabsTrigger size="sm" value="read">
+									Read
+								</TabsTrigger>
+							</TabsList>
+						</Tabs>
+					</div>
 				</div>
 			</motion.div>
 
@@ -331,6 +515,11 @@ function MailInbox() {
 					value={activeCategory}
 					onChange={handleCategoryChange}
 					total={total}
+					keyboardFocusIndex={
+						keyboard.isActive && keyboard.activeSection === "categories"
+							? keyboard.focusedCategoryIndex
+							: undefined
+					}
 				/>
 			</motion.div>
 
@@ -369,24 +558,36 @@ function MailInbox() {
 					}}
 					className="mt-4"
 				>
-					{groupEmailsByTime(emails).map((cluster) => (
-						<div key={cluster.label ?? "today"}>
-							{cluster.label && (
-								<div className="pt-6 pb-2">
-									<span className="font-body text-[13px] text-grey-3">
-										{cluster.label}
-									</span>
-								</div>
-							)}
-							{cluster.emails.map((email) => (
-								<EmailRow
-									key={email.id}
-									email={email}
-									highlightTerms={searchTerms}
-								/>
-							))}
-						</div>
-					))}
+					{(() => {
+						let flatIndex = 0;
+						return groupEmailsByTime(emails).map((cluster) => (
+							<div key={cluster.label ?? "today"}>
+								{cluster.label && (
+									<div className="pt-6 pb-2">
+										<span className="font-body text-[13px] text-grey-3">
+											{cluster.label}
+										</span>
+									</div>
+								)}
+								{cluster.emails.map((email) => {
+									const idx = flatIndex++;
+									return (
+										<EmailRow
+											key={email.id}
+											email={email}
+											highlightTerms={searchTerms}
+											isFocused={
+												keyboard.isActive &&
+												keyboard.activeSection === "emails" &&
+												keyboard.focusedEmailIndex === idx
+											}
+											focusRef={(el) => keyboard.emailRowRef(idx, el)}
+										/>
+									);
+								})}
+							</div>
+						));
+					})()}
 
 					{/* Sentinel for infinite scroll */}
 					<div ref={sentinelRef} className="h-px" />
@@ -407,6 +608,8 @@ function MailInbox() {
 				onFiltersChange={handleFiltersChange}
 				activeCategory={activeCategory}
 			/>
+
+			<KeyboardShortcutBar shortcuts={INBOX_SHORTCUTS} visible={!searchOpen} />
 		</div>
 	);
 }

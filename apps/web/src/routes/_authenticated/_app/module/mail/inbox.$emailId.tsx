@@ -4,6 +4,11 @@ import { CATEGORY_CONFIG } from "@/components/mail/category-colors";
 import { ComposeSheet } from "@/components/mail/ComposeSheet";
 import { EmailActions } from "@/components/mail/EmailActions";
 import { EmailBody } from "@/components/mail/EmailBody";
+import {
+	EMAIL_DETAIL_SHORTCUTS,
+	KeyboardShortcutBar,
+} from "@/components/mail/KeyboardShortcutBar";
+import { useEmailDetailKeyboard } from "@/hooks/use-email-detail-keyboard";
 import { mailKeys, useMailEmailDetail } from "@/hooks/use-mail";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
@@ -11,7 +16,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
 
 const detailSearchSchema = z.object({
@@ -84,6 +90,105 @@ function EmailDetail() {
 		api.mail.emails({ id: emailId }).read.patch();
 	}, [data?.email?.id, data?.email?.isRead, emailId, queryClient]);
 
+	// ── Action handlers (shared between buttons and keyboard) ──
+
+	const navigateBack = useCallback(
+		() => navigate({ to: "/module/mail/inbox", search: inboxSearch }),
+		[navigate, inboxSearch],
+	);
+
+	const handleStar = useCallback(() => {
+		if (!data?.email) return;
+		const patch = { isStarred: !data.email.isStarred };
+		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) => {
+			if (!old?.pages) return old;
+			return {
+				...old,
+				pages: old.pages.map((page: any) => ({
+					...page,
+					emails: page.emails.map((e: any) =>
+						e.id === emailId ? { ...e, ...patch } : e,
+					),
+				})),
+			};
+		});
+		queryClient.setQueryData(mailKeys.email(emailId), (old: any) => {
+			if (!old?.email) return old;
+			return { ...old, email: { ...old.email, ...patch } };
+		});
+		api.mail.emails({ id: emailId }).star.patch();
+	}, [data?.email, emailId, queryClient]);
+
+	const handleToggleRead = useCallback(() => {
+		if (!data?.email) return;
+		const patch = { isRead: !data.email.isRead };
+		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) => {
+			if (!old?.pages) return old;
+			return {
+				...old,
+				pages: old.pages.map((page: any) => ({
+					...page,
+					emails: page.emails.map((e: any) =>
+						e.id === emailId ? { ...e, ...patch } : e,
+					),
+				})),
+			};
+		});
+		queryClient.setQueryData(mailKeys.email(emailId), (old: any) => {
+			if (!old?.email) return old;
+			return { ...old, email: { ...old.email, ...patch } };
+		});
+		api.mail.emails({ id: emailId }).read.patch();
+	}, [data?.email, emailId, queryClient]);
+
+	const handleArchive = useCallback(() => {
+		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) => {
+			if (!old?.pages) return old;
+			return {
+				...old,
+				pages: old.pages.map((page: any) => ({
+					...page,
+					emails: page.emails.filter((e: any) => e.id !== emailId),
+					total: Math.max(0, (page.total ?? 0) - 1),
+				})),
+			};
+		});
+		toast("Email archived");
+		navigateBack();
+		api.mail.emails({ id: emailId }).archive.post();
+	}, [emailId, queryClient, navigateBack]);
+
+	const handleDelete = useCallback(() => {
+		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) => {
+			if (!old?.pages) return old;
+			return {
+				...old,
+				pages: old.pages.map((page: any) => ({
+					...page,
+					emails: page.emails.filter((e: any) => e.id !== emailId),
+					total: Math.max(0, (page.total ?? 0) - 1),
+				})),
+			};
+		});
+		toast("Email deleted");
+		navigateBack();
+		api.mail.emails({ id: emailId }).delete();
+	}, [emailId, queryClient, navigateBack]);
+
+	const handleReply = useCallback(() => setComposeMode("reply"), []);
+	const handleForward = useCallback(() => setComposeMode("forward"), []);
+
+	useEmailDetailKeyboard({
+		disabled: composeMode !== null,
+		onReply: handleReply,
+		onForward: handleForward,
+		onStar: handleStar,
+		onToggleRead: handleToggleRead,
+		onArchive: handleArchive,
+		onDelete: handleDelete,
+		onBack: navigateBack,
+	});
+
 	if (isPending) {
 		return <DetailSkeleton />;
 	}
@@ -109,8 +214,6 @@ function EmailDetail() {
 	}
 
 	const email = data.email;
-	const navigateBack = () =>
-		navigate({ to: "/module/mail/inbox", search: inboxSearch });
 
 	return (
 		<div className="px-(--page-px) py-8 max-w-5xl mx-auto pb-16">
@@ -234,14 +337,16 @@ function EmailDetail() {
 				className="mt-4"
 			>
 				<EmailActions
-					emailId={emailId}
 					isStarred={email.isStarred}
 					isRead={email.isRead}
 					fromAddress={email.fromAddress}
 					category={email.category}
-					onReply={() => setComposeMode("reply")}
-					onForward={() => setComposeMode("forward")}
-					onNavigateBack={navigateBack}
+					onReply={handleReply}
+					onForward={handleForward}
+					onStar={handleStar}
+					onToggleRead={handleToggleRead}
+					onArchive={handleArchive}
+					onDelete={handleDelete}
 				/>
 			</motion.div>
 
@@ -284,6 +389,11 @@ function EmailDetail() {
 				fromAddress={email.fromAddress}
 				subject={email.subject}
 				originalBody={email.bodyPlain}
+			/>
+
+			<KeyboardShortcutBar
+				shortcuts={EMAIL_DETAIL_SHORTCUTS}
+				visible={composeMode === null}
 			/>
 		</div>
 	);

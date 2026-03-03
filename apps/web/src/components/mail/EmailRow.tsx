@@ -185,9 +185,13 @@ function RowAction({
 export function EmailRow({
 	email,
 	highlightTerms,
+	isFocused,
+	focusRef,
 }: {
 	email: SerializedEmail;
 	highlightTerms?: string[];
+	isFocused?: boolean;
+	focusRef?: (el: HTMLElement | null) => void;
 }) {
 	const initial = getInitial(email.fromName, email.fromAddress);
 	const senderDisplay = email.fromName || email.fromAddress || "Unknown";
@@ -223,13 +227,16 @@ export function EmailRow({
 
 	return (
 		<motion.div
+			ref={focusRef}
 			initial="idle"
 			whileHover="hovered"
+			animate={isFocused ? "hovered" : undefined}
 			className={cn(
 				"group -mx-2 rounded-lg border-b border-border/15 last:border-0",
 				"hover:bg-secondary/30 transition-colors duration-150",
 				!email.isRead && "bg-foreground/2",
 				isUrgent && !email.isRead && "bg-accent-red/3",
+				isFocused && "bg-secondary/30 ring-1 ring-foreground/10 ring-inset",
 			)}
 		>
 			<Link

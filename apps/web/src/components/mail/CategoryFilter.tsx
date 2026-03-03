@@ -28,10 +28,13 @@ export function CategoryFilter({
 	value,
 	onChange,
 	total,
+	keyboardFocusIndex,
 }: {
 	value: string | null;
 	onChange: (category: string | null) => void;
 	total?: number;
+	/** When set, renders a keyboard focus ring on the chip at this index (0 = All) */
+	keyboardFocusIndex?: number;
 }) {
 	const containerRef = useRef<HTMLFieldSetElement>(null);
 	const labelRefs = useRef<Map<string, HTMLLabelElement>>(new Map());
@@ -99,6 +102,7 @@ export function CategoryFilter({
 					isAll
 						? "text-background"
 						: "text-grey-2 hover:text-foreground hover:bg-secondary/50",
+					keyboardFocusIndex === 0 && "ring-2 ring-foreground/30",
 				)}
 			>
 				<input
@@ -119,7 +123,7 @@ export function CategoryFilter({
 			</label>
 
 			{/* Category chips */}
-			{CATEGORIES.map((cat) => {
+			{CATEGORIES.map((cat, catIdx) => {
 				const active = value === cat.value;
 				return (
 					<label
@@ -133,6 +137,7 @@ export function CategoryFilter({
 							active
 								? cat.text
 								: "text-grey-2 hover:text-foreground hover:bg-secondary/50",
+							keyboardFocusIndex === catIdx + 1 && "ring-2 ring-foreground/30",
 						)}
 					>
 						<input
