@@ -4,7 +4,7 @@ import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 
 type Shortcut = {
-	key: string;
+	keys: string[];
 	label: string;
 };
 
@@ -21,7 +21,9 @@ function Kbd({ children }: { children: string }) {
 function ShortcutItem({ shortcut }: { shortcut: Shortcut }) {
 	return (
 		<span className="inline-flex items-center gap-1">
-			<Kbd>{shortcut.key}</Kbd>
+			{shortcut.keys.map((key) => (
+				<Kbd key={key}>{key}</Kbd>
+			))}
 			<span className="text-foreground/40">{shortcut.label}</span>
 		</span>
 	);
@@ -33,41 +35,41 @@ function GroupSeparator() {
 
 export const INBOX_SHORTCUTS: ShortcutGroup[] = [
 	[
-		{ key: "\u2191\u2193", label: "navigate" },
-		{ key: "\u2190\u2192", label: "header / categories" },
-		{ key: "\u23CE", label: "select" },
+		{ keys: ["\u2191\u2193"], label: "navigate" },
+		{ keys: ["\u2190\u2192"], label: "header / categories" },
+		{ keys: ["\u23CE"], label: "select" },
 	],
 	[
-		{ key: "E", label: "archive" },
-		{ key: "S", label: "star" },
-		{ key: "R", label: "read" },
+		{ keys: ["E"], label: "archive" },
+		{ keys: ["S"], label: "star" },
+		{ keys: ["R"], label: "read" },
 	],
 	[
-		{ key: "/", label: "search" },
-		{ key: "[", label: "back" },
+		{ keys: ["/"], label: "search" },
+		{ keys: ["["], label: "back" },
 	],
 ];
 
 export const EMAIL_DETAIL_SHORTCUTS: ShortcutGroup[] = [
 	[
-		{ key: "ESC", label: "back" },
-		{ key: "[", label: "back" },
+		{ keys: ["ESC"], label: "back" },
+		{ keys: ["["], label: "back" },
 	],
 ];
 
 export const MAIL_HUB_SHORTCUTS: ShortcutGroup[] = [
 	[
-		{ key: "I", label: "inbox" },
-		{ key: "A", label: "attachments" },
+		{ keys: ["I"], label: "inbox" },
+		{ keys: ["A"], label: "attachments" },
 	],
 ];
 
 export const ATTACHMENTS_SHORTCUTS: ShortcutGroup[] = [
 	[
-		{ key: "[", label: "back" },
-		{ key: "/", label: "search" },
+		{ keys: ["["], label: "back" },
+		{ keys: ["/"], label: "search" },
 	],
-	[{ key: "I", label: "inbox" }],
+	[{ keys: ["I"], label: "inbox" }],
 ];
 
 export function KeyboardShortcutBar({
@@ -96,11 +98,14 @@ export function KeyboardShortcutBar({
 					)}
 				>
 					{shortcuts.map((group, gi) => (
-						<Fragment key={group[0]?.key ?? gi}>
+						<Fragment key={group[0]?.keys[0] ?? gi}>
 							{gi > 0 && <GroupSeparator />}
 							<span className="inline-flex items-center gap-2">
 								{group.map((shortcut) => (
-									<ShortcutItem key={shortcut.key} shortcut={shortcut} />
+									<ShortcutItem
+										key={shortcut.keys.join("+")}
+										shortcut={shortcut}
+									/>
 								))}
 							</span>
 						</Fragment>
