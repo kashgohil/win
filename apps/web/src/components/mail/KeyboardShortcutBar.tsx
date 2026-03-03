@@ -84,7 +84,7 @@ export function KeyboardShortcutBar({
 						"fixed bottom-4 left-1/2 -translate-x-1/2 md:left-[calc((--rail-width)+50%)] md:-translate-x-1/2 z-40",
 						"flex items-center gap-3 px-4 py-2",
 						"font-body text-[10px] tracking-wide",
-						"rounded-full bg-foreground/6 backdrop-blur-md shadow-sm ring-1 ring-foreground/6",
+						"rounded-full bg-background/90 backdrop-blur-md shadow-md ring-1 ring-border/50",
 						"pointer-events-none select-none",
 						"opacity-50 hover:opacity-100 transition-opacity duration-300",
 						"[&:hover]:pointer-events-auto",
