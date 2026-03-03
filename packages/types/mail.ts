@@ -85,6 +85,14 @@ export type SerializedAttachment = {
 	size: number;
 };
 
+export type SerializedAttachmentWithContext = SerializedAttachment & {
+	emailId: string;
+	emailSubject: string | null;
+	fromName: string | null;
+	fromAddress: string | null;
+	receivedAt: string;
+};
+
 export type SerializedEmailDetail = SerializedEmail & {
 	bodyPlain: string | null;
 	bodyHtml: string | null;

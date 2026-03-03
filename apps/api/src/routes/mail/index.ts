@@ -4,6 +4,7 @@ import { env } from "../../env";
 import { betterAuthPlugin } from "../../plugins/auth";
 import {
 	accountListResponse,
+	attachmentListResponse,
 	composeBody,
 	connectResponse,
 	createSenderRuleBody,
@@ -190,6 +191,51 @@ export const mail = new Elysia({
 		},
 	)
 	.get(
+		"/attachments",
+		async ({ user, query, set }) => {
+			const result = await mailService.getAttachments(user.id, {
+				limit: query.limit ? Number(query.limit) : undefined,
+				cursor: query.cursor ?? undefined,
+				q: query.q ?? undefined,
+				filetype: query.filetype ?? undefined,
+				from: query.from ?? undefined,
+				after: query.after ?? undefined,
+				before: query.before ?? undefined,
+			});
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return result.data;
+		},
+		{
+			auth: true,
+			query: t.Object({
+				limit: t.Optional(t.String()),
+				cursor: t.Optional(t.String()),
+				q: t.Optional(t.String()),
+				filetype: t.Optional(t.String()),
+				from: t.Optional(t.String()),
+				after: t.Optional(t.String()),
+				before: t.Optional(t.String()),
+			}),
+			response: {
+				200: attachmentListResponse,
+				400: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "List attachments",
+				description:
+					"Returns paginated list of attachments with email context, filterable by filename, type, sender, and date",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.get(
 		"/attachments/:id/download",
 		async ({ user, params, set }) => {
 			const result = await mailService.downloadAttachment(user.id, params.id);
@@ -199,7 +245,7 @@ export const mail = new Elysia({
 				return { error: result.error };
 			}
 
-			return new Response(result.data, {
+			return new Response(result.data.buffer as ArrayBuffer, {
 				headers: {
 					"Content-Type": result.mimeType,
 					"Content-Disposition": `attachment; filename="${result.filename.replace(/"/g, '\\"')}"`,

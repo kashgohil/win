@@ -182,6 +182,26 @@ type SerializedEmailDetail = SerializedEmail & {
 	attachments: SerializedAttachment[];
 };
 
+type SerializedAttachmentWithContext = SerializedAttachment & {
+	emailId: string;
+	emailSubject: string | null;
+	fromName: string | null;
+	fromAddress: string | null;
+	receivedAt: string;
+};
+
+type AttachmentListResult =
+	| {
+			ok: true;
+			data: {
+				attachments: SerializedAttachmentWithContext[];
+				total: number;
+				hasMore: boolean;
+				nextCursor?: string;
+			};
+	  }
+	| { ok: false; error: string; status: 400 | 500 };
+
 type DownloadAttachmentResult =
 	| { ok: true; data: Uint8Array; filename: string; mimeType: string }
 	| { ok: false; error: string; status: 403 | 404 | 500 };
@@ -431,6 +451,162 @@ class MailService {
 				timestamp: timeAgo(item.createdAt),
 			};
 		});
+	}
+
+	async getAttachments(
+		userId: string,
+		options: {
+			limit?: number;
+			cursor?: string;
+			q?: string;
+			filetype?: string;
+			from?: string;
+			after?: string;
+			before?: string;
+		},
+	): Promise<AttachmentListResult> {
+		const limit = options.limit ?? 30;
+
+		try {
+			const conditions = [eq(emails.userId, userId)];
+
+			if (options.q) {
+				conditions.push(ilike(emailAttachments.filename, `%${options.q}%`));
+			}
+
+			if (options.filetype) {
+				const ft = options.filetype;
+				const mimePatterns: Record<string, string[]> = {
+					image: ["image/%"],
+					pdf: ["application/pdf"],
+					document: ["%document%", "%msword%", "text/plain", "%rtf%"],
+					spreadsheet: ["%spreadsheet%", "%excel%"],
+					presentation: ["%presentation%", "%powerpoint%"],
+					video: ["video/%"],
+					audio: ["audio/%"],
+					archive: ["%zip%", "%compressed%", "%archive%", "%tar%", "%gzip%"],
+					code: ["%javascript%", "%json%", "%xml%", "%html%"],
+				};
+
+				const patterns = mimePatterns[ft];
+				if (patterns) {
+					const mimeConditions = patterns.map((p) =>
+						ilike(emailAttachments.mimeType, p),
+					);
+					conditions.push(or(...mimeConditions)!);
+				} else {
+					conditions.push(
+						or(
+							ilike(emailAttachments.mimeType, `%${ft}%`),
+							ilike(emailAttachments.filename, `%.${ft}`),
+						)!,
+					);
+				}
+			}
+
+			if (options.from) {
+				const fromPattern = `%${options.from}%`;
+				conditions.push(
+					or(
+						ilike(emails.fromAddress, fromPattern),
+						ilike(emails.fromName, fromPattern),
+					)!,
+				);
+			}
+
+			if (options.after) {
+				conditions.push(gte(emails.receivedAt, new Date(options.after)));
+			}
+			if (options.before) {
+				conditions.push(lte(emails.receivedAt, new Date(options.before)));
+			}
+
+			const baseConditions = [...conditions];
+
+			if (options.cursor) {
+				try {
+					const decoded = JSON.parse(atob(options.cursor)) as {
+						receivedAt: string;
+						id: string;
+					};
+					const cursorDate = new Date(decoded.receivedAt);
+					conditions.push(
+						or(
+							lt(emails.receivedAt, cursorDate),
+							and(
+								eq(emails.receivedAt, cursorDate),
+								lt(emailAttachments.id, decoded.id),
+							),
+						)!,
+					);
+				} catch {
+					return { ok: false, error: "Invalid cursor", status: 400 };
+				}
+			}
+
+			const [rows, totalResult] = await Promise.all([
+				db
+					.select({
+						id: emailAttachments.id,
+						filename: emailAttachments.filename,
+						mimeType: emailAttachments.mimeType,
+						size: emailAttachments.size,
+						emailId: emails.id,
+						emailSubject: emails.subject,
+						fromName: emails.fromName,
+						fromAddress: emails.fromAddress,
+						receivedAt: emails.receivedAt,
+					})
+					.from(emailAttachments)
+					.innerJoin(emails, eq(emailAttachments.emailId, emails.id))
+					.where(and(...conditions))
+					.orderBy(desc(emails.receivedAt), desc(emailAttachments.id))
+					.limit(limit + 1),
+				db
+					.select({ value: count() })
+					.from(emailAttachments)
+					.innerJoin(emails, eq(emailAttachments.emailId, emails.id))
+					.where(and(...baseConditions))
+					.then((r) => r[0]?.value ?? 0),
+			]);
+
+			const hasMore = rows.length > limit;
+			const trimmed = hasMore ? rows.slice(0, limit) : rows;
+
+			let nextCursor: string | undefined;
+			if (hasMore && trimmed.length > 0) {
+				const last = trimmed[trimmed.length - 1]!;
+				nextCursor = btoa(
+					JSON.stringify({
+						receivedAt: last.receivedAt.toISOString(),
+						id: last.id,
+					}),
+				);
+			}
+
+			return {
+				ok: true,
+				data: {
+					attachments: trimmed.map((r) => ({
+						id: r.id,
+						filename: r.filename,
+						mimeType: r.mimeType,
+						size: r.size,
+						emailId: r.emailId,
+						emailSubject: r.emailSubject,
+						fromName: r.fromName,
+						fromAddress: r.fromAddress,
+						receivedAt: r.receivedAt.toISOString(),
+					})),
+					total: totalResult,
+					hasMore,
+					nextCursor,
+				},
+			};
+		} catch (err) {
+			console.error("[mail] getAttachments failed:", err);
+			return { ok: false, error: "Failed to load attachments", status: 500 };
+		}
 	}
 
 	async getEmails(

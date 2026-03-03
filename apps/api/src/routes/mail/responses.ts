@@ -111,6 +111,27 @@ export const emailListResponse = t.Object({
 	nextCursor: t.Optional(t.String()),
 });
 
+/* ── Attachments list ── */
+
+export const attachmentWithContextSchema = t.Object({
+	id: t.String({ format: "uuid" }),
+	filename: t.String(),
+	mimeType: t.String(),
+	size: t.Number(),
+	emailId: t.String({ format: "uuid" }),
+	emailSubject: t.Union([t.String(), t.Null()]),
+	fromName: t.Union([t.String(), t.Null()]),
+	fromAddress: t.Union([t.String(), t.Null()]),
+	receivedAt: t.String({ format: "date-time" }),
+});
+
+export const attachmentListResponse = t.Object({
+	attachments: t.Array(attachmentWithContextSchema),
+	total: t.Number(),
+	hasMore: t.Boolean(),
+	nextCursor: t.Optional(t.String()),
+});
+
 export const emailDetailResponse = t.Object({
 	email: emailDetailSchema,
 });
