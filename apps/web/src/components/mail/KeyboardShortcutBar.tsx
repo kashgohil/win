@@ -1,6 +1,7 @@
-import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "motion/react";
 import { Fragment } from "react";
+
+import { cn } from "@/lib/utils";
 
 type Shortcut = {
 	key: string;
@@ -37,27 +38,36 @@ export const INBOX_SHORTCUTS: ShortcutGroup[] = [
 		{ key: "\u23CE", label: "select" },
 	],
 	[
-		{ key: "e", label: "archive" },
-		{ key: "s", label: "star" },
-		{ key: "r", label: "read" },
+		{ key: "E", label: "archive" },
+		{ key: "S", label: "star" },
+		{ key: "R", label: "read" },
 	],
-	[{ key: "/", label: "search" }],
+	[
+		{ key: "/", label: "search" },
+		{ key: "[", label: "back" },
+	],
 ];
 
 export const EMAIL_DETAIL_SHORTCUTS: ShortcutGroup[] = [
 	[
-		{ key: "r", label: "reply" },
-		{ key: "f", label: "forward" },
+		{ key: "ESC", label: "back" },
+		{ key: "[", label: "back" },
 	],
+];
+
+export const MAIL_HUB_SHORTCUTS: ShortcutGroup[] = [
 	[
-		{ key: "s", label: "star" },
-		{ key: "u", label: "read" },
+		{ key: "I", label: "inbox" },
+		{ key: "A", label: "attachments" },
 	],
+];
+
+export const ATTACHMENTS_SHORTCUTS: ShortcutGroup[] = [
 	[
-		{ key: "e", label: "archive" },
-		{ key: "#", label: "delete" },
+		{ key: "[", label: "back" },
+		{ key: "/", label: "search" },
 	],
-	[{ key: "esc", label: "back" }],
+	[{ key: "I", label: "inbox" }],
 ];
 
 export function KeyboardShortcutBar({
@@ -86,7 +96,7 @@ export function KeyboardShortcutBar({
 					)}
 				>
 					{shortcuts.map((group, gi) => (
-						<Fragment key={gi}>
+						<Fragment key={group[0]?.key ?? gi}>
 							{gi > 0 && <GroupSeparator />}
 							<span className="inline-flex items-center gap-2">
 								{group.map((shortcut) => (
