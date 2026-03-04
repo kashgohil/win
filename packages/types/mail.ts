@@ -91,6 +91,7 @@ export type SerializedAttachmentWithContext = SerializedAttachment & {
 	fromName: string | null;
 	fromAddress: string | null;
 	receivedAt: string;
+	category: EmailCategory;
 };
 
 export type SerializedEmailDetail = SerializedEmail & {

@@ -188,6 +188,7 @@ type SerializedAttachmentWithContext = SerializedAttachment & {
 	fromName: string | null;
 	fromAddress: string | null;
 	receivedAt: string;
+	category: (typeof emailCategoryEnum.enumValues)[number];
 };
 
 type AttachmentListResult =
@@ -460,6 +461,7 @@ class MailService {
 			cursor?: string;
 			q?: string;
 			filetype?: string;
+			category?: string;
 			from?: string;
 			after?: string;
 			before?: string;
@@ -502,6 +504,15 @@ class MailService {
 						)!,
 					);
 				}
+			}
+
+			if (options.category) {
+				conditions.push(
+					eq(
+						emails.category,
+						options.category as (typeof emailCategoryEnum.enumValues)[number],
+					),
+				);
 			}
 
 			if (options.from) {
@@ -556,6 +567,7 @@ class MailService {
 						fromName: emails.fromName,
 						fromAddress: emails.fromAddress,
 						receivedAt: emails.receivedAt,
+						category: emails.category,
 					})
 					.from(emailAttachments)
 					.innerJoin(emails, eq(emailAttachments.emailId, emails.id))
@@ -597,6 +609,7 @@ class MailService {
 						fromName: r.fromName,
 						fromAddress: r.fromAddress,
 						receivedAt: r.receivedAt.toISOString(),
+						category: r.category,
 					})),
 					total: totalResult,
 					hasMore,
