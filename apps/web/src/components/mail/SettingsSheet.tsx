@@ -33,7 +33,7 @@ const PROVIDERS: ProviderConfig[] = [
 		description: "Microsoft 365 & personal accounts",
 		iconBg: "bg-[#0078d4]/10",
 		iconText: "text-[#0078d4]",
-		enabled: false,
+		enabled: true,
 	},
 ];
 
