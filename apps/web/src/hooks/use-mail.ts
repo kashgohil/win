@@ -40,6 +40,7 @@ export const mailKeys = {
 	attachments: (params?: {
 		q?: string;
 		filetype?: string;
+		category?: string;
 		from?: string;
 		after?: string;
 		before?: string;
@@ -130,6 +131,7 @@ export function useMailEmailsInfinite(params?: {
 export function useMailAttachmentsInfinite(params?: {
 	q?: string;
 	filetype?: string;
+	category?: string;
 	from?: string;
 	after?: string;
 	before?: string;
@@ -140,6 +142,7 @@ export function useMailAttachmentsInfinite(params?: {
 		queryKey: mailKeys.attachments({
 			q: params?.q,
 			filetype: params?.filetype,
+			category: params?.category,
 			from: params?.from,
 			after: params?.after,
 			before: params?.before,
@@ -151,6 +154,7 @@ export function useMailAttachmentsInfinite(params?: {
 					cursor: pageParam,
 					q: params?.q,
 					filetype: params?.filetype,
+					category: params?.category,
 					from: params?.from,
 					after: params?.after,
 					before: params?.before,
