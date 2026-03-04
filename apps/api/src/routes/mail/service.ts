@@ -1004,14 +1004,6 @@ class MailService {
 			};
 		}
 
-		if (provider === "outlook") {
-			return {
-				ok: false,
-				error: "Outlook is not yet supported",
-				status: 400,
-			};
-		}
-
 		try {
 			const emailProvider = getProvider(provider);
 			if (!emailProvider) {
@@ -1037,6 +1029,7 @@ class MailService {
 	async handleOAuthCallback(
 		code: string,
 		state: string,
+		providerName: "gmail" | "outlook" = "gmail",
 	): Promise<OAuthCallbackResult> {
 		const userId = await verifyOAuthState(state);
 		if (!userId) {
@@ -1048,11 +1041,11 @@ class MailService {
 		}
 
 		try {
-			const provider = getProvider("gmail");
+			const provider = getProvider(providerName);
 			if (!provider) {
 				return {
 					ok: false,
-					error: "Gmail provider not available",
+					error: `${providerName} provider not available`,
 					status: 500,
 				};
 			}
@@ -1078,7 +1071,7 @@ class MailService {
 				.insert(emailAccounts)
 				.values({
 					userId,
-					provider: "gmail",
+					provider: providerName,
 					email: tokens.email,
 					accessToken: tokens.accessToken,
 					refreshToken: tokens.refreshToken,

@@ -48,6 +48,7 @@ export const mail = new Elysia({
 			const result = await mailService.handleOAuthCallback(
 				query.code,
 				query.state,
+				"gmail",
 			);
 
 			if (!result.ok) {
@@ -67,6 +68,49 @@ export const mail = new Elysia({
 			detail: {
 				summary: "Gmail OAuth callback",
 				description: "Handles the redirect from Google after OAuth consent",
+				tags: ["Mail"],
+			},
+		},
+	)
+	.get(
+		"/accounts/callback/outlook",
+		async ({ query }) => {
+			const clientUrl = `${env.CLIENT_URL}/module/mail`;
+
+			if (query.error) {
+				return redirect(
+					`${clientUrl}?error=${encodeURIComponent(query.error)}`,
+				);
+			}
+
+			if (!query.code || !query.state) {
+				return redirect(`${clientUrl}?error=missing_params`);
+			}
+
+			const result = await mailService.handleOAuthCallback(
+				query.code,
+				query.state,
+				"outlook",
+			);
+
+			if (!result.ok) {
+				return redirect(
+					`${clientUrl}?error=${encodeURIComponent(result.error)}`,
+				);
+			}
+
+			return redirect(`${clientUrl}?connected=true`);
+		},
+		{
+			query: t.Object({
+				code: t.Optional(t.String()),
+				state: t.Optional(t.String()),
+				error: t.Optional(t.String()),
+				error_description: t.Optional(t.String()),
+			}),
+			detail: {
+				summary: "Outlook OAuth callback",
+				description: "Handles the redirect from Microsoft after OAuth consent",
 				tags: ["Mail"],
 			},
 		},
