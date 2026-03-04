@@ -10,9 +10,9 @@ type Shortcut = {
 
 type ShortcutGroup = Shortcut[];
 
-function Kbd({ children }: { children: string }) {
+export function Kbd({ children }: { children: string }) {
 	return (
-		<kbd className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded border border-foreground/10 bg-foreground/6 font-mono text-[10px] font-medium leading-none text-foreground/60">
+		<kbd className="inline-flex items-center justify-center font-mono text-[10px] bg-secondary/40 px-1.5 py-0.5 rounded">
 			{children}
 		</kbd>
 	);
@@ -58,6 +58,7 @@ export const MAIL_HUB_SHORTCUTS: ShortcutGroup[] = [
 ];
 
 export const ATTACHMENTS_SHORTCUTS: ShortcutGroup[] = [
+	[{ keys: ["\u23CE"], label: "select" }],
 	[
 		{ keys: ["["], label: "back" },
 		{ keys: ["/"], label: "search" },
