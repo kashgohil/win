@@ -10,12 +10,19 @@ import {
 	KeyboardShortcutBar,
 } from "@/components/mail/KeyboardShortcutBar";
 import { useEmailDetailKeyboard } from "@/hooks/use-email-detail-keyboard";
-import { mailKeys, useMailEmailDetail } from "@/hooks/use-mail";
+import { mailKeys, useMailThreadDetail } from "@/hooks/use-mail";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ChevronDown, Sparkles } from "lucide-react";
+import type { SerializedEmailDetail } from "@wingmnn/types";
+import {
+	ArrowLeft,
+	ChevronDown,
+	ChevronRight,
+	Sparkles,
+	Unlink,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -47,51 +54,67 @@ function EmailDetail() {
 		attachment: undefined,
 		...(category ? { category } : {}),
 	};
-	const { data, isPending } = useMailEmailDetail(emailId);
+	const { data, isPending } = useMailThreadDetail(emailId);
 	const [composeMode, setComposeMode] = useState<"reply" | "forward" | null>(
 		null,
 	);
+	const [composeEmailId, setComposeEmailId] = useState<string | null>(null);
 	const autoMarkedRef = useRef<string | null>(null);
 
-	// Update document title to email subject
+	const messages = data?.messages ?? [];
+	const isSingleMessage = messages.length <= 1;
+	const threadSubject = data?.subject;
+	const isMerged = data?.isMerged ?? false;
+	const latestMessage = messages[messages.length - 1];
+
+	// Update document title
 	useEffect(() => {
-		if (data?.email?.subject) {
-			document.title = data.email.subject;
+		if (threadSubject) {
+			document.title = threadSubject;
 		}
 		return () => {
 			document.title = "wingmnn";
 		};
-	}, [data?.email?.subject]);
+	}, [threadSubject]);
 
-	// Mark as read once when first loading an unread email
+	// Mark all unread messages as read
 	useEffect(() => {
-		if (!data?.email || data.email.isRead || autoMarkedRef.current === emailId)
-			return;
+		if (!data?.messages || autoMarkedRef.current === emailId) return;
+		const hasUnread = data.messages.some((m) => !m.isRead);
+		if (!hasUnread) return;
+
 		autoMarkedRef.current = emailId;
 
-		// Update detail cache
-		queryClient.setQueryData(mailKeys.email(emailId), (old: any) => {
-			if (!old?.email) return old;
-			return { ...old, email: { ...old.email, isRead: true } };
+		// Update thread detail cache
+		queryClient.setQueryData(mailKeys.thread(emailId), (old: any) => {
+			if (!old?.messages) return old;
+			return {
+				...old,
+				messages: old.messages.map((m: any) => ({ ...m, isRead: true })),
+			};
 		});
-		// Remove from all email list caches (matches any filter combination)
+		// Remove from unread thread list caches
 		queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) => {
 			if (!old?.pages) return old;
 			return {
 				...old,
 				pages: old.pages.map((page: any) => ({
 					...page,
-					emails: page.emails.filter((e: any) => e.id !== emailId),
+					threads: page.threads
+						? page.threads.filter((t: any) => t.threadId !== emailId)
+						: page.threads,
+					emails: page.emails
+						? page.emails.filter((e: any) => e.id !== emailId)
+						: page.emails,
 					total: Math.max(0, (page.total ?? 0) - 1),
 				})),
 			};
 		});
-		// Invalidate all email list caches to ensure fresh data on next visit
-		queryClient.invalidateQueries({ queryKey: ["mail", "emails"] });
-		api.mail.emails({ id: emailId }).read.patch();
-	}, [data?.email?.id, data?.email?.isRead, emailId, queryClient]);
+		queryClient.invalidateQueries({ queryKey: ["mail", "threads"] });
+		api.mail.threads({ threadId: emailId }).read.patch();
+	}, [data?.messages, emailId, queryClient]);
 
-	// ── Action handlers (shared between buttons and keyboard) ──
+	// ── Action handlers ──
 
 	const navigateBack = useCallback(
 		() => navigate({ to: "/module/mail/inbox", search: inboxSearch }),
@@ -99,89 +122,90 @@ function EmailDetail() {
 	);
 
 	const handleStar = useCallback(() => {
-		if (!data?.email) return;
-		const patch = { isStarred: !data.email.isStarred };
-		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) => {
-			if (!old?.pages) return old;
-			return {
-				...old,
-				pages: old.pages.map((page: any) => ({
-					...page,
-					emails: page.emails.map((e: any) =>
-						e.id === emailId ? { ...e, ...patch } : e,
-					),
-				})),
-			};
-		});
-		queryClient.setQueryData(mailKeys.email(emailId), (old: any) => {
-			if (!old?.email) return old;
-			return { ...old, email: { ...old.email, ...patch } };
-		});
-		api.mail.emails({ id: emailId }).star.patch();
-	}, [data?.email, emailId, queryClient]);
+		if (!latestMessage) return;
+		queryClient.setQueriesData(
+			{ queryKey: ["mail", "threads"] },
+			(old: any) => {
+				if (!old?.pages) return old;
+				return {
+					...old,
+					pages: old.pages.map((page: any) => ({
+						...page,
+						threads: page.threads?.map((t: any) =>
+							t.threadId === emailId ? { ...t, isStarred: !t.isStarred } : t,
+						),
+					})),
+				};
+			},
+		);
+		api.mail.threads({ threadId: emailId }).star.patch();
+	}, [latestMessage, emailId, queryClient]);
 
 	const handleToggleRead = useCallback(() => {
-		if (!data?.email) return;
-		const patch = { isRead: !data.email.isRead };
-		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) => {
-			if (!old?.pages) return old;
-			return {
-				...old,
-				pages: old.pages.map((page: any) => ({
-					...page,
-					emails: page.emails.map((e: any) =>
-						e.id === emailId ? { ...e, ...patch } : e,
-					),
-				})),
-			};
-		});
-		queryClient.setQueryData(mailKeys.email(emailId), (old: any) => {
-			if (!old?.email) return old;
-			return { ...old, email: { ...old.email, ...patch } };
-		});
-		api.mail.emails({ id: emailId }).read.patch();
-	}, [data?.email, emailId, queryClient]);
+		api.mail.threads({ threadId: emailId }).read.patch();
+	}, [emailId]);
 
 	const handleArchive = useCallback(() => {
-		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) => {
-			if (!old?.pages) return old;
-			return {
-				...old,
-				pages: old.pages.map((page: any) => ({
-					...page,
-					emails: page.emails.filter((e: any) => e.id !== emailId),
-					total: Math.max(0, (page.total ?? 0) - 1),
-				})),
-			};
-		});
-		toast("Email archived");
+		queryClient.setQueriesData(
+			{ queryKey: ["mail", "threads"] },
+			(old: any) => {
+				if (!old?.pages) return old;
+				return {
+					...old,
+					pages: old.pages.map((page: any) => ({
+						...page,
+						threads: page.threads?.filter((t: any) => t.threadId !== emailId),
+						total: Math.max(0, (page.total ?? 0) - 1),
+					})),
+				};
+			},
+		);
+		toast("Thread archived");
 		navigateBack();
-		api.mail.emails({ id: emailId }).archive.post();
+		api.mail.threads({ threadId: emailId }).archive.post();
 	}, [emailId, queryClient, navigateBack]);
 
 	const handleDelete = useCallback(() => {
-		queryClient.setQueriesData({ queryKey: ["mail", "emails"] }, (old: any) => {
-			if (!old?.pages) return old;
-			return {
-				...old,
-				pages: old.pages.map((page: any) => ({
-					...page,
-					emails: page.emails.filter((e: any) => e.id !== emailId),
-					total: Math.max(0, (page.total ?? 0) - 1),
-				})),
-			};
-		});
-		toast("Email deleted");
+		queryClient.setQueriesData(
+			{ queryKey: ["mail", "threads"] },
+			(old: any) => {
+				if (!old?.pages) return old;
+				return {
+					...old,
+					pages: old.pages.map((page: any) => ({
+						...page,
+						threads: page.threads?.filter((t: any) => t.threadId !== emailId),
+						total: Math.max(0, (page.total ?? 0) - 1),
+					})),
+				};
+			},
+		);
+		toast("Thread deleted");
 		navigateBack();
-		api.mail.emails({ id: emailId }).delete();
+		api.mail.threads({ threadId: emailId }).delete();
 	}, [emailId, queryClient, navigateBack]);
 
-	const handleReply = useCallback(() => setComposeMode("reply"), []);
-	const handleForward = useCallback(() => setComposeMode("forward"), []);
+	const handleReply = useCallback(() => {
+		setComposeEmailId(latestMessage?.id ?? null);
+		setComposeMode("reply");
+	}, [latestMessage]);
+
+	const handleForward = useCallback(() => {
+		setComposeEmailId(latestMessage?.id ?? null);
+		setComposeMode("forward");
+	}, [latestMessage]);
+
 	const handleNavigateAttachments = useCallback(
 		() => navigate({ to: "/module/mail/attachments" }),
 		[navigate],
 	);
+
+	const handleUnmerge = useCallback(() => {
+		api.mail.threads({ threadId: emailId }).unmerge.post();
+		toast("Thread unmerged");
+		queryClient.invalidateQueries({ queryKey: mailKeys.all });
+		navigateBack();
+	}, [emailId, queryClient, navigateBack]);
 
 	useEmailDetailKeyboard({
 		disabled: composeMode !== null,
@@ -199,7 +223,7 @@ function EmailDetail() {
 		return <DetailSkeleton />;
 	}
 
-	if (!data?.email) {
+	if (!data || messages.length === 0) {
 		return (
 			<div className="px-(--page-px) py-8 max-w-5xl mx-auto">
 				<Link
@@ -218,8 +242,6 @@ function EmailDetail() {
 			</div>
 		);
 	}
-
-	const email = data.email;
 
 	return (
 		<div className="px-(--page-px) py-8 max-w-5xl mx-auto pb-16">
@@ -241,6 +263,7 @@ function EmailDetail() {
 				<AccountSelector />
 			</motion.div>
 
+			{/* Subject header */}
 			<motion.header
 				initial={{ opacity: 0, y: 12 }}
 				animate={{ opacity: 1, y: 0 }}
@@ -251,88 +274,17 @@ function EmailDetail() {
 				}}
 				className="mt-6"
 			>
-				<h2 className="font-display text-[clamp(1.25rem,2.5vw,1.75rem)] text-foreground leading-tight lowercase">
-					{email.subject || "(no subject)"}
-				</h2>
+				<div className="flex items-start justify-between gap-4">
+					<h2 className="font-display text-[clamp(1.25rem,2.5vw,1.75rem)] text-foreground leading-tight lowercase">
+						{threadSubject || "(no subject)"}
+					</h2>
+					{!isSingleMessage && (
+						<span className="shrink-0 inline-flex items-center justify-center min-w-[24px] h-5 px-1.5 rounded-full bg-foreground/8 text-grey-2 font-mono text-[11px] font-medium mt-1">
+							{messages.length}
+						</span>
+					)}
+				</div>
 			</motion.header>
-
-			{/* Metadata + AI summary as one block */}
-			<motion.div
-				initial={{ opacity: 0, y: 8 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{
-					duration: 0.45,
-					delay: 0.08,
-					ease: MOTION_CONSTANTS.EASE,
-				}}
-				className="mt-4 rounded-lg border border-border/40 bg-secondary/10 overflow-hidden"
-			>
-				<dl className="px-4 py-3.5 space-y-2.5">
-					<div className="flex gap-3 min-w-0">
-						<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
-							From
-						</dt>
-						<dd className="font-body text-[13px] text-foreground min-w-0">
-							{email.fromName && (
-								<span className="font-medium">{email.fromName}</span>
-							)}
-							{email.fromAddress && (
-								<span className="text-grey-2 font-mono text-[12px]">
-									{email.fromName ? " " : ""}
-									&lt;{email.fromAddress}&gt;
-								</span>
-							)}
-						</dd>
-					</div>
-					{email.toAddresses && email.toAddresses.length > 0 && (
-						<div className="flex gap-3 min-w-0">
-							<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
-								To
-							</dt>
-							<dd className="font-mono text-[12px] text-grey-2 min-w-0 break-all">
-								{email.toAddresses.join(", ")}
-							</dd>
-						</div>
-					)}
-					{email.ccAddresses && email.ccAddresses.length > 0 && (
-						<div className="flex gap-3 min-w-0">
-							<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
-								Cc
-							</dt>
-							<dd className="font-mono text-[12px] text-grey-2 min-w-0 break-all">
-								{email.ccAddresses.join(", ")}
-							</dd>
-						</div>
-					)}
-					<div className="flex flex-wrap items-center gap-x-2 gap-y-0 pt-0.5">
-						<dt className="sr-only">Date and category</dt>
-						<dd className="font-body text-[12px] text-grey-2 flex flex-wrap items-center gap-x-2">
-							<time dateTime={email.receivedAt}>
-								{formatDate(email.receivedAt)}
-							</time>
-							<span className="text-grey-3">·</span>
-							<span
-								className={cn(
-									"inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px]",
-									CATEGORY_CONFIG[email.category].bg,
-									CATEGORY_CONFIG[email.category].text,
-								)}
-							>
-								<span
-									className={cn(
-										"size-1.5 rounded-full",
-										CATEGORY_CONFIG[email.category].dot,
-									)}
-									aria-hidden
-								/>
-								{CATEGORY_CONFIG[email.category].label}
-							</span>
-						</dd>
-					</div>
-				</dl>
-
-				{email.aiSummary && <AiSummary summary={email.aiSummary} />}
-			</motion.div>
 
 			{/* Action bar */}
 			<motion.div
@@ -343,13 +295,13 @@ function EmailDetail() {
 					delay: 0.1,
 					ease: MOTION_CONSTANTS.EASE,
 				}}
-				className="mt-4"
+				className="mt-4 flex items-center gap-2"
 			>
 				<EmailActions
-					isStarred={email.isStarred}
-					isRead={email.isRead}
-					fromAddress={email.fromAddress}
-					category={email.category}
+					isStarred={latestMessage?.isStarred ?? false}
+					isRead={latestMessage?.isRead ?? true}
+					fromAddress={latestMessage?.fromAddress ?? null}
+					category={latestMessage?.category ?? "uncategorized"}
 					onReply={handleReply}
 					onForward={handleForward}
 					onStar={handleStar}
@@ -357,9 +309,82 @@ function EmailDetail() {
 					onArchive={handleArchive}
 					onDelete={handleDelete}
 				/>
+				{isMerged && (
+					<button
+						type="button"
+						onClick={handleUnmerge}
+						className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border/40 bg-secondary/10 hover:bg-secondary/25 text-grey-2 hover:text-foreground font-body text-[12px] transition-colors cursor-pointer"
+					>
+						<Unlink className="size-3" />
+						Unmerge
+					</button>
+				)}
 			</motion.div>
 
 			<div className="my-6 h-px bg-border/30" />
+
+			{/* Messages */}
+			{isSingleMessage ? (
+				<SingleMessageView email={messages[0]!} />
+			) : (
+				<ConversationView
+					messages={messages}
+					onReplyTo={(msgId) => {
+						setComposeEmailId(msgId);
+						setComposeMode("reply");
+					}}
+				/>
+			)}
+
+			<ComposeSheet
+				open={composeMode !== null}
+				onOpenChange={(open) => {
+					if (!open) {
+						setComposeMode(null);
+						setComposeEmailId(null);
+					}
+				}}
+				mode={composeMode ?? "reply"}
+				emailId={composeEmailId ?? latestMessage?.id ?? emailId}
+				fromAddress={
+					(composeEmailId
+						? messages.find((m) => m.id === composeEmailId)?.fromAddress
+						: latestMessage?.fromAddress) ?? null
+				}
+				subject={threadSubject ?? null}
+				originalBody={
+					(composeEmailId
+						? messages.find((m) => m.id === composeEmailId)?.bodyPlain
+						: latestMessage?.bodyPlain) ?? null
+				}
+			/>
+
+			<KeyboardShortcutBar
+				shortcuts={EMAIL_DETAIL_SHORTCUTS}
+				visible={composeMode === null}
+			/>
+		</div>
+	);
+}
+
+/* ── Single message (same as original detail view) ── */
+
+function SingleMessageView({ email }: { email: SerializedEmailDetail }) {
+	return (
+		<>
+			<motion.div
+				initial={{ opacity: 0, y: 8 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{
+					duration: 0.45,
+					delay: 0.08,
+					ease: MOTION_CONSTANTS.EASE,
+				}}
+				className="rounded-lg border border-border/40 bg-secondary/10 overflow-hidden"
+			>
+				<MessageMetadata email={email} />
+				{email.aiSummary && <AiSummary summary={email.aiSummary} />}
+			</motion.div>
 
 			<motion.div
 				initial={{ opacity: 0, y: 12 }}
@@ -369,6 +394,7 @@ function EmailDetail() {
 					delay: 0.12,
 					ease: MOTION_CONSTANTS.EASE,
 				}}
+				className="mt-6"
 			>
 				<EmailBody html={email.bodyHtml} plain={email.bodyPlain} />
 			</motion.div>
@@ -387,26 +413,218 @@ function EmailDetail() {
 					<AttachmentList attachments={email.attachments} />
 				</motion.div>
 			)}
+		</>
+	);
+}
 
-			<ComposeSheet
-				open={composeMode !== null}
-				onOpenChange={(open) => {
-					if (!open) setComposeMode(null);
-				}}
-				mode={composeMode ?? "reply"}
-				emailId={emailId}
-				fromAddress={email.fromAddress}
-				subject={email.subject}
-				originalBody={email.bodyPlain}
-			/>
+/* ── Conversation view (multi-message) ── */
 
-			<KeyboardShortcutBar
-				shortcuts={EMAIL_DETAIL_SHORTCUTS}
-				visible={composeMode === null}
-			/>
+function ConversationView({
+	messages,
+}: {
+	messages: SerializedEmailDetail[];
+	onReplyTo: (emailId: string) => void;
+}) {
+	// Latest message expanded by default, older ones collapsed
+	const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
+		const last = messages[messages.length - 1];
+		return new Set(last ? [last.id] : []);
+	});
+
+	const toggleExpanded = useCallback((id: string) => {
+		setExpandedIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) {
+				next.delete(id);
+			} else {
+				next.add(id);
+			}
+			return next;
+		});
+	}, []);
+
+	return (
+		<div className="space-y-1">
+			{messages.map((msg, i) => {
+				const isExpanded = expandedIds.has(msg.id);
+
+				return (
+					<motion.div
+						key={msg.id}
+						initial={{ opacity: 0, y: 8 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{
+							duration: 0.35,
+							delay: Math.min(i * 0.04, 0.3),
+							ease: MOTION_CONSTANTS.EASE,
+						}}
+						className="rounded-lg border border-border/40 bg-secondary/5 overflow-hidden"
+					>
+						{/* Collapsed header */}
+						<button
+							type="button"
+							onClick={() => toggleExpanded(msg.id)}
+							className={cn(
+								"w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer hover:bg-secondary/15 transition-colors",
+								isExpanded && "border-b border-border/30",
+							)}
+						>
+							<div
+								className={cn(
+									"size-6 rounded-full flex items-center justify-center shrink-0 font-mono text-[9px] font-semibold",
+									msg.isRead
+										? "bg-secondary/50 text-grey-2"
+										: "bg-foreground text-background",
+								)}
+							>
+								{(msg.fromName || msg.fromAddress || "?")
+									.match(/[a-zA-Z0-9]/)?.[0]
+									?.toUpperCase() ?? "?"}
+							</div>
+
+							<div className="flex-1 min-w-0">
+								<span className="font-body text-[13px] text-foreground font-medium truncate block">
+									{msg.fromName || msg.fromAddress || "Unknown"}
+								</span>
+								{!isExpanded && msg.snippet && (
+									<span className="font-body text-[12px] text-grey-3 truncate block mt-0.5">
+										{msg.snippet}
+									</span>
+								)}
+							</div>
+
+							<span className="font-mono text-[11px] text-grey-3 shrink-0">
+								{formatDate(msg.receivedAt)}
+							</span>
+
+							<motion.div
+								animate={{ rotate: isExpanded ? 90 : 0 }}
+								transition={{
+									duration: 0.2,
+									ease: MOTION_CONSTANTS.EASE,
+								}}
+							>
+								<ChevronRight className="size-3.5 text-grey-3" />
+							</motion.div>
+						</button>
+
+						{/* Expanded content */}
+						<AnimatePresence initial={false}>
+							{isExpanded && (
+								<motion.div
+									initial={{ height: 0, opacity: 0 }}
+									animate={{ height: "auto", opacity: 1 }}
+									exit={{ height: 0, opacity: 0 }}
+									transition={{
+										height: {
+											duration: 0.3,
+											ease: MOTION_CONSTANTS.EASE,
+										},
+										opacity: {
+											duration: 0.2,
+											ease: "easeInOut",
+										},
+									}}
+									className="overflow-hidden"
+								>
+									<MessageMetadata email={msg} />
+
+									{msg.aiSummary && (
+										<div className="px-4">
+											<AiSummary summary={msg.aiSummary} />
+										</div>
+									)}
+
+									<div className="px-4 py-4">
+										<EmailBody html={msg.bodyHtml} plain={msg.bodyPlain} />
+									</div>
+
+									{msg.attachments && msg.attachments.length > 0 && (
+										<div className="px-4 pb-4">
+											<AttachmentList attachments={msg.attachments} />
+										</div>
+									)}
+								</motion.div>
+							)}
+						</AnimatePresence>
+					</motion.div>
+				);
+			})}
 		</div>
 	);
 }
+
+/* ── Shared metadata block ── */
+
+function MessageMetadata({ email }: { email: SerializedEmailDetail }) {
+	return (
+		<dl className="px-4 py-3.5 space-y-2.5">
+			<div className="flex gap-3 min-w-0">
+				<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
+					From
+				</dt>
+				<dd className="font-body text-[13px] text-foreground min-w-0">
+					{email.fromName && (
+						<span className="font-medium">{email.fromName}</span>
+					)}
+					{email.fromAddress && (
+						<span className="text-grey-2 font-mono text-[12px]">
+							{email.fromName ? " " : ""}
+							&lt;{email.fromAddress}&gt;
+						</span>
+					)}
+				</dd>
+			</div>
+			{email.toAddresses && email.toAddresses.length > 0 && (
+				<div className="flex gap-3 min-w-0">
+					<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
+						To
+					</dt>
+					<dd className="font-mono text-[12px] text-grey-2 min-w-0 break-all">
+						{email.toAddresses.join(", ")}
+					</dd>
+				</div>
+			)}
+			{email.ccAddresses && email.ccAddresses.length > 0 && (
+				<div className="flex gap-3 min-w-0">
+					<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
+						Cc
+					</dt>
+					<dd className="font-mono text-[12px] text-grey-2 min-w-0 break-all">
+						{email.ccAddresses.join(", ")}
+					</dd>
+				</div>
+			)}
+			<div className="flex flex-wrap items-center gap-x-2 gap-y-0 pt-0.5">
+				<dt className="sr-only">Date and category</dt>
+				<dd className="font-body text-[12px] text-grey-2 flex flex-wrap items-center gap-x-2">
+					<time dateTime={email.receivedAt}>
+						{formatDate(email.receivedAt)}
+					</time>
+					<span className="text-grey-3">·</span>
+					<span
+						className={cn(
+							"inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px]",
+							CATEGORY_CONFIG[email.category].bg,
+							CATEGORY_CONFIG[email.category].text,
+						)}
+					>
+						<span
+							className={cn(
+								"size-1.5 rounded-full",
+								CATEGORY_CONFIG[email.category].dot,
+							)}
+							aria-hidden
+						/>
+						{CATEGORY_CONFIG[email.category].label}
+					</span>
+				</dd>
+			</div>
+		</dl>
+	);
+}
+
+/* ── AI Summary ── */
 
 function AiSummary({ summary }: { summary: string }) {
 	const [open, setOpen] = useState(false);
@@ -456,6 +674,8 @@ function AiSummary({ summary }: { summary: string }) {
 		</div>
 	);
 }
+
+/* ── Skeleton ── */
 
 function DetailSkeleton() {
 	return (

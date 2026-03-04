@@ -2,7 +2,6 @@ import { MOTION_CONSTANTS } from "@/components/constant";
 import { AccountSelector } from "@/components/mail/AccountSelector";
 import { CATEGORIES } from "@/components/mail/category-colors";
 import { CategoryFilter } from "@/components/mail/CategoryFilter";
-import { EmailRow, groupEmailsByTime } from "@/components/mail/EmailRow";
 import {
 	INBOX_SHORTCUTS,
 	KeyboardShortcutBar,
@@ -13,17 +12,39 @@ import {
 	SearchFilterChips,
 	type SearchFilters,
 } from "@/components/mail/SearchBar";
+import { groupThreadsByTime, ThreadRow } from "@/components/mail/ThreadRow";
 import { Kbd } from "@/components/ui/kbd";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useInboxKeyboard } from "@/hooks/use-inbox-keyboard";
-import { mailKeys, useMailEmailsInfinite } from "@/hooks/use-mail";
+import {
+	mailKeys,
+	useMailThreadsInfinite,
+	useMergeThreads,
+} from "@/hooks/use-mail";
 import { useMailAccountFilter } from "@/hooks/use-mail-account-filter";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Paperclip, Search } from "lucide-react";
-import { motion } from "motion/react";
+import {
+	Archive,
+	ArrowLeft,
+	Mail,
+	MailOpen,
+	Merge,
+	Paperclip,
+	Search,
+	Star,
+	Trash2,
+	X,
+} from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -31,43 +52,43 @@ import { z } from "zod";
 const PAGE_SIZE = 30;
 const HEADER_ITEMS = ["back", "attachments", "search", "view"] as const;
 
-/* ── Cache helpers (shared with EmailRow) ── */
+/* ── Cache helpers ── */
 
-type EmailPageData = {
-	emails: Array<{ id: string; [key: string]: unknown }>;
+type ThreadPageData = {
+	threads: Array<{ threadId: string; [key: string]: unknown }>;
 	total?: number;
 };
 
-type PaginatedEmailData = {
-	pages: EmailPageData[];
+type PaginatedThreadData = {
+	pages: ThreadPageData[];
 };
 
-function removeEmailFromPages(old: unknown, emailId: string): unknown {
-	const data = old as PaginatedEmailData | undefined;
+function removeThreadFromPages(old: unknown, threadId: string): unknown {
+	const data = old as PaginatedThreadData | undefined;
 	if (!data?.pages) return old;
 	return {
 		...data,
 		pages: data.pages.map((page) => ({
 			...page,
-			emails: page.emails.filter((e) => e.id !== emailId),
+			threads: page.threads.filter((t) => t.threadId !== threadId),
 			total: Math.max(0, (page.total ?? 0) - 1),
 		})),
 	};
 }
 
-function updateEmailInPages(
+function updateThreadInPages(
 	old: unknown,
-	emailId: string,
+	threadId: string,
 	patch: object,
 ): unknown {
-	const data = old as PaginatedEmailData | undefined;
+	const data = old as PaginatedThreadData | undefined;
 	if (!data?.pages) return old;
 	return {
 		...data,
 		pages: data.pages.map((page) => ({
 			...page,
-			emails: page.emails.map((e) =>
-				e.id === emailId ? { ...e, ...patch } : e,
+			threads: page.threads.map((t) =>
+				t.threadId === threadId ? { ...t, ...patch } : t,
 			),
 		})),
 	};
@@ -139,6 +160,10 @@ function MailInbox() {
 	const activeView = view ?? "unread";
 	const sentinelRef = useRef<HTMLDivElement>(null);
 	const [searchOpen, setSearchOpen] = useState(false);
+	const [selectedThreads, setSelectedThreads] = useState<Set<string>>(
+		new Set(),
+	);
+	const [dragSourceId, setDragSourceId] = useState<string | null>(null);
 
 	const activeCategory = category ?? null;
 	const activeAccountIds = useMailAccountFilter((s) => s.activeAccountIds);
@@ -184,7 +209,7 @@ function MailInbox() {
 	const isSearching = hasActiveFilters(searchFilters);
 
 	const { data, isPending, hasNextPage, isFetchingNextPage, fetchNextPage } =
-		useMailEmailsInfinite({
+		useMailThreadsInfinite({
 			category: activeCategory ?? undefined,
 			limit: PAGE_SIZE,
 			unreadOnly: activeView === "unread",
@@ -228,13 +253,17 @@ function MailInbox() {
 				e.preventDefault();
 				setSearchOpen(true);
 			}
+			// Escape clears selection
+			if (e.key === "Escape" && selectedThreads.size > 0) {
+				setSelectedThreads(new Set());
+			}
 		};
 		document.addEventListener("keydown", handler);
 		return () => document.removeEventListener("keydown", handler);
-	}, []);
+	}, [selectedThreads.size]);
 
 	const queryClient = useQueryClient();
-	const emails = data?.pages.flatMap((page) => page?.emails ?? []) ?? [];
+	const threads = data?.pages.flatMap((page) => page?.threads ?? []) ?? [];
 	const total = data?.pages[0]?.total;
 
 	const searchTerms = useMemo(
@@ -342,11 +371,11 @@ function MailInbox() {
 
 	const handleKeyboardOpenEmail = useCallback(
 		(index: number) => {
-			const email = emails[index];
-			if (email) {
+			const thread = threads[index];
+			if (thread) {
 				navigate({
 					to: "/module/mail/inbox/$emailId",
-					params: { emailId: email.id },
+					params: { emailId: thread.threadId },
 					search: {
 						view: view ?? undefined,
 						category: category ?? undefined,
@@ -354,45 +383,66 @@ function MailInbox() {
 				});
 			}
 		},
-		[emails, navigate, view, category],
+		[threads, navigate, view, category],
 	);
 
 	const handleKeyboardArchive = useCallback(
 		(index: number) => {
-			const email = emails[index];
-			if (!email) return;
+			const thread = threads[index];
+			if (!thread) return;
 			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: unknown) =>
-				removeEmailFromPages(old, email.id),
+				removeThreadFromPages(old, thread.threadId),
 			);
-			toast("Email archived");
-			api.mail.emails({ id: email.id }).archive.post();
+			toast("Thread archived");
+			api.mail.threads({ threadId: thread.threadId }).archive.post();
 		},
-		[emails, queryClient],
+		[threads, queryClient],
 	);
 
 	const handleKeyboardStar = useCallback(
 		(index: number) => {
-			const email = emails[index];
-			if (!email) return;
-			const patch = { isStarred: !email.isStarred };
+			const thread = threads[index];
+			if (!thread) return;
+			const patch = { isStarred: !thread.isStarred };
 			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: unknown) =>
-				updateEmailInPages(old, email.id, patch),
+				updateThreadInPages(old, thread.threadId, patch),
 			);
-			api.mail.emails({ id: email.id }).star.patch();
+			api.mail.threads({ threadId: thread.threadId }).star.patch();
 		},
-		[emails, queryClient],
+		[threads, queryClient],
 	);
 
 	const handleKeyboardToggleRead = useCallback(
 		(index: number) => {
-			const email = emails[index];
-			if (!email) return;
+			const thread = threads[index];
+			if (!thread) return;
 			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: unknown) =>
-				removeEmailFromPages(old, email.id),
+				removeThreadFromPages(old, thread.threadId),
 			);
-			api.mail.emails({ id: email.id }).read.patch();
+			api.mail.threads({ threadId: thread.threadId }).read.patch();
 		},
-		[emails, queryClient],
+		[threads, queryClient],
+	);
+
+	const handleSelectThread = useCallback((threadId: string) => {
+		setSelectedThreads((prev) => {
+			const next = new Set(prev);
+			if (next.has(threadId)) {
+				next.delete(threadId);
+			} else {
+				next.add(threadId);
+			}
+			return next;
+		});
+	}, []);
+
+	const handleKeyboardSelectThread = useCallback(
+		(index: number) => {
+			const thread = threads[index];
+			if (!thread) return;
+			handleSelectThread(thread.threadId);
+		},
+		[threads, handleSelectThread],
 	);
 
 	const handleOpenSearch = useCallback(() => {
@@ -412,7 +462,7 @@ function MailInbox() {
 	}, [activeView, switchView]);
 
 	const keyboard = useInboxKeyboard({
-		emailCount: emails.length,
+		emailCount: threads.length,
 		categoryCount,
 		headerCount,
 		disabled: searchOpen,
@@ -421,6 +471,7 @@ function MailInbox() {
 		onArchiveEmail: handleKeyboardArchive,
 		onStarEmail: handleKeyboardStar,
 		onToggleReadEmail: handleKeyboardToggleRead,
+		onSelectEmail: handleKeyboardSelectThread,
 		onActivateHeader: handleActivateHeader,
 		onOpenSearch: handleOpenSearch,
 		onNavigateAttachments: handleNavigateAttachments,
@@ -440,6 +491,113 @@ function MailInbox() {
 	const handleClearFilters = useCallback(() => {
 		handleFiltersChange({});
 	}, [handleFiltersChange]);
+
+	// ── Multi-select & merge ──
+
+	const mergeThreads = useMergeThreads();
+
+	const handleMergeSelected = useCallback(() => {
+		if (selectedThreads.size < 2) return;
+		const ids = Array.from(selectedThreads);
+		mergeThreads.mutate(ids, {
+			onSuccess: (result) => {
+				toast("Threads merged");
+				setSelectedThreads(new Set());
+				queryClient.invalidateQueries({ queryKey: mailKeys.all });
+				if (result?.threadId) {
+					navigate({
+						to: "/module/mail/inbox/$emailId",
+						params: { emailId: result.threadId },
+						search: {
+							view: view ?? undefined,
+							category: category ?? undefined,
+						},
+					});
+				}
+			},
+			onError: () => {
+				toast.error("Failed to merge threads");
+			},
+		});
+	}, [selectedThreads, mergeThreads, queryClient, navigate]);
+
+	const handleBulkArchive = useCallback(() => {
+		if (selectedThreads.size === 0) return;
+		const ids = Array.from(selectedThreads);
+		for (const threadId of ids) {
+			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: unknown) =>
+				removeThreadFromPages(old, threadId),
+			);
+			api.mail.threads({ threadId }).archive.post();
+		}
+		toast(`${ids.length} thread${ids.length > 1 ? "s" : ""} archived`);
+		setSelectedThreads(new Set());
+	}, [selectedThreads, queryClient]);
+
+	const handleBulkDelete = useCallback(() => {
+		if (selectedThreads.size === 0) return;
+		const ids = Array.from(selectedThreads);
+		for (const threadId of ids) {
+			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: unknown) =>
+				removeThreadFromPages(old, threadId),
+			);
+			api.mail.threads({ threadId }).delete();
+		}
+		toast(`${ids.length} thread${ids.length > 1 ? "s" : ""} deleted`);
+		setSelectedThreads(new Set());
+	}, [selectedThreads, queryClient]);
+
+	const handleBulkToggleRead = useCallback(() => {
+		if (selectedThreads.size === 0) return;
+		const ids = Array.from(selectedThreads);
+		for (const threadId of ids) {
+			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: unknown) =>
+				removeThreadFromPages(old, threadId),
+			);
+			api.mail.threads({ threadId }).read.patch();
+		}
+		toast(
+			`${ids.length} thread${ids.length > 1 ? "s" : ""} marked as ${activeView === "unread" ? "read" : "unread"}`,
+		);
+		setSelectedThreads(new Set());
+	}, [selectedThreads, queryClient, activeView]);
+
+	const handleBulkStar = useCallback(() => {
+		if (selectedThreads.size === 0) return;
+		const ids = Array.from(selectedThreads);
+		for (const threadId of ids) {
+			queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: unknown) =>
+				updateThreadInPages(old, threadId, { isStarred: true }),
+			);
+			api.mail.threads({ threadId }).star.patch();
+		}
+		toast(`${ids.length} thread${ids.length > 1 ? "s" : ""} starred`);
+		setSelectedThreads(new Set());
+	}, [selectedThreads, queryClient]);
+
+	// ── Drag-and-drop merge ──
+
+	const handleDragStart = useCallback((threadId: string) => {
+		setDragSourceId(threadId);
+	}, []);
+
+	const handleDrop = useCallback(
+		(targetThreadId: string) => {
+			if (!dragSourceId || dragSourceId === targetThreadId) return;
+			mergeThreads.mutate([dragSourceId, targetThreadId], {
+				onSuccess: () => {
+					toast("Threads merged");
+					setDragSourceId(null);
+					queryClient.invalidateQueries({ queryKey: mailKeys.all });
+				},
+				onError: () => {
+					toast.error("Failed to merge threads");
+					setDragSourceId(null);
+				},
+			});
+		},
+		[dragSourceId, mergeThreads, queryClient],
+	);
 
 	const emptyMessage = isSearching
 		? "No emails matching your search."
@@ -581,10 +739,10 @@ function MailInbox() {
 				</motion.p>
 			)}
 
-			{/* Email list */}
+			{/* Thread list */}
 			{isPending ? (
 				<InboxSkeleton />
-			) : emails.length === 0 ? (
+			) : threads.length === 0 ? (
 				<motion.div
 					initial={{ opacity: 0 }}
 					animate={{ opacity: 1 }}
@@ -595,56 +753,218 @@ function MailInbox() {
 					</p>
 				</motion.div>
 			) : (
-				<motion.div
-					initial={{ opacity: 0, y: 12 }}
-					animate={{ opacity: 1, y: 0 }}
-					transition={{
-						duration: 0.5,
-						delay: 0.08,
-						ease: MOTION_CONSTANTS.EASE,
-					}}
-					className="mt-4"
-				>
-					{(() => {
-						let flatIndex = 0;
-						return groupEmailsByTime(emails).map((cluster) => (
-							<div key={cluster.label ?? "today"}>
-								{cluster.label && (
-									<div className="pt-6 pb-2">
-										<span className="font-body text-[13px] text-grey-3">
-											{cluster.label}
-										</span>
-									</div>
-								)}
-								{cluster.emails.map((email) => {
-									const idx = flatIndex++;
-									return (
-										<EmailRow
-											key={email.id}
-											email={email}
-											highlightTerms={searchTerms}
-											isFocused={
-												keyboard.isActive &&
-												keyboard.activeSection === "emails" &&
-												keyboard.focusedEmailIndex === idx
-											}
-											focusRef={(el) => keyboard.emailRowRef(idx, el)}
-										/>
-									);
-								})}
+				<>
+					{/* Floating selection actions — rail-style, hangs in left margin */}
+					<AnimatePresence>
+						{selectedThreads.size > 0 && (
+							<TooltipProvider sliding>
+								<motion.div
+									layout
+									initial={{ opacity: 0, x: 8 }}
+									animate={{ opacity: 1, x: 0 }}
+									exit={{ opacity: 0, x: 8 }}
+									transition={{
+										duration: 0.2,
+										ease: MOTION_CONSTANTS.EASE,
+										layout: {
+											duration: 0.2,
+											ease: MOTION_CONSTANTS.EASE,
+										},
+									}}
+									className="sticky top-8 z-20 float-left -ml-15 mt-6 w-10 hidden xl:flex flex-col items-center gap-1"
+								>
+									<motion.span
+										layout
+										className="font-mono text-[11px] font-semibold text-grey-2 mb-1 inline-flex tabular-nums overflow-hidden"
+									>
+										{String(selectedThreads.size)
+											.split("")
+											.map((char, i) => (
+												<AnimatePresence mode="popLayout" key={i}>
+													<motion.span
+														key={char}
+														initial={{ y: 10, opacity: 0 }}
+														animate={{ y: 0, opacity: 1 }}
+														exit={{ y: -10, opacity: 0 }}
+														transition={{
+															duration: 0.3,
+															ease: MOTION_CONSTANTS.EASE,
+														}}
+														className="inline-block"
+													>
+														{char}
+													</motion.span>
+												</AnimatePresence>
+											))}
+									</motion.span>
+									{selectedThreads.size >= 2 && (
+										<motion.div
+											layout
+											initial={{ opacity: 0, height: 0 }}
+											animate={{ opacity: 1, height: "auto" }}
+											exit={{ opacity: 0, height: 0 }}
+											transition={{
+												duration: 0.2,
+												ease: MOTION_CONSTANTS.EASE,
+											}}
+											className="overflow-hidden"
+										>
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<button
+														type="button"
+														onClick={handleMergeSelected}
+														disabled={mergeThreads.isPending}
+														className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer disabled:opacity-50"
+													>
+														<Merge className="size-3.5" />
+													</button>
+												</TooltipTrigger>
+												<TooltipContent side="left">
+													Merge threads
+												</TooltipContent>
+											</Tooltip>
+										</motion.div>
+									)}
+									<motion.div layout>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<button
+													type="button"
+													onClick={handleBulkArchive}
+													className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
+												>
+													<Archive className="size-3.5" />
+												</button>
+											</TooltipTrigger>
+											<TooltipContent side="left">Archive</TooltipContent>
+										</Tooltip>
+									</motion.div>
+									<motion.div layout>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<button
+													type="button"
+													onClick={handleBulkStar}
+													className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-amber-500 hover:bg-amber-500/5 transition-colors duration-150 cursor-pointer"
+												>
+													<Star className="size-3.5" />
+												</button>
+											</TooltipTrigger>
+											<TooltipContent side="left">Star</TooltipContent>
+										</Tooltip>
+									</motion.div>
+									<motion.div layout>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<button
+													type="button"
+													onClick={handleBulkToggleRead}
+													className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
+												>
+													{activeView === "unread" ? (
+														<MailOpen className="size-3.5" />
+													) : (
+														<Mail className="size-3.5" />
+													)}
+												</button>
+											</TooltipTrigger>
+											<TooltipContent side="left">
+												{activeView === "unread"
+													? "Mark as read"
+													: "Mark as unread"}
+											</TooltipContent>
+										</Tooltip>
+									</motion.div>
+									<motion.div layout>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<button
+													type="button"
+													onClick={handleBulkDelete}
+													className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-accent-red hover:bg-accent-red/5 transition-colors duration-150 cursor-pointer"
+												>
+													<Trash2 className="size-3.5" />
+												</button>
+											</TooltipTrigger>
+											<TooltipContent side="left">Delete</TooltipContent>
+										</Tooltip>
+									</motion.div>
+									<motion.div layout>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<button
+													type="button"
+													onClick={() => setSelectedThreads(new Set())}
+													className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
+												>
+													<X className="size-3.5" />
+												</button>
+											</TooltipTrigger>
+											<TooltipContent side="left">
+												Clear selection
+											</TooltipContent>
+										</Tooltip>
+									</motion.div>
+								</motion.div>
+							</TooltipProvider>
+						)}
+					</AnimatePresence>
+					<motion.div
+						initial={{ opacity: 0, y: 12 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{
+							duration: 0.5,
+							delay: 0.08,
+							ease: MOTION_CONSTANTS.EASE,
+						}}
+						className="mt-4"
+					>
+						{(() => {
+							let flatIndex = 0;
+							return groupThreadsByTime(threads).map((cluster) => (
+								<div key={cluster.label ?? "today"}>
+									{cluster.label && (
+										<div className="pt-6 pb-2">
+											<span className="font-body text-[13px] text-grey-3">
+												{cluster.label}
+											</span>
+										</div>
+									)}
+									{cluster.threads.map((thread) => {
+										const idx = flatIndex++;
+										return (
+											<ThreadRow
+												key={thread.threadId}
+												thread={thread}
+												highlightTerms={searchTerms}
+												isFocused={
+													keyboard.isActive &&
+													keyboard.activeSection === "emails" &&
+													keyboard.focusedEmailIndex === idx
+												}
+												focusRef={(el) => keyboard.emailRowRef(idx, el)}
+												isSelected={selectedThreads.has(thread.threadId)}
+												onSelect={handleSelectThread}
+												onDragStartThread={handleDragStart}
+												onDropThread={handleDrop}
+											/>
+										);
+									})}
+								</div>
+							));
+						})()}
+
+						{/* Sentinel for infinite scroll */}
+						<div ref={sentinelRef} className="h-px" />
+
+						{isFetchingNextPage && (
+							<div className="flex justify-center py-6">
+								<div className="size-5 border-2 border-border/60 border-t-foreground/60 rounded-full animate-spin" />
 							</div>
-						));
-					})()}
-
-					{/* Sentinel for infinite scroll */}
-					<div ref={sentinelRef} className="h-px" />
-
-					{isFetchingNextPage && (
-						<div className="flex justify-center py-6">
-							<div className="size-5 border-2 border-border/60 border-t-foreground/60 rounded-full animate-spin" />
-						</div>
-					)}
-				</motion.div>
+						)}
+					</motion.div>
+				</>
 			)}
 
 			{/* Search command dialog */}
