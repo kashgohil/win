@@ -15,7 +15,8 @@ import type {
 
 export const mailKeys = {
 	all: ["mail"] as const,
-	data: () => [...mailKeys.all, "data"] as const,
+	data: (accountIds?: string[]) =>
+		[...mailKeys.all, "data", accountIds] as const,
 	emails: (params?: {
 		category?: string;
 		limit?: number;
@@ -33,6 +34,7 @@ export const mailKeys = {
 		filetype?: string;
 		after?: string;
 		before?: string;
+		accountIds?: string[];
 	}) => [...mailKeys.all, "emails", params] as const,
 	email: (id: string) => [...mailKeys.all, "email", id] as const,
 	accounts: () => [...mailKeys.all, "accounts"] as const,
@@ -44,16 +46,21 @@ export const mailKeys = {
 		from?: string;
 		after?: string;
 		before?: string;
+		accountIds?: string[];
 	}) => [...mailKeys.all, "attachments", params] as const,
 };
 
 /* ── Queries ── */
 
-export function useMailData() {
+export function useMailData(accountIds?: string[]) {
 	return useQuery({
-		queryKey: mailKeys.data(),
+		queryKey: mailKeys.data(accountIds),
 		queryFn: async () => {
-			const { data, error } = await api.mail.data.get();
+			const { data, error } = await api.mail.data.get({
+				query: {
+					accountIds: accountIds?.join(","),
+				},
+			});
 			if (error) throw new Error("Failed to load mail data");
 			return data;
 		},
@@ -77,6 +84,7 @@ export function useMailEmailsInfinite(params?: {
 	filetype?: string;
 	after?: string;
 	before?: string;
+	accountIds?: string[];
 }) {
 	const pageSize = params?.limit ?? 30;
 
@@ -97,6 +105,7 @@ export function useMailEmailsInfinite(params?: {
 			filetype: params?.filetype,
 			after: params?.after,
 			before: params?.before,
+			accountIds: params?.accountIds,
 		}),
 		queryFn: async ({ pageParam }) => {
 			const { data, error } = await api.mail.emails.get({
@@ -118,6 +127,7 @@ export function useMailEmailsInfinite(params?: {
 					filetype: params?.filetype,
 					after: params?.after,
 					before: params?.before,
+					accountIds: params?.accountIds?.join(","),
 				},
 			});
 			if (error) throw new Error("Failed to load emails");
@@ -135,6 +145,7 @@ export function useMailAttachmentsInfinite(params?: {
 	from?: string;
 	after?: string;
 	before?: string;
+	accountIds?: string[];
 }) {
 	const pageSize = 30;
 
@@ -146,6 +157,7 @@ export function useMailAttachmentsInfinite(params?: {
 			from: params?.from,
 			after: params?.after,
 			before: params?.before,
+			accountIds: params?.accountIds,
 		}),
 		queryFn: async ({ pageParam }) => {
 			const { data, error } = await api.mail.attachments.get({
@@ -158,6 +170,7 @@ export function useMailAttachmentsInfinite(params?: {
 					from: params?.from,
 					after: params?.after,
 					before: params?.before,
+					accountIds: params?.accountIds?.join(","),
 				},
 			});
 			if (error) throw new Error("Failed to load attachments");

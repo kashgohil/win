@@ -1,10 +1,16 @@
+import { useMailAccountFilter } from "@/hooks/use-mail-account-filter";
 import { queryClient } from "@/lib/query-client";
 import { queryCollectionOptions } from "@tanstack/query-db-collection";
 import { createCollection } from "@tanstack/react-db";
 import { api } from "./api";
 
 async function fetchMailData() {
-	const { data, error } = await api.mail.data.get();
+	const accountIds = useMailAccountFilter.getState().getAccountIds();
+	const { data, error } = await api.mail.data.get({
+		query: {
+			accountIds: accountIds?.join(","),
+		},
+	});
 	if (error) throw new Error("Failed to load mail data");
 	return data;
 }
@@ -58,3 +64,8 @@ export const mailAccountsCollection = createCollection(
 		getKey: (item) => item.id,
 	}),
 );
+
+// Invalidate mail data queries when account filter changes
+useMailAccountFilter.subscribe(() => {
+	queryClient.invalidateQueries({ queryKey: ["mail", "data"] });
+});
