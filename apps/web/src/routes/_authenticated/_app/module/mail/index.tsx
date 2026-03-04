@@ -1,4 +1,5 @@
 import {
+	Kbd,
 	KeyboardShortcutBar,
 	MAIL_HUB_SHORTCUTS,
 } from "@/components/mail/KeyboardShortcutBar";
@@ -256,20 +257,20 @@ function MailHeaderActions() {
 						starred: undefined,
 						attachment: undefined,
 					}}
-					className="group inline-flex items-center gap-1.5 font-body text-[12px] text-grey-2 hover:text-foreground transition-colors duration-150"
+					className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
 				>
-					<Inbox className="size-3.5" />
-					Inbox
-					<ArrowRight className="size-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150" />
+					<Inbox className="size-3" />
+					<span className="font-body text-[12px]">Inbox</span>
+					<Kbd>I</Kbd>
 				</Link>
 
 				<Link
 					to="/module/mail/attachments"
-					className="group inline-flex items-center gap-1.5 font-body text-[12px] text-grey-2 hover:text-foreground transition-colors duration-150"
+					className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
 				>
-					<Paperclip className="size-3.5" />
-					Attachments
-					<ArrowRight className="size-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150" />
+					<Paperclip className="size-3" />
+					<span className="font-body text-[12px]">Attachments</span>
+					<Kbd>A</Kbd>
 				</Link>
 
 				<div className="w-px h-3.5 bg-border/40" />

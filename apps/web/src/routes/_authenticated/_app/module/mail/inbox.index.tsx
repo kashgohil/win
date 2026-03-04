@@ -12,6 +12,7 @@ import { CategoryFilter } from "@/components/mail/CategoryFilter";
 import { EmailRow, groupEmailsByTime } from "@/components/mail/EmailRow";
 import {
 	INBOX_SHORTCUTS,
+	Kbd,
 	KeyboardShortcutBar,
 } from "@/components/mail/KeyboardShortcutBar";
 import {
@@ -475,9 +476,7 @@ function MailInbox() {
 					>
 						<Paperclip className="size-3" />
 						<span className="font-body text-[12px]">Attachments</span>
-						<kbd className="font-mono text-[10px] bg-secondary/40 px-1.5 py-0.5 rounded ml-1">
-							A
-						</kbd>
+						<Kbd>A</Kbd>
 					</Link>
 
 					<button
@@ -493,9 +492,7 @@ function MailInbox() {
 					>
 						<Search className="size-3" />
 						<span className="font-body text-[12px]">Search</span>
-						<kbd className="font-mono text-[10px] bg-secondary/40 px-1.5 py-0.5 rounded ml-1">
-							K
-						</kbd>
+						<Kbd>K</Kbd>
 					</button>
 
 					<div
@@ -514,19 +511,11 @@ function MailInbox() {
 							<TabsList size="sm">
 								<TabsTrigger size="sm" value="unread">
 									Unread
-									{activeView === "read" && (
-										<kbd className="font-mono text-[10px] bg-secondary/40 text-grey-3 px-1 py-0.5 rounded ml-1">
-											V
-										</kbd>
-									)}
+									{activeView === "read" && <Kbd>V</Kbd>}
 								</TabsTrigger>
 								<TabsTrigger size="sm" value="read">
 									Read
-									{activeView === "unread" && (
-										<kbd className="font-mono text-[10px] bg-secondary/40 text-grey-3 px-1 py-0.5 rounded ml-1">
-											V
-										</kbd>
-									)}
+									{activeView === "unread" && <Kbd>V</Kbd>}
 								</TabsTrigger>
 							</TabsList>
 						</Tabs>
