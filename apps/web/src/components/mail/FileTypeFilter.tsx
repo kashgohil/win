@@ -1,10 +1,10 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
-import { type FileCategory, FILE_CATEGORY_CONFIG } from "@/lib/file-utils";
+import { FILE_CATEGORY_CONFIG, type FileCategory } from "@/lib/file-utils";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const FILE_TYPES: { value: FileCategory; label: string }[] = [
+export const FILE_TYPES: { value: FileCategory; label: string }[] = [
 	{ value: "image", label: "Images" },
 	{ value: "pdf", label: "PDFs" },
 	{ value: "document", label: "Docs" },
@@ -19,9 +19,12 @@ const FILE_TYPES: { value: FileCategory; label: string }[] = [
 export function FileTypeFilter({
 	value,
 	onChange,
+	keyboardFocusIndex,
 }: {
 	value: string | null;
 	onChange: (filetype: string | null) => void;
+	/** When set, renders a keyboard focus ring on the chip at this index (0 = All) */
+	keyboardFocusIndex?: number;
 }) {
 	const containerRef = useRef<HTMLFieldSetElement>(null);
 	const labelRefs = useRef<Map<string, HTMLLabelElement>>(new Map());
@@ -87,6 +90,7 @@ export function FileTypeFilter({
 					isAll
 						? "text-background"
 						: "text-grey-2 hover:text-foreground hover:bg-secondary/50",
+					keyboardFocusIndex === 0 && "ring-2 ring-foreground/30",
 				)}
 			>
 				<input
@@ -100,7 +104,7 @@ export function FileTypeFilter({
 			</label>
 
 			{/* File type chips */}
-			{FILE_TYPES.map((ft) => {
+			{FILE_TYPES.map((ft, ftIdx) => {
 				const active = value === ft.value;
 				const config = FILE_CATEGORY_CONFIG[ft.value];
 				const Icon = config.icon;
@@ -116,6 +120,7 @@ export function FileTypeFilter({
 							active
 								? config.accent
 								: "text-grey-2 hover:text-foreground hover:bg-secondary/50",
+							keyboardFocusIndex === ftIdx + 1 && "ring-2 ring-foreground/30",
 						)}
 					>
 						<input
