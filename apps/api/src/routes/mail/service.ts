@@ -309,12 +309,15 @@ function serializeAccount(
 /* ── Service ── */
 
 class MailService {
-	async getModuleData(userId: string): Promise<DataResult> {
+	async getModuleData(
+		userId: string,
+		accountIds?: string[],
+	): Promise<DataResult> {
 		try {
 			const [briefing, triage, autoHandledItems] = await Promise.all([
-				this.getBriefing(userId),
-				this.getTriageItems(userId),
-				this.getAutoHandledItems(userId),
+				this.getBriefing(userId, accountIds),
+				this.getTriageItems(userId, accountIds),
+				this.getAutoHandledItems(userId, accountIds),
 			]);
 
 			return {
@@ -331,32 +334,52 @@ class MailService {
 		}
 	}
 
-	private async getBriefing(userId: string): Promise<BriefingStat[]> {
+	private async getBriefing(
+		userId: string,
+		accountIds?: string[],
+	): Promise<BriefingStat[]> {
+		const cacheKey = accountIds
+			? `mail:briefing:${userId}:${accountIds.sort().join(",")}`
+			: `mail:briefing:${userId}`;
 		return cacheable(
-			`mail:briefing:${userId}`,
+			cacheKey,
 			async () => {
+				const unreadConds = [
+					eq(emails.userId, userId),
+					eq(emails.isRead, false),
+				];
+				if (accountIds)
+					unreadConds.push(inArray(emails.emailAccountId, accountIds));
 				const [unreadResult] = await db
 					.select({ value: count() })
 					.from(emails)
-					.where(and(eq(emails.userId, userId), eq(emails.isRead, false)));
+					.where(and(...unreadConds));
 
+				const triageConds = [
+					eq(emails.userId, userId),
+					eq(emails.triageStatus, "pending"),
+				];
+				if (accountIds)
+					triageConds.push(inArray(emails.emailAccountId, accountIds));
 				const [triageResult] = await db
 					.select({ value: count() })
 					.from(emails)
-					.where(
-						and(eq(emails.userId, userId), eq(emails.triageStatus, "pending")),
-					);
+					.where(and(...triageConds));
 
 				const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+				const autoHandledConds = [
+					eq(mailAutoHandled.userId, userId),
+					gte(mailAutoHandled.createdAt, twentyFourHoursAgo),
+				];
+				if (accountIds) {
+					autoHandledConds.push(
+						sql`${mailAutoHandled.emailId} IN (SELECT ${emails.id} FROM ${emails} WHERE ${inArray(emails.emailAccountId, accountIds)})`,
+					);
+				}
 				const [autoHandledResult] = await db
 					.select({ value: count() })
 					.from(mailAutoHandled)
-					.where(
-						and(
-							eq(mailAutoHandled.userId, userId),
-							gte(mailAutoHandled.createdAt, twentyFourHoursAgo),
-						),
-					);
+					.where(and(...autoHandledConds));
 
 				return [
 					{ label: "unread", value: unreadResult?.value ?? 0 },
@@ -375,9 +398,17 @@ class MailService {
 		);
 	}
 
-	private async getTriageItems(userId: string): Promise<TriageItem[]> {
+	private async getTriageItems(
+		userId: string,
+		accountIds?: string[],
+	): Promise<TriageItem[]> {
+		const conditions = [
+			eq(emails.userId, userId),
+			eq(emails.triageStatus, "pending"),
+		];
+		if (accountIds) conditions.push(inArray(emails.emailAccountId, accountIds));
 		const items = await db.query.emails.findMany({
-			where: and(eq(emails.userId, userId), eq(emails.triageStatus, "pending")),
+			where: and(...conditions),
 			orderBy: [
 				desc(sql`(${emails.category} = 'urgent')`),
 				desc(emails.receivedAt),
@@ -403,14 +434,22 @@ class MailService {
 
 	private async getAutoHandledItems(
 		userId: string,
+		accountIds?: string[],
 	): Promise<AutoHandledItem[]> {
 		const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
+		const conditions = [
+			eq(mailAutoHandled.userId, userId),
+			gte(mailAutoHandled.createdAt, twentyFourHoursAgo),
+		];
+		if (accountIds) {
+			conditions.push(
+				sql`${mailAutoHandled.emailId} IN (SELECT ${emails.id} FROM ${emails} WHERE ${inArray(emails.emailAccountId, accountIds)})`,
+			);
+		}
+
 		const items = await db.query.mailAutoHandled.findMany({
-			where: and(
-				eq(mailAutoHandled.userId, userId),
-				gte(mailAutoHandled.createdAt, twentyFourHoursAgo),
-			),
+			where: and(...conditions),
 			orderBy: [desc(mailAutoHandled.createdAt)],
 			limit: 20,
 		});
@@ -465,12 +504,16 @@ class MailService {
 			from?: string;
 			after?: string;
 			before?: string;
+			accountIds?: string[];
 		},
 	): Promise<AttachmentListResult> {
 		const limit = options.limit ?? 30;
 
 		try {
 			const conditions = [eq(emails.userId, userId)];
+			if (options.accountIds && options.accountIds.length > 0) {
+				conditions.push(inArray(emails.emailAccountId, options.accountIds));
+			}
 
 			if (options.q) {
 				conditions.push(ilike(emailAttachments.filename, `%${options.q}%`));
@@ -642,12 +685,16 @@ class MailService {
 			filetype?: string;
 			after?: string;
 			before?: string;
+			accountIds?: string[];
 		},
 	): Promise<EmailListResult> {
 		const limit = options.limit ?? 50;
 
 		try {
 			const conditions = [eq(emails.userId, userId)];
+			if (options.accountIds && options.accountIds.length > 0) {
+				conditions.push(inArray(emails.emailAccountId, options.accountIds));
+			}
 			if (options.category) {
 				const validCategories =
 					emailCategoryEnum.enumValues as readonly string[];

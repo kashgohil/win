@@ -73,8 +73,11 @@ export const mail = new Elysia({
 	)
 	.get(
 		"/data",
-		async ({ user, set }) => {
-			const result = await mailService.getModuleData(user.id);
+		async ({ user, query, set }) => {
+			const accountIds = query.accountIds
+				? query.accountIds.split(",").filter(Boolean)
+				: undefined;
+			const result = await mailService.getModuleData(user.id, accountIds);
 
 			if (!result.ok) {
 				set.status = result.status;
@@ -85,6 +88,9 @@ export const mail = new Elysia({
 		},
 		{
 			auth: true,
+			query: t.Object({
+				accountIds: t.Optional(t.String()),
+			}),
 			response: {
 				200: moduleDataResponse,
 				500: errorResponse,
@@ -119,6 +125,9 @@ export const mail = new Elysia({
 				filetype: query.filetype ?? undefined,
 				after: query.after ?? undefined,
 				before: query.before ?? undefined,
+				accountIds: query.accountIds
+					? query.accountIds.split(",").filter(Boolean)
+					: undefined,
 			});
 
 			if (!result.ok) {
@@ -148,6 +157,7 @@ export const mail = new Elysia({
 				filetype: t.Optional(t.String()),
 				after: t.Optional(t.String()),
 				before: t.Optional(t.String()),
+				accountIds: t.Optional(t.String()),
 			}),
 			response: {
 				200: emailListResponse,
@@ -202,6 +212,9 @@ export const mail = new Elysia({
 				from: query.from ?? undefined,
 				after: query.after ?? undefined,
 				before: query.before ?? undefined,
+				accountIds: query.accountIds
+					? query.accountIds.split(",").filter(Boolean)
+					: undefined,
 			});
 
 			if (!result.ok) {
@@ -222,6 +235,7 @@ export const mail = new Elysia({
 				from: t.Optional(t.String()),
 				after: t.Optional(t.String()),
 				before: t.Optional(t.String()),
+				accountIds: t.Optional(t.String()),
 			}),
 			response: {
 				200: attachmentListResponse,
