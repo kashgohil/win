@@ -1,18 +1,10 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Paperclip, Search } from "lucide-react";
-import { motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
-import { z } from "zod";
-
 import { MOTION_CONSTANTS } from "@/components/constant";
+import { AccountSelector } from "@/components/mail/AccountSelector";
 import { CATEGORIES } from "@/components/mail/category-colors";
 import { CategoryFilter } from "@/components/mail/CategoryFilter";
 import { EmailRow, groupEmailsByTime } from "@/components/mail/EmailRow";
 import {
 	INBOX_SHORTCUTS,
-	Kbd,
 	KeyboardShortcutBar,
 } from "@/components/mail/KeyboardShortcutBar";
 import {
@@ -21,12 +13,20 @@ import {
 	SearchFilterChips,
 	type SearchFilters,
 } from "@/components/mail/SearchBar";
+import { Kbd } from "@/components/ui/kbd";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useInboxKeyboard } from "@/hooks/use-inbox-keyboard";
 import { mailKeys, useMailEmailsInfinite } from "@/hooks/use-mail";
 import { useMailAccountFilter } from "@/hooks/use-mail-account-filter";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, Paperclip, Search } from "lucide-react";
+import { motion } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { z } from "zod";
 
 const PAGE_SIZE = 30;
 const HEADER_ITEMS = ["back", "attachments", "search", "view"] as const;
@@ -528,6 +528,10 @@ function MailInbox() {
 							</TabsList>
 						</Tabs>
 					</div>
+
+					<div className="w-px h-3.5 bg-border/40" />
+
+					<AccountSelector />
 				</div>
 			</motion.div>
 

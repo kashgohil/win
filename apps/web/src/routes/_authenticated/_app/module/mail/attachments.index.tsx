@@ -1,8 +1,8 @@
+import { AccountSelector } from "@/components/mail/AccountSelector";
 import { CATEGORIES, CATEGORY_CONFIG } from "@/components/mail/category-colors";
 import { CategoryFilter } from "@/components/mail/CategoryFilter";
 import {
 	ATTACHMENTS_SHORTCUTS,
-	Kbd,
 	KeyboardShortcutBar,
 } from "@/components/mail/KeyboardShortcutBar";
 import {
@@ -11,6 +11,7 @@ import {
 	DialogContent,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { Kbd } from "@/components/ui/kbd";
 import { env } from "@/env";
 import { useAttachmentsKeyboard } from "@/hooks/use-attachments-keyboard";
 import { useImageThumbnail } from "@/hooks/use-image-thumbnail";
@@ -473,6 +474,10 @@ function AttachmentsPage() {
 								<span className="font-body text-[12px]">Inbox</span>
 								<Kbd>I</Kbd>
 							</Link>
+
+							<div className="w-px h-3.5 bg-border/40" />
+
+							<AccountSelector />
 						</div>
 					</div>
 
@@ -502,21 +507,31 @@ function AttachmentsPage() {
 							</div>
 						)}
 						{searchValue && (
-							<button
-								type="button"
-								onClick={() => {
-									setSearchValue("");
-									navigate({
-										search: (prev) => ({
-											...prev,
-											q: undefined,
-										}),
-									});
-								}}
-								className="absolute right-3 top-1/2 -translate-y-1/2 text-grey-3 hover:text-foreground transition-colors cursor-pointer"
-							>
-								<X className="size-3.5" />
-							</button>
+							<div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+								{searchValue.trim() !== (q ?? "") && (
+									<div className="flex items-center gap-1.5 animate-in slide-in-from-right-2 fade-in duration-200 pointer-events-none">
+										<Kbd>{"\u23CE"}</Kbd>
+										<span className="font-body text-[11px] text-grey-3">
+											to search
+										</span>
+									</div>
+								)}
+								<button
+									type="button"
+									onClick={() => {
+										setSearchValue("");
+										navigate({
+											search: (prev) => ({
+												...prev,
+												q: undefined,
+											}),
+										});
+									}}
+									className="text-grey-3 hover:text-foreground transition-colors cursor-pointer"
+								>
+									<X className="size-3.5" />
+								</button>
+							</div>
 						)}
 					</form>
 

@@ -1,4 +1,5 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
+import { AccountSelector } from "@/components/mail/AccountSelector";
 import { AttachmentList } from "@/components/mail/AttachmentList";
 import { CATEGORY_CONFIG } from "@/components/mail/category-colors";
 import { ComposeSheet } from "@/components/mail/ComposeSheet";
@@ -226,6 +227,7 @@ function EmailDetail() {
 				initial={{ opacity: 0, x: -8 }}
 				animate={{ opacity: 1, x: 0 }}
 				transition={{ duration: 0.3, ease: MOTION_CONSTANTS.EASE }}
+				className="flex items-center justify-between"
 			>
 				<Link
 					to="/module/mail/inbox"
@@ -235,6 +237,8 @@ function EmailDetail() {
 					<ArrowLeft className="size-3" />
 					Back to inbox
 				</Link>
+
+				<AccountSelector />
 			</motion.div>
 
 			<motion.header
