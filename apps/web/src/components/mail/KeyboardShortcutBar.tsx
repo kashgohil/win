@@ -1,7 +1,10 @@
 import { AnimatePresence, motion } from "motion/react";
 import { Fragment } from "react";
 
+import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
+
+export { Kbd };
 
 type Shortcut = {
 	keys: string[];
@@ -10,27 +13,25 @@ type Shortcut = {
 
 type ShortcutGroup = Shortcut[];
 
-export function Kbd({ children }: { children: string }) {
-	return (
-		<kbd className="inline-flex items-center justify-center font-mono text-[10px] bg-secondary/40 px-1.5 py-0.5 rounded">
-			{children}
-		</kbd>
-	);
-}
-
 function ShortcutItem({ shortcut }: { shortcut: Shortcut }) {
 	return (
-		<span className="inline-flex items-center gap-1">
+		<span className="inline-flex items-center gap-1.5">
 			{shortcut.keys.map((key) => (
 				<Kbd key={key}>{key}</Kbd>
 			))}
-			<span className="text-foreground/40">{shortcut.label}</span>
+			<span className="text-muted-foreground/70 font-body text-[10px] tracking-wide">
+				{shortcut.label}
+			</span>
 		</span>
 	);
 }
 
 function GroupSeparator() {
-	return <span className="w-px h-3 bg-foreground/10 mx-0.5" />;
+	return (
+		<span className="text-foreground/15 text-[8px] select-none" aria-hidden>
+			&#x2022;
+		</span>
+	);
 }
 
 export const INBOX_SHORTCUTS: ShortcutGroup[] = [
@@ -81,17 +82,17 @@ export function KeyboardShortcutBar({
 		<AnimatePresence>
 			{visible && (
 				<motion.div
-					initial={{ opacity: 0, y: 8 }}
-					animate={{ opacity: 1, y: 0 }}
-					exit={{ opacity: 0, y: 8 }}
-					transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+					initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
+					animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+					exit={{ opacity: 0, y: 4, filter: "blur(4px)" }}
+					transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
 					className={cn(
 						"fixed bottom-4 left-1/2 -translate-x-1/2 md:left-[calc((--rail-width)+50%)] md:-translate-x-1/2 z-40",
-						"flex items-center gap-3 px-4 py-2",
-						"font-body text-[10px] tracking-wide",
-						"rounded-full bg-background/90 backdrop-blur-md shadow-md ring-1 ring-border/50",
+						"flex items-center gap-3 px-3.5 py-1.5",
+						"rounded-lg border border-border/30 bg-background/80 backdrop-blur-lg",
+						"shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08)]",
 						"pointer-events-none select-none",
-						"opacity-50 hover:opacity-100 transition-opacity duration-300",
+						"opacity-40 hover:opacity-100 transition-opacity duration-500 ease-out",
 						"[&:hover]:pointer-events-auto",
 					)}
 				>
