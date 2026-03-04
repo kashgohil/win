@@ -13,6 +13,7 @@ type UseInboxKeyboardOptions = {
 	onArchiveEmail: (index: number) => void;
 	onStarEmail: (index: number) => void;
 	onToggleReadEmail: (index: number) => void;
+	onSelectEmail: (index: number) => void;
 	onActivateHeader: (index: number) => void;
 	onOpenSearch?: () => void;
 	onNavigateAttachments?: () => void;
@@ -45,6 +46,7 @@ export function useInboxKeyboard({
 	onArchiveEmail,
 	onStarEmail,
 	onToggleReadEmail,
+	onSelectEmail,
 	onActivateHeader,
 	onOpenSearch,
 	onNavigateAttachments,
@@ -276,6 +278,11 @@ export function useInboxKeyboard({
 					onToggleReadEmail(focusedEmailIndex);
 					return;
 				}
+				if (key === "x") {
+					e.preventDefault();
+					onSelectEmail(focusedEmailIndex);
+					return;
+				}
 			}
 
 			// --- Deactivate ---
@@ -304,6 +311,7 @@ export function useInboxKeyboard({
 		onArchiveEmail,
 		onStarEmail,
 		onToggleReadEmail,
+		onSelectEmail,
 		onActivateHeader,
 		onOpenSearch,
 		onNavigateAttachments,

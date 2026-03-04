@@ -37,6 +37,26 @@ export const mailKeys = {
 		accountIds?: string[];
 	}) => [...mailKeys.all, "emails", params] as const,
 	email: (id: string) => [...mailKeys.all, "email", id] as const,
+	threads: (params?: {
+		category?: string;
+		limit?: number;
+		unreadOnly?: boolean;
+		readOnly?: boolean;
+		q?: string;
+		from?: string;
+		subject?: string;
+		to?: string;
+		cc?: string;
+		label?: string;
+		starred?: boolean;
+		attachment?: boolean;
+		filename?: string;
+		filetype?: string;
+		after?: string;
+		before?: string;
+		accountIds?: string[];
+	}) => [...mailKeys.all, "threads", params] as const,
+	thread: (id: string) => [...mailKeys.all, "thread", id] as const,
 	accounts: () => [...mailKeys.all, "accounts"] as const,
 	senders: (q?: string) => [...mailKeys.all, "senders", q] as const,
 	attachments: (params?: {
@@ -204,6 +224,106 @@ export function useMailEmailDetail(id: string) {
 			return data;
 		},
 		enabled: !!id,
+	});
+}
+
+export function useMailThreadsInfinite(params?: {
+	category?: string;
+	limit?: number;
+	unreadOnly?: boolean;
+	readOnly?: boolean;
+	q?: string;
+	from?: string;
+	subject?: string;
+	to?: string;
+	cc?: string;
+	label?: string;
+	starred?: boolean;
+	attachment?: boolean;
+	filename?: string;
+	filetype?: string;
+	after?: string;
+	before?: string;
+	accountIds?: string[];
+}) {
+	const pageSize = params?.limit ?? 30;
+
+	return useInfiniteQuery({
+		queryKey: mailKeys.threads({
+			category: params?.category,
+			unreadOnly: params?.unreadOnly,
+			readOnly: params?.readOnly,
+			q: params?.q,
+			from: params?.from,
+			subject: params?.subject,
+			to: params?.to,
+			cc: params?.cc,
+			label: params?.label,
+			starred: params?.starred,
+			attachment: params?.attachment,
+			filename: params?.filename,
+			filetype: params?.filetype,
+			after: params?.after,
+			before: params?.before,
+			accountIds: params?.accountIds,
+		}),
+		queryFn: async ({ pageParam }) => {
+			const { data, error } = await api.mail.threads.get({
+				query: {
+					category: params?.category,
+					limit: pageSize.toString(),
+					cursor: pageParam,
+					unreadOnly: params?.unreadOnly ? "true" : undefined,
+					readOnly: params?.readOnly ? "true" : undefined,
+					q: params?.q,
+					from: params?.from,
+					subject: params?.subject,
+					to: params?.to,
+					cc: params?.cc,
+					label: params?.label,
+					starred: params?.starred ? "true" : undefined,
+					attachment: params?.attachment ? "true" : undefined,
+					filename: params?.filename,
+					filetype: params?.filetype,
+					after: params?.after,
+					before: params?.before,
+					accountIds: params?.accountIds?.join(","),
+				},
+			});
+			if (error) throw new Error("Failed to load threads");
+			return data;
+		},
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
+	});
+}
+
+export function useMailThreadDetail(threadId: string) {
+	return useQuery({
+		queryKey: mailKeys.thread(threadId),
+		queryFn: async () => {
+			const { data, error } = await api.mail.threads({ threadId }).get();
+			if (error) throw new Error("Failed to load thread");
+			return data;
+		},
+		enabled: !!threadId,
+	});
+}
+
+export function useMergeThreads() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (threadIds: string[]) => {
+			const { data, error } = await api.mail.threads.merge.post({
+				threadIds,
+			});
+			if (error) throw new Error("Failed to merge threads");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: mailKeys.all });
+		},
 	});
 }
 

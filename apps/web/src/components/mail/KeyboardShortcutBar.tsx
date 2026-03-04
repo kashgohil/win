@@ -37,6 +37,7 @@ function GroupSeparator() {
 export const INBOX_SHORTCUTS: ShortcutGroup[] = [
 	[{ keys: ["\u23CE"], label: "select" }],
 	[
+		{ keys: ["X"], label: "select" },
 		{ keys: ["E"], label: "archive" },
 		{ keys: ["S"], label: "star" },
 		{ keys: ["R"], label: "read" },
