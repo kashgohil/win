@@ -109,3 +109,32 @@ export type SerializedAccount = {
 	active: boolean;
 	createdAt: string;
 };
+
+/* ── Thread types ── */
+
+export type SerializedThread = {
+	threadId: string;
+	subject: string | null;
+	snippet: string | null;
+	latestReceivedAt: string;
+	messageCount: number;
+	unreadCount: number;
+	hasAttachments: boolean;
+	isStarred: boolean;
+	category: EmailCategory;
+	priorityScore: number;
+	aiSummary: string | null;
+	latestMessage: {
+		id: string;
+		fromAddress: string | null;
+		fromName: string | null;
+	};
+	participants: Array<{ address: string; name: string | null }>;
+};
+
+export type SerializedThreadDetail = {
+	threadId: string;
+	subject: string | null;
+	messages: SerializedEmailDetail[];
+	isMerged: boolean;
+};

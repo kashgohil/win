@@ -11,6 +11,8 @@ export type {
 	SerializedAttachmentWithContext,
 	SerializedEmail,
 	SerializedEmailDetail,
+	SerializedThread,
+	SerializedThreadDetail,
 	SyncStatus,
 	TriageAction,
 	TriageActionButton,
