@@ -1,6 +1,8 @@
-import { FileTypeFilter } from "@/components/mail/FileTypeFilter";
+import { CATEGORIES, CATEGORY_CONFIG } from "@/components/mail/category-colors";
+import { CategoryFilter } from "@/components/mail/CategoryFilter";
 import {
 	ATTACHMENTS_SHORTCUTS,
+	Kbd,
 	KeyboardShortcutBar,
 } from "@/components/mail/KeyboardShortcutBar";
 import {
@@ -10,6 +12,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { env } from "@/env";
+import { useAttachmentsKeyboard } from "@/hooks/use-attachments-keyboard";
 import { useImageThumbnail } from "@/hooks/use-image-thumbnail";
 import { useMailAttachmentsInfinite } from "@/hooks/use-mail";
 import {
@@ -22,14 +25,18 @@ import {
 } from "@/lib/file-utils";
 import { cn } from "@/lib/utils";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import type { SerializedAttachmentWithContext } from "@wingmnn/types";
-import { ArrowLeft, Download, Paperclip, Search, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+	EmailCategory,
+	SerializedAttachmentWithContext,
+} from "@wingmnn/types";
+import { ArrowLeft, Download, Inbox, Paperclip, Search, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
 const searchSchema = z.object({
 	q: z.string().optional(),
 	filetype: z.string().optional(),
+	category: z.string().optional(),
 	from: z.string().optional(),
 	after: z.string().optional(),
 	before: z.string().optional(),
@@ -48,10 +55,14 @@ function AttachmentGridCard({
 	attachment,
 	onPreview,
 	onDownload,
+	isFocused,
+	focusRef,
 }: {
 	attachment: SerializedAttachmentWithContext;
 	onPreview: (att: SerializedAttachmentWithContext) => void;
 	onDownload: (att: SerializedAttachmentWithContext) => void;
+	isFocused?: boolean;
+	focusRef?: (el: HTMLElement | null) => void;
 }) {
 	const category = classifyFile(attachment.mimeType, attachment.filename);
 	const config = FILE_CATEGORY_CONFIG[category];
@@ -69,11 +80,16 @@ function AttachmentGridCard({
 
 	return (
 		<button
+			ref={focusRef}
 			type="button"
 			onClick={() =>
 				isPreviewable ? onPreview(attachment) : onDownload(attachment)
 			}
-			className="group relative flex flex-col rounded-lg border border-border/40 bg-secondary/5 overflow-hidden transition-all duration-200 hover:border-border/70 hover:bg-secondary/15 cursor-pointer text-left w-full"
+			className={cn(
+				"group relative flex flex-col rounded-lg border border-border/40 bg-secondary/5 overflow-hidden transition-all duration-200 hover:border-border/70 hover:bg-secondary/15 cursor-pointer text-left w-full",
+				isFocused &&
+					"ring-2 ring-foreground/30 border-border/70 bg-secondary/15",
+			)}
 			title={attachment.filename}
 		>
 			{/* Thumbnail / Icon area */}
@@ -156,10 +172,14 @@ function SkeletonCard() {
 	);
 }
 
+/* ─── Header items for keyboard nav ─── */
+
+const HEADER_ITEMS = ["back", "inbox"] as const;
+
 /* ─── Main page ─── */
 
 function AttachmentsPage() {
-	const { q, filetype, from, after, before } = Route.useSearch();
+	const { q, filetype, category, from, after, before } = Route.useSearch();
 	const navigate = Route.useNavigate();
 	const appNavigate = useNavigate();
 	const sentinelRef = useRef<HTMLDivElement>(null);
@@ -175,10 +195,13 @@ function AttachmentsPage() {
 	} | null>(null);
 	const previewUrlRef = useRef<string | null>(null);
 
+	const activeCategory = category ?? null;
+
 	const { data, isPending, hasNextPage, isFetchingNextPage, fetchNextPage } =
 		useMailAttachmentsInfinite({
 			q,
 			filetype,
+			category: activeCategory ?? undefined,
 			from,
 			after,
 			before,
@@ -201,52 +224,38 @@ function AttachmentsPage() {
 		return () => observer.disconnect();
 	}, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-	// Keyboard shortcuts
-	useEffect(() => {
-		const handler = (e: KeyboardEvent) => {
-			const target = e.target as HTMLElement;
-			if (
-				target.tagName === "INPUT" ||
-				target.tagName === "TEXTAREA" ||
-				target.isContentEditable ||
-				e.metaKey ||
-				e.ctrlKey ||
-				e.altKey
-			) {
-				return;
-			}
-
-			switch (e.key) {
-				case "[":
-					e.preventDefault();
-					appNavigate({ to: "/module/mail" });
-					break;
-				case "/":
-				case "k":
-					e.preventDefault();
-					inputRef.current?.focus();
-					break;
-				case "i":
-					e.preventDefault();
-					appNavigate({
-						to: "/module/mail/inbox",
-						search: {
-							view: undefined,
-							starred: undefined,
-							attachment: undefined,
-						},
-					});
-					break;
-			}
-		};
-
-		document.addEventListener("keydown", handler);
-		return () => document.removeEventListener("keydown", handler);
-	}, [appNavigate]);
-
 	const attachments =
 		data?.pages.flatMap((page) => page?.attachments ?? []) ?? [];
 	const total = data?.pages[0]?.total;
+
+	// Group attachments by email category (only when showing "All")
+	const groupedAttachments = useMemo(() => {
+		if (activeCategory || attachments.length === 0) return null;
+		const groups = new Map<EmailCategory, SerializedAttachmentWithContext[]>();
+		for (const att of attachments) {
+			const list = groups.get(att.category);
+			if (list) list.push(att);
+			else groups.set(att.category, [att]);
+		}
+		const order: EmailCategory[] = [
+			"urgent",
+			"actionable",
+			"informational",
+			"receipt",
+			"confirmation",
+			"newsletter",
+			"promotional",
+			"spam",
+			"uncategorized",
+		];
+		return order
+			.filter((cat) => groups.has(cat))
+			.map((cat) => ({
+				category: cat,
+				config: CATEGORY_CONFIG[cat],
+				items: groups.get(cat)!,
+			}));
+	}, [activeCategory, attachments]);
 
 	const downloadUrl = useCallback(
 		(id: string) => `${env.VITE_API_URL}/mail/attachments/${id}/download`,
@@ -324,48 +333,147 @@ function AttachmentsPage() {
 		[searchValue, navigate],
 	);
 
-	const handleFiletypeChange = useCallback(
-		(ft: string | null) => {
+	const handleCategoryChange = useCallback(
+		(cat: string | null) => {
 			navigate({
 				search: (prev) => ({
 					...prev,
-					filetype: ft ?? undefined,
+					category: cat ?? undefined,
 				}),
 			});
 		},
 		[navigate],
 	);
 
+	// ── Keyboard navigation ──
+
+	const headerCount = HEADER_ITEMS.length;
+	const filterCount = CATEGORIES.length + 1; // +1 for "All"
+
+	const handleNavigateInbox = useCallback(() => {
+		appNavigate({
+			to: "/module/mail/inbox",
+			search: {
+				view: undefined,
+				starred: undefined,
+				attachment: undefined,
+			},
+		});
+	}, [appNavigate]);
+
+	const handleActivateHeader = useCallback(
+		(index: number) => {
+			const item = HEADER_ITEMS[index];
+			if (item === "back") {
+				appNavigate({ to: "/module/mail" });
+			} else if (item === "inbox") {
+				handleNavigateInbox();
+			}
+		},
+		[appNavigate, handleNavigateInbox],
+	);
+
+	const handleActivateSearch = useCallback(() => {
+		inputRef.current?.focus();
+	}, []);
+
+	const handleKeyboardSelectFilter = useCallback(
+		(index: number) => {
+			if (index === 0) {
+				handleCategoryChange(null);
+			} else {
+				const cat = CATEGORIES[index - 1];
+				if (cat) handleCategoryChange(cat.value);
+			}
+		},
+		[handleCategoryChange],
+	);
+
+	const handleKeyboardActivateAttachment = useCallback(
+		(index: number) => {
+			const att = attachments[index];
+			if (!att) return;
+			const isPreviewable = canPreview(att.mimeType);
+			if (isPreviewable) {
+				handlePreview(att);
+			} else {
+				handleDownload(att);
+			}
+		},
+		[attachments, handlePreview, handleDownload],
+	);
+
+	const handleOpenSearch = useCallback(() => {
+		inputRef.current?.focus();
+	}, []);
+
+	const handleGoBack = useCallback(() => {
+		appNavigate({ to: "/module/mail" });
+	}, [appNavigate]);
+
+	const keyboard = useAttachmentsKeyboard({
+		attachmentCount: attachments.length,
+		filterCount,
+		headerCount,
+		disabled: dialogOpen,
+		onSelectFilter: handleKeyboardSelectFilter,
+		onActivateAttachment: handleKeyboardActivateAttachment,
+		onActivateHeader: handleActivateHeader,
+		onActivateSearch: handleActivateSearch,
+		onOpenSearch: handleOpenSearch,
+		onNavigateInbox: handleNavigateInbox,
+		onGoBack: handleGoBack,
+	});
+
 	return (
 		<>
 			<div className="max-w-5xl mx-auto px-(--page-px) py-8 pb-16 space-y-6">
 				{/* Header */}
-				<div className="space-y-4">
-					<Link
-						to="/module/mail"
-						className="inline-flex items-center gap-1.5 text-grey-2 hover:text-foreground text-[12px] font-body transition-colors"
-					>
-						<ArrowLeft className="size-3" />
-						Mail
-					</Link>
-
-					<div className="flex items-center justify-between gap-4">
-						<div className="flex items-center gap-3">
-							<Paperclip className="size-4 text-grey-2" />
-							<h1 className="font-body text-[18px] font-medium text-foreground">
-								Attachments
-							</h1>
-							{total !== undefined && (
-								<span className="font-mono text-[11px] text-grey-3 tabular-nums">
-									{total.toLocaleString()} file
-									{total !== 1 ? "s" : ""}
-								</span>
+				<div ref={keyboard.headerRef} className="space-y-4">
+					<div className="flex items-center justify-between">
+						<Link
+							to="/module/mail"
+							className={cn(
+								"group inline-flex items-center gap-1.5 font-body text-[13px] text-grey-3 hover:text-foreground transition-all duration-150 rounded-lg px-2 py-1 -mx-2",
+								keyboard.isActive &&
+									keyboard.activeSection === "header" &&
+									keyboard.focusedHeaderIndex === 0 &&
+									"ring-2 ring-foreground/30 text-foreground",
 							)}
+						>
+							<ArrowLeft className="size-3.5 group-hover:-translate-x-0.5 transition-transform duration-150" />
+							Mail
+						</Link>
+
+						<div className="flex items-center gap-3">
+							<Link
+								to="/module/mail/inbox"
+								search={{
+									view: undefined,
+									starred: undefined,
+									attachment: undefined,
+								}}
+								className={cn(
+									"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
+									keyboard.isActive &&
+										keyboard.activeSection === "header" &&
+										keyboard.focusedHeaderIndex === 1 &&
+										"ring-2 ring-foreground/30 text-foreground",
+								)}
+							>
+								<Inbox className="size-3" />
+								<span className="font-body text-[12px]">Inbox</span>
+								<Kbd>I</Kbd>
+							</Link>
 						</div>
 					</div>
 
 					{/* Search input */}
-					<form onSubmit={handleSearchSubmit} className="relative">
+					<form
+						ref={keyboard.searchRef}
+						onSubmit={handleSearchSubmit}
+						className="relative"
+					>
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-grey-3" />
 						<input
 							ref={inputRef}
@@ -373,8 +481,18 @@ function AttachmentsPage() {
 							value={searchValue}
 							onChange={(e) => setSearchValue(e.target.value)}
 							placeholder="Search by filename..."
-							className="w-full pl-9 pr-3 py-2 rounded-lg border border-border/40 bg-secondary/5 font-body text-[13px] text-foreground placeholder:text-grey-3 focus:outline-none focus:border-border/70 focus:bg-secondary/10 transition-colors"
+							className={cn(
+								"w-full pl-9 pr-14 py-2 rounded-lg border border-border/40 bg-secondary/5 font-body text-[13px] text-foreground placeholder:text-grey-3 focus:outline-none focus:border-border/70 focus:bg-secondary/10 transition-colors",
+								keyboard.isActive &&
+									keyboard.activeSection === "search" &&
+									"ring-2 ring-foreground/30",
+							)}
 						/>
+						{!searchValue && (
+							<div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+								<Kbd>/</Kbd>
+							</div>
+						)}
 						{searchValue && (
 							<button
 								type="button"
@@ -394,11 +512,19 @@ function AttachmentsPage() {
 						)}
 					</form>
 
-					{/* Filter chips */}
-					<FileTypeFilter
-						value={filetype ?? null}
-						onChange={handleFiletypeChange}
-					/>
+					{/* Category filter chips */}
+					<div ref={keyboard.filtersRef}>
+						<CategoryFilter
+							value={activeCategory}
+							onChange={handleCategoryChange}
+							total={total}
+							keyboardFocusIndex={
+								keyboard.isActive && keyboard.activeSection === "filters"
+									? keyboard.focusedFilterIndex
+									: undefined
+							}
+						/>
+					</div>
 				</div>
 
 				{/* Content */}
@@ -412,24 +538,82 @@ function AttachmentsPage() {
 					<div className="flex flex-col items-center justify-center py-24 text-center">
 						<Paperclip className="size-8 text-grey-3/40 mb-3" />
 						<p className="font-body text-[14px] text-grey-2">
-							{q || filetype
+							{q || filetype || category
 								? "No attachments match your filters"
 								: "No attachments found"}
 						</p>
 						<p className="font-body text-[12px] text-grey-3 mt-1">
-							{q || filetype
+							{q || filetype || category
 								? "Try adjusting your search or filter"
 								: "Attachments from your emails will appear here"}
 						</p>
 					</div>
+				) : groupedAttachments ? (
+					<div className="space-y-8">
+						{groupedAttachments.map((group) => {
+							// Calculate the global index offset for keyboard nav
+							let offset = 0;
+							for (const g of groupedAttachments) {
+								if (g.category === group.category) break;
+								offset += g.items.length;
+							}
+							return (
+								<section key={group.category}>
+									<div className="flex items-center gap-2 mb-3">
+										<span
+											className={cn(
+												"size-2 rounded-full shrink-0",
+												group.config.dot,
+											)}
+										/>
+										<h2
+											className={cn(
+												"font-body text-[13px] font-medium",
+												group.config.text,
+											)}
+										>
+											{group.config.label}
+										</h2>
+										<span className="font-mono text-[10px] text-grey-3 tabular-nums">
+											{group.items.length}
+										</span>
+									</div>
+									<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+										{group.items.map((att, idx) => (
+											<AttachmentGridCard
+												key={att.id}
+												attachment={att}
+												onPreview={handlePreview}
+												onDownload={handleDownload}
+												isFocused={
+													keyboard.isActive &&
+													keyboard.activeSection === "attachments" &&
+													keyboard.focusedAttachmentIndex === offset + idx
+												}
+												focusRef={(el) =>
+													keyboard.attachmentCardRef(offset + idx, el)
+												}
+											/>
+										))}
+									</div>
+								</section>
+							);
+						})}
+					</div>
 				) : (
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-						{attachments.map((att) => (
+						{attachments.map((att, idx) => (
 							<AttachmentGridCard
 								key={att.id}
 								attachment={att}
 								onPreview={handlePreview}
 								onDownload={handleDownload}
+								isFocused={
+									keyboard.isActive &&
+									keyboard.activeSection === "attachments" &&
+									keyboard.focusedAttachmentIndex === idx
+								}
+								focusRef={(el) => keyboard.attachmentCardRef(idx, el)}
 							/>
 						))}
 					</div>
