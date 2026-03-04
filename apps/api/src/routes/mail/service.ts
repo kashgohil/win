@@ -1,5 +1,6 @@
 import {
 	and,
+	asc,
 	count,
 	db,
 	desc,
@@ -139,6 +140,58 @@ type DeleteSenderRuleResult =
 type GetSenderRulesResult =
 	| { ok: true; data: SerializedSenderRule[] }
 	| { ok: false; error: string; status: 500 };
+
+type SerializedThread = {
+	threadId: string;
+	subject: string | null;
+	snippet: string | null;
+	latestReceivedAt: string;
+	messageCount: number;
+	unreadCount: number;
+	hasAttachments: boolean;
+	isStarred: boolean;
+	category: (typeof emailCategoryEnum.enumValues)[number];
+	priorityScore: number;
+	aiSummary: string | null;
+	latestMessage: {
+		id: string;
+		fromAddress: string | null;
+		fromName: string | null;
+	};
+	participants: Array<{ address: string; name: string | null }>;
+};
+
+type ThreadListResult =
+	| {
+			ok: true;
+			data: {
+				threads: SerializedThread[];
+				total: number;
+				hasMore: boolean;
+				nextCursor?: string;
+			};
+	  }
+	| { ok: false; error: string; status: 400 | 500 };
+
+type ThreadDetailResult =
+	| {
+			ok: true;
+			data: {
+				threadId: string;
+				subject: string | null;
+				messages: SerializedEmailDetail[];
+				isMerged: boolean;
+			};
+	  }
+	| { ok: false; error: string; status: 404 | 500 };
+
+type MergeResult =
+	| { ok: true; threadId: string }
+	| { ok: false; error: string; status: 400 | 500 };
+
+type UnmergeResult =
+	| { ok: true; message: string }
+	| { ok: false; error: string; status: 404 | 500 };
 
 type SenderEntry = {
 	name: string | null;
@@ -305,6 +358,132 @@ function serializeAccount(
 		createdAt: a.createdAt.toISOString(),
 	};
 }
+
+/* ── Filter builder (shared by getEmails + getThreads) ── */
+
+type FilterOptions = {
+	category?: string;
+	unreadOnly?: boolean;
+	readOnly?: boolean;
+	q?: string;
+	from?: string;
+	subject?: string;
+	to?: string;
+	cc?: string;
+	label?: string;
+	starred?: boolean;
+	attachment?: boolean;
+	filename?: string;
+	filetype?: string;
+	after?: string;
+	before?: string;
+	accountIds?: string[];
+};
+
+function buildFilterConditions(
+	userId: string,
+	options: FilterOptions,
+):
+	| { ok: true; conditions: ReturnType<typeof and>[] }
+	| { ok: false; error: string; status: 400 } {
+	const conditions: any[] = [eq(emails.userId, userId)];
+	if (options.accountIds && options.accountIds.length > 0) {
+		conditions.push(inArray(emails.emailAccountId, options.accountIds));
+	}
+	if (options.category) {
+		const validCategories = emailCategoryEnum.enumValues as readonly string[];
+		if (!validCategories.includes(options.category)) {
+			return {
+				ok: false,
+				error: `Invalid category: ${options.category}`,
+				status: 400,
+			};
+		}
+		conditions.push(
+			eq(
+				emails.category,
+				options.category as (typeof emails.category.enumValues)[number],
+			),
+		);
+	}
+	if (options.unreadOnly) {
+		conditions.push(eq(emails.isRead, false));
+	}
+	if (options.readOnly) {
+		conditions.push(eq(emails.isRead, true));
+	}
+	if (options.q) {
+		const pattern = `%${options.q}%`;
+		conditions.push(
+			or(
+				ilike(emails.subject, pattern),
+				ilike(emails.snippet, pattern),
+				ilike(emails.fromName, pattern),
+				ilike(emails.fromAddress, pattern),
+				ilike(emails.bodyPlain, pattern),
+			)!,
+		);
+	}
+	if (options.subject) {
+		conditions.push(ilike(emails.subject, `%${options.subject}%`));
+	}
+	if (options.to) {
+		conditions.push(
+			sql`${emails.toAddresses}::text[] @> ARRAY[${options.to}]::text[]`,
+		);
+	}
+	if (options.cc) {
+		conditions.push(
+			sql`${emails.ccAddresses}::text[] @> ARRAY[${options.cc}]::text[]`,
+		);
+	}
+	if (options.label) {
+		conditions.push(
+			sql`${emails.labels}::text[] @> ARRAY[${options.label}]::text[]`,
+		);
+	}
+	if (options.from) {
+		const fromPattern = `%${options.from}%`;
+		conditions.push(
+			or(
+				ilike(emails.fromAddress, fromPattern),
+				ilike(emails.fromName, fromPattern),
+			)!,
+		);
+	}
+	if (options.starred) {
+		conditions.push(eq(emails.isStarred, true));
+	}
+	if (options.attachment) {
+		conditions.push(eq(emails.hasAttachments, true));
+	}
+	if (options.filename) {
+		conditions.push(
+			sql`EXISTS (SELECT 1 FROM email_attachments WHERE email_attachments.email_id = ${emails.id} AND email_attachments.filename ILIKE ${"%" + options.filename + "%"})`,
+		);
+	}
+	if (options.filetype) {
+		const ft = options.filetype;
+		conditions.push(
+			sql`EXISTS (SELECT 1 FROM email_attachments WHERE email_attachments.email_id = ${emails.id} AND (email_attachments.mime_type ILIKE ${"%" + ft + "%"} OR email_attachments.filename ILIKE ${"%" + "." + ft}))`,
+		);
+	}
+	if (options.after) {
+		conditions.push(gte(emails.receivedAt, new Date(options.after)));
+	}
+	if (options.before) {
+		conditions.push(lte(emails.receivedAt, new Date(options.before)));
+	}
+	return { ok: true, conditions };
+}
+
+/* ── Thread grouping key expression ── */
+
+const threadKeyExpr = sql<string>`COALESCE(
+	${emails.threadGroupId}::text,
+	${emails.emailAccountId}::text || ':' || ${emails.providerThreadId},
+	${emails.id}::text
+)`;
 
 /* ── Service ── */
 
@@ -667,119 +846,14 @@ class MailService {
 
 	async getEmails(
 		userId: string,
-		options: {
-			limit?: number;
-			cursor?: string;
-			category?: string;
-			unreadOnly?: boolean;
-			readOnly?: boolean;
-			q?: string;
-			from?: string;
-			subject?: string;
-			to?: string;
-			cc?: string;
-			label?: string;
-			starred?: boolean;
-			attachment?: boolean;
-			filename?: string;
-			filetype?: string;
-			after?: string;
-			before?: string;
-			accountIds?: string[];
-		},
+		options: FilterOptions & { limit?: number; cursor?: string },
 	): Promise<EmailListResult> {
 		const limit = options.limit ?? 50;
 
 		try {
-			const conditions = [eq(emails.userId, userId)];
-			if (options.accountIds && options.accountIds.length > 0) {
-				conditions.push(inArray(emails.emailAccountId, options.accountIds));
-			}
-			if (options.category) {
-				const validCategories =
-					emailCategoryEnum.enumValues as readonly string[];
-				if (!validCategories.includes(options.category)) {
-					return {
-						ok: false,
-						error: `Invalid category: ${options.category}`,
-						status: 400,
-					};
-				}
-				conditions.push(
-					eq(
-						emails.category,
-						options.category as (typeof emails.category.enumValues)[number],
-					),
-				);
-			}
-			if (options.unreadOnly) {
-				conditions.push(eq(emails.isRead, false));
-			}
-			if (options.readOnly) {
-				conditions.push(eq(emails.isRead, true));
-			}
-			if (options.q) {
-				const pattern = `%${options.q}%`;
-				conditions.push(
-					or(
-						ilike(emails.subject, pattern),
-						ilike(emails.snippet, pattern),
-						ilike(emails.fromName, pattern),
-						ilike(emails.fromAddress, pattern),
-						ilike(emails.bodyPlain, pattern),
-					)!,
-				);
-			}
-			if (options.subject) {
-				conditions.push(ilike(emails.subject, `%${options.subject}%`));
-			}
-			if (options.to) {
-				conditions.push(
-					sql`${emails.toAddresses}::text[] @> ARRAY[${options.to}]::text[]`,
-				);
-			}
-			if (options.cc) {
-				conditions.push(
-					sql`${emails.ccAddresses}::text[] @> ARRAY[${options.cc}]::text[]`,
-				);
-			}
-			if (options.label) {
-				conditions.push(
-					sql`${emails.labels}::text[] @> ARRAY[${options.label}]::text[]`,
-				);
-			}
-			if (options.from) {
-				const fromPattern = `%${options.from}%`;
-				conditions.push(
-					or(
-						ilike(emails.fromAddress, fromPattern),
-						ilike(emails.fromName, fromPattern),
-					)!,
-				);
-			}
-			if (options.starred) {
-				conditions.push(eq(emails.isStarred, true));
-			}
-			if (options.attachment) {
-				conditions.push(eq(emails.hasAttachments, true));
-			}
-			if (options.filename) {
-				conditions.push(
-					sql`EXISTS (SELECT 1 FROM email_attachments WHERE email_attachments.email_id = ${emails.id} AND email_attachments.filename ILIKE ${"%" + options.filename + "%"})`,
-				);
-			}
-			if (options.filetype) {
-				const ft = options.filetype;
-				conditions.push(
-					sql`EXISTS (SELECT 1 FROM email_attachments WHERE email_attachments.email_id = ${emails.id} AND (email_attachments.mime_type ILIKE ${"%" + ft + "%"} OR email_attachments.filename ILIKE ${"%" + "." + ft}))`,
-				);
-			}
-			if (options.after) {
-				conditions.push(gte(emails.receivedAt, new Date(options.after)));
-			}
-			if (options.before) {
-				conditions.push(lte(emails.receivedAt, new Date(options.before)));
-			}
+			const filterResult = buildFilterConditions(userId, options);
+			if (!filterResult.ok) return filterResult;
+			const conditions = [...filterResult.conditions];
 
 			// Base conditions (without cursor) — used for count query
 			const baseConditions = [...conditions];
@@ -1455,6 +1529,538 @@ class MailService {
 			return {
 				ok: false,
 				error: "Failed to load sender rules",
+				status: 500,
+			};
+		}
+	}
+
+	/* ── Thread methods ── */
+
+	async getThreads(
+		userId: string,
+		options: FilterOptions & { limit?: number; cursor?: string },
+	): Promise<ThreadListResult> {
+		const limit = options.limit ?? 30;
+
+		try {
+			const filterResult = buildFilterConditions(userId, options);
+			if (!filterResult.ok) return filterResult;
+			const conditions = filterResult.conditions;
+
+			const threadKey = threadKeyExpr;
+
+			// Build the aggregated thread query using raw SQL for GROUP BY
+			const baseQuery = db
+				.select({
+					threadId: threadKey.as("thread_id"),
+					latestReceivedAt: sql<Date>`MAX(${emails.receivedAt})`.as(
+						"latest_received_at",
+					),
+					messageCount: sql<number>`COUNT(*)::int`.as("message_count"),
+					unreadCount:
+						sql<number>`SUM(CASE WHEN NOT ${emails.isRead} THEN 1 ELSE 0 END)::int`.as(
+							"unread_count",
+						),
+					hasAttachments: sql<boolean>`BOOL_OR(${emails.hasAttachments})`.as(
+						"has_attachments",
+					),
+					isStarred: sql<boolean>`BOOL_OR(${emails.isStarred})`.as(
+						"is_starred",
+					),
+					maxPriority: sql<number>`MAX(${emails.priorityScore})`.as(
+						"max_priority",
+					),
+				})
+				.from(emails)
+				.where(and(...conditions))
+				.groupBy(threadKey);
+
+			// Wrap in a subquery for cursor pagination and ordering
+			const threadsSq = baseQuery.as("threads_sq");
+
+			// Count total threads (without cursor)
+			const totalPromise = db
+				.select({ value: sql<number>`COUNT(*)::int` })
+				.from(baseQuery.as("count_sq"))
+				.then((r) => r[0]?.value ?? 0);
+
+			// Apply cursor pagination
+			const paginationConditions: any[] = [];
+			if (options.cursor) {
+				try {
+					const decoded = JSON.parse(atob(options.cursor)) as {
+						receivedAt: string;
+						threadId: string;
+					};
+					const cursorDate = new Date(decoded.receivedAt);
+					paginationConditions.push(
+						or(
+							lt(threadsSq.latestReceivedAt, cursorDate),
+							and(
+								eq(threadsSq.latestReceivedAt, cursorDate),
+								lt(threadsSq.threadId, decoded.threadId),
+							),
+						)!,
+					);
+				} catch {
+					return { ok: false, error: "Invalid cursor", status: 400 };
+				}
+			}
+
+			const threadRows = await db
+				.select()
+				.from(threadsSq)
+				.where(
+					paginationConditions.length > 0
+						? and(...paginationConditions)
+						: undefined,
+				)
+				.orderBy(desc(threadsSq.latestReceivedAt), desc(threadsSq.threadId))
+				.limit(limit + 1);
+
+			const [totalResult] = await Promise.all([totalPromise]);
+
+			const hasMore = threadRows.length > limit;
+			const trimmed = hasMore ? threadRows.slice(0, limit) : threadRows;
+
+			let nextCursor: string | undefined;
+			if (hasMore && trimmed.length > 0) {
+				const last = trimmed[trimmed.length - 1]!;
+				nextCursor = btoa(
+					JSON.stringify({
+						receivedAt: last.latestReceivedAt.toISOString(),
+						threadId: last.threadId,
+					}),
+				);
+			}
+
+			if (trimmed.length === 0) {
+				return {
+					ok: true,
+					data: { threads: [], total: totalResult, hasMore: false },
+				};
+			}
+
+			// Batch-fetch latest message + participants for each thread
+			const threadIds = trimmed.map((t) => t.threadId);
+
+			// Get latest message per thread for subject/snippet/from/category/aiSummary
+			const latestMessages = await db
+				.select({
+					threadId: threadKey.as("thread_id"),
+					id: emails.id,
+					subject: emails.subject,
+					snippet: emails.snippet,
+					fromAddress: emails.fromAddress,
+					fromName: emails.fromName,
+					category: emails.category,
+					aiSummary: emails.aiSummary,
+					receivedAt: emails.receivedAt,
+				})
+				.from(emails)
+				.where(
+					and(
+						eq(emails.userId, userId),
+						sql`${threadKey} IN (${sql.join(
+							threadIds.map((id) => sql`${id}`),
+							sql`, `,
+						)})`,
+					),
+				)
+				.orderBy(desc(emails.receivedAt), desc(emails.id));
+
+			// Deduplicate to get latest per thread
+			const latestByThread = new Map<string, (typeof latestMessages)[number]>();
+			for (const msg of latestMessages) {
+				if (!latestByThread.has(msg.threadId)) {
+					latestByThread.set(msg.threadId, msg);
+				}
+			}
+
+			// Collect participants per thread from the same query
+			const participantsByThread = new Map<
+				string,
+				Array<{ address: string; name: string | null }>
+			>();
+			for (const msg of latestMessages) {
+				if (!participantsByThread.has(msg.threadId)) {
+					participantsByThread.set(msg.threadId, []);
+				}
+				if (msg.fromAddress) {
+					const list = participantsByThread.get(msg.threadId)!;
+					if (!list.some((p) => p.address === msg.fromAddress)) {
+						list.push({
+							address: msg.fromAddress,
+							name: msg.fromName,
+						});
+					}
+				}
+			}
+
+			const threads: SerializedThread[] = trimmed.map((t) => {
+				const latest = latestByThread.get(t.threadId);
+				return {
+					threadId: t.threadId,
+					subject: latest?.subject ?? null,
+					snippet: latest?.snippet ?? null,
+					latestReceivedAt: t.latestReceivedAt.toISOString(),
+					messageCount: t.messageCount,
+					unreadCount: t.unreadCount,
+					hasAttachments: t.hasAttachments,
+					isStarred: t.isStarred,
+					category: latest?.category ?? "uncategorized",
+					priorityScore: t.maxPriority,
+					aiSummary: latest?.aiSummary ?? null,
+					latestMessage: {
+						id: latest?.id ?? "",
+						fromAddress: latest?.fromAddress ?? null,
+						fromName: latest?.fromName ?? null,
+					},
+					participants: participantsByThread.get(t.threadId) ?? [],
+				};
+			});
+
+			return {
+				ok: true,
+				data: { threads, total: totalResult, hasMore, nextCursor },
+			};
+		} catch (err) {
+			console.error("[mail] getThreads failed:", err);
+			return { ok: false, error: "Failed to load threads", status: 500 };
+		}
+	}
+
+	async getThreadDetail(
+		userId: string,
+		threadId: string,
+	): Promise<ThreadDetailResult> {
+		try {
+			// Find all emails matching this thread grouping key
+			const threadEmails = await db.query.emails.findMany({
+				where: and(
+					eq(emails.userId, userId),
+					sql`${threadKeyExpr} = ${threadId}`,
+				),
+				orderBy: [asc(emails.receivedAt), asc(emails.id)],
+				with: { attachments: true },
+			});
+
+			if (threadEmails.length === 0) {
+				// Fallback: try direct email ID lookup (for standalone emails)
+				const singleEmail = await db.query.emails.findFirst({
+					where: and(eq(emails.id, threadId), eq(emails.userId, userId)),
+					with: { attachments: true },
+				});
+
+				if (!singleEmail) {
+					return { ok: false, error: "Thread not found", status: 404 };
+				}
+
+				return {
+					ok: true,
+					data: {
+						threadId,
+						subject: singleEmail.subject,
+						messages: [
+							{
+								...serializeEmail(singleEmail),
+								bodyPlain: singleEmail.bodyPlain,
+								bodyHtml: singleEmail.bodyHtml
+									? sanitizeEmailHtml(singleEmail.bodyHtml)
+									: null,
+								attachments: (singleEmail.attachments ?? []).map((a) => ({
+									id: a.id,
+									filename: a.filename,
+									mimeType: a.mimeType,
+									size: a.size,
+								})),
+							},
+						],
+						isMerged: false,
+					},
+				};
+			}
+
+			const isMerged = threadEmails.some((e) => e.threadGroupId !== null);
+
+			return {
+				ok: true,
+				data: {
+					threadId,
+					subject: threadEmails[threadEmails.length - 1]!.subject,
+					messages: threadEmails.map((e) => ({
+						...serializeEmail(e),
+						bodyPlain: e.bodyPlain,
+						bodyHtml: e.bodyHtml ? sanitizeEmailHtml(e.bodyHtml) : null,
+						attachments: (e.attachments ?? []).map((a) => ({
+							id: a.id,
+							filename: a.filename,
+							mimeType: a.mimeType,
+							size: a.size,
+						})),
+					})),
+					isMerged,
+				},
+			};
+		} catch (err) {
+			console.error("[mail] getThreadDetail failed:", err);
+			return { ok: false, error: "Failed to load thread", status: 500 };
+		}
+	}
+
+	async mergeThreads(
+		userId: string,
+		threadIds: string[],
+	): Promise<MergeResult> {
+		if (threadIds.length < 2) {
+			return {
+				ok: false,
+				error: "At least 2 threads required to merge",
+				status: 400,
+			};
+		}
+
+		try {
+			const newGroupId = crypto.randomUUID();
+
+			// Find all emails belonging to the given thread keys
+			const emailRows = await db
+				.select({ id: emails.id })
+				.from(emails)
+				.where(
+					and(
+						eq(emails.userId, userId),
+						sql`${threadKeyExpr} IN (${sql.join(
+							threadIds.map((id) => sql`${id}`),
+							sql`, `,
+						)})`,
+					),
+				);
+
+			if (emailRows.length === 0) {
+				return {
+					ok: false,
+					error: "No emails found for the given threads",
+					status: 400,
+				};
+			}
+
+			await db
+				.update(emails)
+				.set({ threadGroupId: newGroupId })
+				.where(
+					inArray(
+						emails.id,
+						emailRows.map((r) => r.id),
+					),
+				);
+
+			return { ok: true, threadId: newGroupId };
+		} catch (err) {
+			console.error("[mail] mergeThreads failed:", err);
+			return { ok: false, error: "Failed to merge threads", status: 500 };
+		}
+	}
+
+	async unmergeThread(
+		userId: string,
+		threadId: string,
+	): Promise<UnmergeResult> {
+		try {
+			const updated = await db
+				.update(emails)
+				.set({ threadGroupId: null })
+				.where(
+					and(eq(emails.userId, userId), eq(emails.threadGroupId, threadId)),
+				)
+				.returning({ id: emails.id });
+
+			if (updated.length === 0) {
+				return {
+					ok: false,
+					error: "No merged thread found",
+					status: 404,
+				};
+			}
+
+			return { ok: true, message: "Thread unmerged" };
+		} catch (err) {
+			console.error("[mail] unmergeThread failed:", err);
+			return { ok: false, error: "Failed to unmerge thread", status: 500 };
+		}
+	}
+
+	async archiveThread(userId: string, threadId: string): Promise<ActionResult> {
+		try {
+			const threadEmails = await db.query.emails.findMany({
+				where: and(
+					eq(emails.userId, userId),
+					sql`${threadKeyExpr} = ${threadId}`,
+				),
+			});
+
+			if (threadEmails.length === 0) {
+				return { ok: false, error: "Thread not found", status: 404 };
+			}
+
+			for (const email of threadEmails) {
+				const ctx = await getEmailProviderContext(email.id);
+				if (ctx.ok) {
+					await ctx.provider.archive(ctx.accessToken, email.providerMessageId);
+				}
+			}
+
+			await db.delete(emails).where(
+				inArray(
+					emails.id,
+					threadEmails.map((e) => e.id),
+				),
+			);
+			await invalidateCache(`mail:briefing:${userId}`);
+
+			return { ok: true, message: "Thread archived" };
+		} catch (err) {
+			console.error("[mail] archiveThread failed:", err);
+			return {
+				ok: false,
+				error: "Failed to archive thread",
+				status: 500,
+			};
+		}
+	}
+
+	async deleteThread(userId: string, threadId: string): Promise<ActionResult> {
+		try {
+			const threadEmails = await db.query.emails.findMany({
+				where: and(
+					eq(emails.userId, userId),
+					sql`${threadKeyExpr} = ${threadId}`,
+				),
+			});
+
+			if (threadEmails.length === 0) {
+				return { ok: false, error: "Thread not found", status: 404 };
+			}
+
+			for (const email of threadEmails) {
+				const ctx = await getEmailProviderContext(email.id);
+				if (ctx.ok) {
+					await ctx.provider.trash(ctx.accessToken, email.providerMessageId);
+				}
+			}
+
+			await db.delete(emails).where(
+				inArray(
+					emails.id,
+					threadEmails.map((e) => e.id),
+				),
+			);
+			await invalidateCache(`mail:briefing:${userId}`);
+
+			return { ok: true, message: "Thread deleted" };
+		} catch (err) {
+			console.error("[mail] deleteThread failed:", err);
+			return { ok: false, error: "Failed to delete thread", status: 500 };
+		}
+	}
+
+	async toggleStarThread(
+		userId: string,
+		threadId: string,
+	): Promise<ToggleStarResult> {
+		try {
+			const threadEmails = await db.query.emails.findMany({
+				where: and(
+					eq(emails.userId, userId),
+					sql`${threadKeyExpr} = ${threadId}`,
+				),
+			});
+
+			if (threadEmails.length === 0) {
+				return { ok: false, error: "Thread not found", status: 404 };
+			}
+
+			// If any is starred, unstar all; otherwise star all
+			const anyStarred = threadEmails.some((e) => e.isStarred);
+			const newStarred = !anyStarred;
+
+			for (const email of threadEmails) {
+				const ctx = await getEmailProviderContext(email.id);
+				if (ctx.ok) {
+					if (newStarred) {
+						await ctx.provider.star(ctx.accessToken, email.providerMessageId);
+					} else {
+						await ctx.provider.unstar(ctx.accessToken, email.providerMessageId);
+					}
+				}
+			}
+
+			await db
+				.update(emails)
+				.set({ isStarred: newStarred })
+				.where(
+					inArray(
+						emails.id,
+						threadEmails.map((e) => e.id),
+					),
+				);
+
+			return { ok: true, data: { isStarred: newStarred } };
+		} catch (err) {
+			console.error("[mail] toggleStarThread failed:", err);
+			return {
+				ok: false,
+				error: "Failed to toggle thread star",
+				status: 500,
+			};
+		}
+	}
+
+	async markThreadRead(
+		userId: string,
+		threadId: string,
+	): Promise<ToggleReadResult> {
+		try {
+			const threadEmails = await db.query.emails.findMany({
+				where: and(
+					eq(emails.userId, userId),
+					sql`${threadKeyExpr} = ${threadId}`,
+				),
+			});
+
+			if (threadEmails.length === 0) {
+				return { ok: false, error: "Thread not found", status: 404 };
+			}
+
+			const unreadEmails = threadEmails.filter((e) => !e.isRead);
+
+			for (const email of unreadEmails) {
+				const ctx = await getEmailProviderContext(email.id);
+				if (ctx.ok) {
+					await ctx.provider.markRead(ctx.accessToken, email.providerMessageId);
+				}
+			}
+
+			if (unreadEmails.length > 0) {
+				await db
+					.update(emails)
+					.set({ isRead: true })
+					.where(
+						inArray(
+							emails.id,
+							unreadEmails.map((e) => e.id),
+						),
+					);
+			}
+
+			await invalidateCache(`mail:briefing:${userId}`);
+
+			return { ok: true, data: { isRead: true } };
+		} catch (err) {
+			console.error("[mail] markThreadRead failed:", err);
+			return {
+				ok: false,
+				error: "Failed to mark thread as read",
 				status: 500,
 			};
 		}

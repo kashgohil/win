@@ -14,10 +14,14 @@ import {
 	emailListResponse,
 	errorResponse,
 	forwardBody,
+	mergeThreadsBody,
+	mergeThreadsResponse,
 	messageResponse,
 	moduleDataResponse,
 	senderListResponse,
 	senderRuleListResponse,
+	threadDetailResponse,
+	threadListResponse,
 	toggleReadResponse,
 	toggleStarResponse,
 	triageActionBody,
@@ -239,6 +243,273 @@ export const mail = new Elysia({
 			detail: {
 				summary: "Get email detail",
 				description: "Returns full email including body content",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	/* ── Thread routes ── */
+	.get(
+		"/threads",
+		async ({ user, query, set }) => {
+			const result = await mailService.getThreads(user.id, {
+				limit: query.limit ? Number(query.limit) : undefined,
+				cursor: query.cursor ?? undefined,
+				category: query.category ?? undefined,
+				unreadOnly: query.unreadOnly === "true",
+				readOnly: query.readOnly === "true",
+				q: query.q ?? undefined,
+				from: query.from ?? undefined,
+				subject: query.subject ?? undefined,
+				to: query.to ?? undefined,
+				cc: query.cc ?? undefined,
+				label: query.label ?? undefined,
+				starred: query.starred === "true",
+				attachment: query.attachment === "true",
+				filename: query.filename ?? undefined,
+				filetype: query.filetype ?? undefined,
+				after: query.after ?? undefined,
+				before: query.before ?? undefined,
+				accountIds: query.accountIds
+					? query.accountIds.split(",").filter(Boolean)
+					: undefined,
+			});
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return result.data;
+		},
+		{
+			auth: true,
+			query: t.Object({
+				limit: t.Optional(t.String()),
+				cursor: t.Optional(t.String()),
+				category: t.Optional(t.String()),
+				unreadOnly: t.Optional(t.String()),
+				readOnly: t.Optional(t.String()),
+				q: t.Optional(t.String()),
+				from: t.Optional(t.String()),
+				subject: t.Optional(t.String()),
+				to: t.Optional(t.String()),
+				cc: t.Optional(t.String()),
+				label: t.Optional(t.String()),
+				starred: t.Optional(t.String()),
+				attachment: t.Optional(t.String()),
+				filename: t.Optional(t.String()),
+				filetype: t.Optional(t.String()),
+				after: t.Optional(t.String()),
+				before: t.Optional(t.String()),
+				accountIds: t.Optional(t.String()),
+			}),
+			response: {
+				200: threadListResponse,
+				400: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "List email threads",
+				description:
+					"Returns paginated list of email threads grouped by conversation",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.get(
+		"/threads/:threadId",
+		async ({ user, params, set }) => {
+			const result = await mailService.getThreadDetail(
+				user.id,
+				params.threadId,
+			);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return result.data;
+		},
+		{
+			auth: true,
+			response: {
+				200: threadDetailResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Get thread detail",
+				description: "Returns all messages in a thread ordered chronologically",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.post(
+		"/threads/:threadId/archive",
+		async ({ user, params, set }) => {
+			const result = await mailService.archiveThread(user.id, params.threadId);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Archive thread",
+				description: "Archives all emails in a thread",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.delete(
+		"/threads/:threadId",
+		async ({ user, params, set }) => {
+			const result = await mailService.deleteThread(user.id, params.threadId);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Delete thread",
+				description: "Trashes all emails in a thread",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.patch(
+		"/threads/:threadId/star",
+		async ({ user, params, set }) => {
+			const result = await mailService.toggleStarThread(
+				user.id,
+				params.threadId,
+			);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return result.data;
+		},
+		{
+			auth: true,
+			response: {
+				200: toggleStarResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Toggle thread star",
+				description: "Toggles starred status for all emails in a thread",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.patch(
+		"/threads/:threadId/read",
+		async ({ user, params, set }) => {
+			const result = await mailService.markThreadRead(user.id, params.threadId);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return result.data;
+		},
+		{
+			auth: true,
+			response: {
+				200: toggleReadResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Mark thread as read",
+				description: "Marks all emails in a thread as read",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.post(
+		"/threads/merge",
+		async ({ user, body, set }) => {
+			const result = await mailService.mergeThreads(user.id, body.threadIds);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return { threadId: result.threadId };
+		},
+		{
+			auth: true,
+			body: mergeThreadsBody,
+			response: {
+				200: mergeThreadsResponse,
+				400: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Merge threads",
+				description: "Combines multiple threads into a single conversation",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.post(
+		"/threads/:threadId/unmerge",
+		async ({ user, params, set }) => {
+			const result = await mailService.unmergeThread(user.id, params.threadId);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Unmerge thread",
+				description:
+					"Restores a manually-merged thread to its original grouping",
 				tags: ["Mail"],
 				security: [{ bearerAuth: [] }],
 			},

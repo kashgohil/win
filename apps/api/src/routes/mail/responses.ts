@@ -237,6 +237,55 @@ export const senderListResponse = t.Object({
 	senders: t.Array(senderSchema),
 });
 
+/* ── Thread ── */
+
+const threadParticipantSchema = t.Object({
+	address: t.String(),
+	name: t.Union([t.String(), t.Null()]),
+});
+
+export const threadSchema = t.Object({
+	threadId: t.String(),
+	subject: t.Union([t.String(), t.Null()]),
+	snippet: t.Union([t.String(), t.Null()]),
+	latestReceivedAt: t.String({ format: "date-time" }),
+	messageCount: t.Number(),
+	unreadCount: t.Number(),
+	hasAttachments: t.Boolean(),
+	isStarred: t.Boolean(),
+	category: emailCategoryLiteral,
+	priorityScore: t.Number(),
+	aiSummary: t.Union([t.String(), t.Null()]),
+	latestMessage: t.Object({
+		id: t.String(),
+		fromAddress: t.Union([t.String(), t.Null()]),
+		fromName: t.Union([t.String(), t.Null()]),
+	}),
+	participants: t.Array(threadParticipantSchema),
+});
+
+export const threadListResponse = t.Object({
+	threads: t.Array(threadSchema),
+	total: t.Number(),
+	hasMore: t.Boolean(),
+	nextCursor: t.Optional(t.String()),
+});
+
+export const threadDetailResponse = t.Object({
+	threadId: t.String(),
+	subject: t.Union([t.String(), t.Null()]),
+	messages: t.Array(emailDetailSchema),
+	isMerged: t.Boolean(),
+});
+
+export const mergeThreadsBody = t.Object({
+	threadIds: t.Array(t.String(), { minItems: 2 }),
+});
+
+export const mergeThreadsResponse = t.Object({
+	threadId: t.String(),
+});
+
 /* ── Triage action ── */
 
 export const triageActionBody = t.Object({
