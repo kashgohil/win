@@ -3,7 +3,6 @@ import {
 	Command,
 	CommandEmpty,
 	CommandGroup,
-	CommandInput,
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
@@ -12,6 +11,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { useMailSenders } from "@/hooks/use-mail";
 import { parseSearchQuery } from "@/lib/parse-search-query";
 import { cn } from "@/lib/utils";
+import { Command as CommandPrimitive } from "cmdk";
 import {
 	AtSign,
 	Bookmark,
@@ -27,7 +27,7 @@ import {
 	User,
 	X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORIES, CATEGORY_CONFIG } from "./category-colors";
 
 const RECENT_SEARCHES_KEY = "mail-recent-searches";
@@ -55,6 +55,15 @@ type SavedSearch = {
 	name: string;
 	filters: SearchFilters;
 };
+
+type SearchChip = {
+	id: string;
+	raw: string;
+	operator: string;
+	value: string;
+};
+
+const BOOLEAN_OPS = ["has:attachment", "is:starred", "is:unread"];
 
 type SearchCommandProps = {
 	open: boolean;
@@ -129,6 +138,47 @@ function parseCategoryFromRecent(query: string) {
 	return config ? { value: match[1], ...config } : null;
 }
 
+/** Convert a SearchFilters object into displayable operator pairs */
+function filtersToOperators(
+	f: SearchFilters,
+): { operator: string; value: string }[] {
+	const ops: { operator: string; value: string }[] = [];
+	if (f.from) ops.push({ operator: "from", value: f.from });
+	if (f.to) ops.push({ operator: "to", value: f.to });
+	if (f.cc) ops.push({ operator: "cc", value: f.cc });
+	if (f.subject) ops.push({ operator: "subject", value: f.subject });
+	if (f.label) ops.push({ operator: "label", value: f.label });
+	if (f.category) ops.push({ operator: "category", value: f.category });
+	if (f.starred) ops.push({ operator: "is", value: "starred" });
+	if (f.attachment) ops.push({ operator: "has", value: "attachment" });
+	if (f.filename) ops.push({ operator: "filename", value: f.filename });
+	if (f.filetype) ops.push({ operator: "filetype", value: f.filetype });
+	if (f.after) ops.push({ operator: "after", value: f.after });
+	if (f.before) ops.push({ operator: "before", value: f.before });
+	return ops;
+}
+
+/** Split a raw query into operator tokens and free text for display */
+const OPERATOR_TOKEN_RE = /(\w+:(?:"[^"]*"|[^\s]+))/g;
+
+function tokenizeQuery(query: string): {
+	operators: { operator: string; value: string }[];
+	freeText: string;
+} {
+	const operators: { operator: string; value: string }[] = [];
+	const freeText = query
+		.replace(OPERATOR_TOKEN_RE, (match) => {
+			const colonIdx = match.indexOf(":");
+			const op = match.substring(0, colonIdx);
+			const val = match.substring(colonIdx + 1).replace(/^"|"$/g, "");
+			operators.push({ operator: op, value: val });
+			return "";
+		})
+		.replace(/\s+/g, " ")
+		.trim();
+	return { operators, freeText };
+}
+
 const OPERATOR_HINTS = [
 	{ value: "from:", label: "from:", description: "Filter by sender" },
 	{ value: "to:", label: "to:", description: "Filter by recipient" },
@@ -190,28 +240,51 @@ export function SearchCommand({
 	const { data: sendersData } = useMailSenders(senderQuery);
 	const senders = sendersData?.senders ?? [];
 
+	const [chips, setChips] = useState<SearchChip[]>([]);
 	const [recentSearches, setRecentSearches] = useState<string[]>([]);
 	const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
 
-	// Load recent/saved on open, reset input
+	// Load recent/saved on open, restore filters as chips
 	useEffect(() => {
 		if (open) {
+			const restored: SearchChip[] = [];
+			const add = (operator: string, value: string) =>
+				restored.push({
+					id: crypto.randomUUID(),
+					raw: `${operator}:${value}`,
+					operator,
+					value,
+				});
+			if (filters.from) add("from", filters.from);
+			if (filters.to) add("to", filters.to);
+			if (filters.cc) add("cc", filters.cc);
+			if (filters.subject) add("subject", filters.subject);
+			if (filters.label) add("label", filters.label);
+			if (filters.category) add("category", filters.category);
+			if (filters.starred) add("is", "starred");
+			if (filters.attachment) add("has", "attachment");
+			if (filters.filename) add("filename", filters.filename);
+			if (filters.filetype) add("filetype", filters.filetype);
+			if (filters.after) add("after", filters.after);
+			if (filters.before) add("before", filters.before);
+			setChips(restored);
 			setRecentSearches(getRecentSearches());
 			setSavedSearches(getSavedSearches());
 			setInputValue(filters.q ?? "");
 			setSavingName(false);
 			setSaveInput("");
 		}
-	}, [open, filters.q]);
+	}, [open, filters]);
 
 	const close = useCallback(() => onOpenChange(false), [onOpenChange]);
 
 	const submitSearch = useCallback(
 		(raw: string) => {
-			const trimmed = raw.trim();
-			if (trimmed) saveRecentSearch(trimmed);
+			const chipParts = chips.map((c) => c.raw);
+			const fullQuery = [...chipParts, raw.trim()].filter(Boolean).join(" ");
+			if (fullQuery) saveRecentSearch(fullQuery);
 
-			const parsed = parseSearchQuery(trimmed);
+			const parsed = parseSearchQuery(fullQuery);
 
 			const merged: SearchFilters = {};
 			if (parsed.q) merged.q = parsed.q;
@@ -239,18 +312,97 @@ export function SearchCommand({
 			if (parsed.before) merged.before = parsed.before;
 			else if (filters.before) merged.before = filters.before;
 
+			setChips([]);
 			onFiltersChange(merged);
 			close();
 		},
-		[filters, onFiltersChange, close],
+		[chips, filters, onFiltersChange, close],
 	);
 
+	// Ghost text suggestion based on current input
+	const ghostSuggestion = useMemo(() => {
+		const words = inputValue.split(/\s+/);
+		const lastWord = (words[words.length - 1] || "").toLowerCase();
+		if (lastWord.length < 2) return null;
+
+		const match = OPERATOR_HINTS.find(
+			(op) =>
+				op.value.toLowerCase().startsWith(lastWord) &&
+				op.value.toLowerCase() !== lastWord,
+		);
+		if (!match) return null;
+		return {
+			ghost: match.value.slice(lastWord.length),
+			full: match.value,
+		};
+	}, [inputValue]);
+
+	const createChip = useCallback((text: string, precedingWords: string[]) => {
+		const colonIndex = text.indexOf(":");
+		const newChip: SearchChip = {
+			id: crypto.randomUUID(),
+			raw: text,
+			operator: text.substring(0, colonIndex),
+			value: text.substring(colonIndex + 1),
+		};
+		setChips((prev) => [...prev, newChip]);
+		const remaining = precedingWords.join(" ");
+		setInputValue(remaining ? `${remaining} ` : "");
+	}, []);
+
+	const removeChip = useCallback((id: string) => {
+		setChips((prev) => prev.filter((c) => c.id !== id));
+	}, []);
+
 	const handleInputChange = (value: string) => {
+		// Detect chip creation on space after operator:value
+		if (value.endsWith(" ") && value.length > 1) {
+			const trimmed = value.trimEnd();
+			const words = trimmed.split(/\s+/);
+			const lastWord = words[words.length - 1];
+
+			const operatorMatch = lastWord.match(/^(\w+):(.+)$/);
+			if (BOOLEAN_OPS.includes(lastWord)) {
+				createChip(lastWord, words.slice(0, -1));
+				return;
+			}
+			if (
+				operatorMatch &&
+				OPERATOR_HINTS.some((op) => op.value.startsWith(`${operatorMatch[1]}:`))
+			) {
+				createChip(lastWord, words.slice(0, -1));
+				return;
+			}
+		}
+
 		setInputValue(value);
 		if (debounceRef.current) clearTimeout(debounceRef.current);
 		debounceRef.current = setTimeout(() => {
 			setSenderQuery(value);
 		}, 300);
+	};
+
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === "Tab") {
+			if (!ghostSuggestion) return;
+			e.preventDefault();
+			const words = inputValue.split(/\s+/);
+			const completed = ghostSuggestion.full;
+			words[words.length - 1] = completed;
+
+			// Boolean operators become chips immediately
+			if (BOOLEAN_OPS.includes(completed)) {
+				createChip(completed, words.slice(0, -1));
+			} else {
+				setInputValue(words.join(" "));
+			}
+			return;
+		}
+
+		if (e.key === "Backspace" && !inputValue && chips.length > 0) {
+			e.preventDefault();
+			setChips((prev) => prev.slice(0, -1));
+		}
 	};
 
 	const setFilter = (key: keyof SearchFilters, value: unknown) => {
@@ -268,7 +420,18 @@ export function SearchCommand({
 	};
 
 	const insertOperator = (op: string) => {
-		setInputValue((prev) => (prev ? `${prev} ${op}` : op));
+		if (BOOLEAN_OPS.includes(op)) {
+			const colonIndex = op.indexOf(":");
+			const newChip: SearchChip = {
+				id: crypto.randomUUID(),
+				raw: op,
+				operator: op.substring(0, colonIndex),
+				value: op.substring(colonIndex + 1),
+			};
+			setChips((prev) => [...prev, newChip]);
+		} else {
+			setInputValue((prev) => (prev ? `${prev} ${op}` : op));
+		}
 		requestAnimationFrame(() => inputRef.current?.focus());
 	};
 
@@ -302,34 +465,70 @@ export function SearchCommand({
 			>
 				<DialogTitle className="sr-only">Search emails</DialogTitle>
 				<Command shouldFilter={false} loop>
-					<div className="flex items-center border-b px-3">
-						<CommandInput
-							ref={inputRef}
-							value={inputValue}
-							onValueChange={handleInputChange}
-							placeholder="Search emails..."
-							className="flex-1 h-11 px-3 font-body text-[13px] text-foreground placeholder:text-grey-3 bg-transparent outline-none"
-							wrapperClassName="flex-1 border-none pl-0"
-							autoFocus
-						/>
-						{showSaveButton && (
-							<button
-								type="button"
-								onClick={() => {
-									setSavingName(true);
-									requestAnimationFrame(() => saveInputRef.current?.focus());
-								}}
-								aria-label="Save current search"
-								className="text-grey-3 hover:text-foreground transition-colors cursor-pointer p-1"
+					<div className="flex items-center flex-wrap gap-1.5 border-b border-border/25 px-3 min-h-[44px] py-1.5">
+						<Search className="size-3.5 shrink-0 text-muted-foreground/50" />
+
+						{chips.map((chip) => (
+							<span
+								key={chip.id}
+								className="inline-flex items-center gap-0.5 bg-secondary/60 font-mono text-[11px] pl-2 pr-1 py-0.5 rounded-md animate-in fade-in slide-in-from-left-1 duration-150"
 							>
-								<BookmarkPlus className="size-3.5" />
-							</button>
-						)}
-						<Kbd className="ml-2 shrink-0 text-grey-3">esc</Kbd>
+								<span className="text-muted-foreground">{chip.operator}:</span>
+								<span className="text-foreground">{chip.value}</span>
+								<button
+									type="button"
+									tabIndex={-1}
+									onClick={() => removeChip(chip.id)}
+									aria-label={`Remove ${chip.operator} filter`}
+									className="text-grey-3 hover:text-foreground transition-colors cursor-pointer p-0.5"
+								>
+									<X className="size-2.5" />
+								</button>
+							</span>
+						))}
+
+						<div className="relative flex-1 min-w-[100px]">
+							<CommandPrimitive.Input
+								ref={inputRef}
+								value={inputValue}
+								onValueChange={handleInputChange}
+								onKeyDown={handleKeyDown}
+								placeholder={chips.length ? "" : "Search emails..."}
+								className="w-full h-8 font-body text-[13px] text-foreground placeholder:text-grey-3 bg-transparent outline-none"
+								autoFocus
+							/>
+							{ghostSuggestion && (
+								<div className="absolute inset-y-0 left-0 flex items-center pointer-events-none overflow-hidden w-full">
+									<span className="font-body text-[13px] whitespace-pre text-transparent">
+										{inputValue}
+									</span>
+									<span className="font-body text-[13px] text-muted-foreground/35">
+										{ghostSuggestion.ghost}
+									</span>
+								</div>
+							)}
+						</div>
+
+						<div className="flex items-center gap-1.5 shrink-0 ml-auto">
+							{showSaveButton && (
+								<button
+									type="button"
+									onClick={() => {
+										setSavingName(true);
+										requestAnimationFrame(() => saveInputRef.current?.focus());
+									}}
+									aria-label="Save current search"
+									className="text-grey-3 hover:text-foreground transition-colors cursor-pointer p-1"
+								>
+									<BookmarkPlus className="size-3.5" />
+								</button>
+							)}
+							<Kbd className="text-grey-3">esc</Kbd>
+						</div>
 					</div>
 
 					{savingName && (
-						<div className="flex items-center gap-2 px-3 py-2 border-b">
+						<div className="flex items-center gap-2 px-3 py-2 border-b border-border/25">
 							<input
 								ref={saveInputRef}
 								type="text"
@@ -366,7 +565,7 @@ export function SearchCommand({
 						</div>
 					)}
 
-					<CommandList className="max-h-96 [&_[cmdk-group]+[cmdk-group]]:border-t [&_[cmdk-group]+[cmdk-group]]:border-border">
+					<CommandList className="max-h-96 [&_[cmdk-group]+[cmdk-group]]:border-t [&_[cmdk-group]+[cmdk-group]]:border-border/20">
 						<CommandEmpty className="py-8 text-center font-body text-[13px] text-grey-3">
 							No results
 						</CommandEmpty>
@@ -468,6 +667,7 @@ export function SearchCommand({
 														onSelect={() => selectRecentSearch(query)}
 														className="gap-2 cursor-pointer"
 													>
+														<Clock className="size-3 shrink-0 text-grey-3/50" />
 														<span
 															className={cn(
 																"size-2 rounded-full shrink-0",
@@ -480,6 +680,7 @@ export function SearchCommand({
 													</CommandItem>
 												);
 											}
+											const tokens = tokenizeQuery(query);
 											return (
 												<CommandItem
 													key={query}
@@ -488,8 +689,25 @@ export function SearchCommand({
 													className="gap-2 cursor-pointer"
 												>
 													<Clock className="size-3 shrink-0 text-grey-3/50" />
-													<span className="font-body text-[12px] text-muted-foreground truncate">
-														{query}
+													<span className="inline-flex items-center gap-1.5 flex-wrap min-w-0">
+														{tokens.operators.map((op) => (
+															<span
+																key={`${op.operator}:${op.value}`}
+																className="inline-flex items-center gap-0.5 bg-secondary/60 font-mono text-[10px] px-1.5 py-px rounded"
+															>
+																<span className="text-muted-foreground">
+																	{op.operator}:
+																</span>
+																<span className="text-foreground">
+																	{op.value}
+																</span>
+															</span>
+														))}
+														{tokens.freeText && (
+															<span className="font-body text-[12px] text-muted-foreground truncate">
+																{tokens.freeText}
+															</span>
+														)}
 													</span>
 												</CommandItem>
 											);
@@ -498,27 +716,49 @@ export function SearchCommand({
 								)}
 								{savedSearches.length > 0 && (
 									<CommandGroup heading="Saved searches">
-										{savedSearches.map((saved) => (
-											<CommandItem
-												key={saved.name}
-												value={`saved:${saved.name}`}
-												onSelect={() => applySavedSearch(saved)}
-												className="gap-2 cursor-pointer group/saved"
-											>
-												<Bookmark className="size-3 shrink-0 text-grey-3" />
-												<span className="font-body text-[13px] truncate flex-1">
-													{saved.name}
-												</span>
-												<button
-													type="button"
-													onClick={(e) => handleDeleteSaved(saved.name, e)}
-													aria-label={`Delete saved search "${saved.name}"`}
-													className="opacity-0 group-hover/saved:opacity-100 text-grey-3 hover:text-foreground focus-visible:opacity-100 focus-visible:text-foreground focus-visible:outline-none rounded-sm transition-all cursor-pointer p-0.5"
+										{savedSearches.map((saved) => {
+											const ops = filtersToOperators(saved.filters);
+											return (
+												<CommandItem
+													key={saved.name}
+													value={`saved:${saved.name}`}
+													onSelect={() => applySavedSearch(saved)}
+													className="gap-2 cursor-pointer group/saved"
 												>
-													<X className="size-2.5" />
-												</button>
-											</CommandItem>
-										))}
+													<Bookmark className="size-3 shrink-0 text-grey-3" />
+													<span className="flex-1 min-w-0 inline-flex items-center gap-1.5 flex-wrap">
+														<span className="font-body text-[13px] text-foreground">
+															{saved.name}
+														</span>
+														{ops.length > 0 && (
+															<span className="inline-flex items-center gap-1 flex-wrap">
+																{ops.map((op) => (
+																	<span
+																		key={`${op.operator}:${op.value}`}
+																		className="inline-flex items-center gap-0.5 bg-secondary/60 font-mono text-[10px] px-1.5 py-px rounded"
+																	>
+																		<span className="text-muted-foreground">
+																			{op.operator}:
+																		</span>
+																		<span className="text-foreground">
+																			{op.value}
+																		</span>
+																	</span>
+																))}
+															</span>
+														)}
+													</span>
+													<button
+														type="button"
+														onClick={(e) => handleDeleteSaved(saved.name, e)}
+														aria-label={`Delete saved search "${saved.name}"`}
+														className="opacity-0 group-hover/saved:opacity-100 text-grey-3 hover:text-foreground focus-visible:opacity-100 focus-visible:text-foreground focus-visible:outline-none rounded-sm transition-all cursor-pointer p-0.5"
+													>
+														<X className="size-2.5" />
+													</button>
+												</CommandItem>
+											);
+										})}
 									</CommandGroup>
 								)}
 								<CommandGroup heading="Quick filters">
