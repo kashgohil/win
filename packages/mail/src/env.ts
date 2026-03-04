@@ -9,3 +9,15 @@ export function getMailConfig() {
 
 	return { clientId, clientSecret, redirectUri };
 }
+
+export function getOutlookConfig() {
+	const clientId = Bun.env.MICROSOFT_CLIENT_ID;
+	const clientSecret = Bun.env.MICROSOFT_CLIENT_SECRET;
+	const redirectUri = `${Bun.env.BETTER_AUTH_URL ?? "http://localhost:8080"}/mail/accounts/callback/outlook`;
+
+	if (!clientId || !clientSecret) {
+		throw new Error("Microsoft OAuth credentials not configured");
+	}
+
+	return { clientId, clientSecret, redirectUri };
+}
