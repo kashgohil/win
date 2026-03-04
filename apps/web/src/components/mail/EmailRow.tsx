@@ -15,6 +15,7 @@ import type { EmailCategory, SerializedEmail } from "@wingmnn/types";
 import { Archive, Mail, MailOpen, Paperclip, Star } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
+import { CATEGORY_CONFIG } from "./category-colors";
 
 function formatTimestamp(iso: string): string {
 	const date = new Date(iso);
@@ -300,6 +301,14 @@ export function EmailRow({
 								<span className="font-mono text-[11px] text-grey-3 tabular-nums">
 									{formatTimestamp(email.receivedAt)}
 								</span>
+								{email.category && CATEGORY_CONFIG[email.category] && (
+									<span
+										className={cn(
+											"size-1.5 rounded-full shrink-0",
+											CATEGORY_CONFIG[email.category].dot,
+										)}
+									/>
+								)}
 							</motion.div>
 
 							{/* Actions — animate in on hover */}
