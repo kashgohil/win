@@ -133,6 +133,7 @@ export const emails = pgTable(
 		draftResponse: text("draft_response"),
 		snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
 		triageActedAt: timestamp("triage_acted_at", { withTimezone: true }),
+		threadGroupId: uuid("thread_group_id"),
 		updatedAt: timestamp("updated_at", { withTimezone: true })
 			.defaultNow()
 			.notNull()
@@ -147,6 +148,12 @@ export const emails = pgTable(
 		index("emails_user_category_idx").on(table.userId, table.category),
 		index("emails_user_priority_idx").on(table.userId, table.priorityScore),
 		index("emails_user_triage_status_idx").on(table.userId, table.triageStatus),
+		index("emails_user_thread_received_idx").on(
+			table.userId,
+			table.providerThreadId,
+			table.receivedAt,
+		),
+		index("emails_user_thread_group_idx").on(table.userId, table.threadGroupId),
 	],
 );
 

@@ -50,6 +50,13 @@
       "when": 1772468837332,
       "tag": "0006_gray_edwin_jarvis",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772649034260,
+      "tag": "0007_hot_puck",
+      "breakpoints": true
     }
   ]
 }
