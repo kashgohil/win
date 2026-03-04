@@ -15,6 +15,7 @@ import { env } from "@/env";
 import { useAttachmentsKeyboard } from "@/hooks/use-attachments-keyboard";
 import { useImageThumbnail } from "@/hooks/use-image-thumbnail";
 import { useMailAttachmentsInfinite } from "@/hooks/use-mail";
+import { useMailAccountFilter } from "@/hooks/use-mail-account-filter";
 import {
 	canPreview,
 	classifyFile,
@@ -196,6 +197,12 @@ function AttachmentsPage() {
 	const previewUrlRef = useRef<string | null>(null);
 
 	const activeCategory = category ?? null;
+	const activeAccountIds = useMailAccountFilter((s) => s.activeAccountIds);
+	const accountIds = useMemo(
+		() =>
+			activeAccountIds === "all" ? undefined : Array.from(activeAccountIds),
+		[activeAccountIds],
+	);
 
 	const { data, isPending, hasNextPage, isFetchingNextPage, fetchNextPage } =
 		useMailAttachmentsInfinite({
@@ -205,6 +212,7 @@ function AttachmentsPage() {
 			from,
 			after,
 			before,
+			accountIds,
 		});
 
 	// Infinite scroll sentinel

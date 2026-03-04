@@ -22,6 +22,7 @@ export function getProviderStyle(provider: string) {
 				text: "text-accent-red",
 				initial: "G",
 				solidBg: "bg-accent-red",
+				ring: "ring-accent-red",
 			};
 		case "outlook":
 			return {
@@ -30,6 +31,7 @@ export function getProviderStyle(provider: string) {
 				text: "text-[#0078d4]",
 				initial: "O",
 				solidBg: "bg-[#0078d4]",
+				ring: "ring-[#0078d4]",
 			};
 		default:
 			return {
@@ -38,6 +40,7 @@ export function getProviderStyle(provider: string) {
 				text: "text-foreground",
 				initial: "?",
 				solidBg: "bg-grey-2",
+				ring: "ring-foreground/40",
 			};
 	}
 }

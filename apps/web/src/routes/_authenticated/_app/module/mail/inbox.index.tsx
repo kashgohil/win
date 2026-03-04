@@ -24,6 +24,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useInboxKeyboard } from "@/hooks/use-inbox-keyboard";
 import { mailKeys, useMailEmailsInfinite } from "@/hooks/use-mail";
+import { useMailAccountFilter } from "@/hooks/use-mail-account-filter";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -140,6 +141,12 @@ function MailInbox() {
 	const [searchOpen, setSearchOpen] = useState(false);
 
 	const activeCategory = category ?? null;
+	const activeAccountIds = useMailAccountFilter((s) => s.activeAccountIds);
+	const accountIds = useMemo(
+		() =>
+			activeAccountIds === "all" ? undefined : Array.from(activeAccountIds),
+		[activeAccountIds],
+	);
 
 	const searchFilters: SearchFilters = useMemo(
 		() => ({
@@ -194,6 +201,7 @@ function MailInbox() {
 			filetype,
 			after,
 			before,
+			accountIds,
 		});
 
 	// IntersectionObserver to auto-fetch next page
