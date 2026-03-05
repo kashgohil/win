@@ -6,6 +6,7 @@ import {
 	INBOX_SHORTCUTS,
 	KeyboardShortcutBar,
 } from "@/components/mail/KeyboardShortcutBar";
+import { MergeSuggestionPill } from "@/components/mail/MergeSuggestionPill";
 import {
 	hasActiveFilters,
 	SearchCommand,
@@ -28,6 +29,7 @@ import {
 	useMergeThreads,
 } from "@/hooks/use-mail";
 import { useMailAccountFilter } from "@/hooks/use-mail-account-filter";
+import { useMergeSuggestions } from "@/hooks/use-merge-suggestions";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -266,6 +268,9 @@ function MailInbox() {
 	const threads = data?.pages.flatMap((page) => page?.threads ?? []) ?? [];
 	const total = data?.pages[0]?.total;
 
+	const { suggestion, dismiss: dismissSuggestion } =
+		useMergeSuggestions(threads);
+
 	const searchTerms = useMemo(
 		() => (q ? q.split(/\s+/).filter(Boolean) : []),
 		[q],
@@ -495,6 +500,20 @@ function MailInbox() {
 	// ── Multi-select & merge ──
 
 	const mergeThreads = useMergeThreads();
+
+	const handleSuggestedMerge = useCallback(() => {
+		if (!suggestion) return;
+		mergeThreads.mutate(Array.from(suggestion.threadIds), {
+			onSuccess: () => {
+				toast("Threads merged");
+				dismissSuggestion();
+				queryClient.invalidateQueries({ queryKey: mailKeys.all });
+			},
+			onError: () => {
+				toast.error("Failed to merge threads");
+			},
+		});
+	}, [suggestion, mergeThreads, queryClient, dismissSuggestion]);
 
 	const handleMergeSelected = useCallback(() => {
 		if (selectedThreads.size < 2) return;
@@ -727,6 +746,18 @@ function MailInbox() {
 					}
 				/>
 			</motion.div>
+
+			{/* Merge suggestion pill */}
+			<AnimatePresence>
+				{suggestion && (
+					<MergeSuggestionPill
+						suggestion={suggestion}
+						onMerge={handleSuggestedMerge}
+						onDismiss={dismissSuggestion}
+						isMerging={mergeThreads.isPending}
+					/>
+				)}
+			</AnimatePresence>
 
 			{/* Result count when searching */}
 			{isSearching && !isPending && (
