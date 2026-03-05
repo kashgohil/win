@@ -25,7 +25,7 @@ import { useLiveQuery } from "@tanstack/react-db";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { TriageAction } from "@wingmnn/types";
-import { ArrowRight, Inbox, Paperclip } from "lucide-react";
+import { ArrowRight, Inbox, Paperclip, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -112,6 +112,13 @@ function MailModule() {
 						},
 					});
 					break;
+				case "s":
+					e.preventDefault();
+					navigate({
+						to: "/module/mail/sent",
+						search: { starred: undefined, attachment: undefined },
+					});
+					break;
 				case "a":
 					e.preventDefault();
 					navigate({ to: "/module/mail/attachments" });
@@ -193,6 +200,20 @@ function MailModule() {
 					</Link>
 
 					<Link
+						to="/module/mail/sent"
+						search={{ starred: undefined, attachment: undefined }}
+						className="group flex items-center justify-between rounded-lg border border-border/40 hover:border-border/70 bg-secondary/5 hover:bg-secondary/15 px-5 py-4 transition-colors duration-200"
+					>
+						<div className="flex items-center gap-3">
+							<Send className="size-4 text-grey-2 group-hover:text-foreground transition-colors duration-200" />
+							<span className="font-body text-[14px] text-foreground/80 group-hover:text-foreground transition-colors duration-200">
+								Sent emails
+							</span>
+						</div>
+						<ArrowRight className="size-3.5 text-grey-3 group-hover:text-foreground group-hover:translate-x-0.5 transition-all duration-200" />
+					</Link>
+
+					<Link
 						to="/module/mail/attachments"
 						className="group flex items-center justify-between rounded-lg border border-border/40 hover:border-border/70 bg-secondary/5 hover:bg-secondary/15 px-5 py-4 transition-colors duration-200"
 					>
@@ -251,6 +272,16 @@ function MailHeaderActions() {
 				<Inbox className="size-3" />
 				<span className="font-body text-[12px]">Inbox</span>
 				<Kbd>I</Kbd>
+			</Link>
+
+			<Link
+				to="/module/mail/sent"
+				search={{ starred: undefined, attachment: undefined }}
+				className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
+			>
+				<Send className="size-3" />
+				<span className="font-body text-[12px]">Sent</span>
+				<Kbd>S</Kbd>
 			</Link>
 
 			<Link

@@ -55,11 +55,24 @@ export const EMAIL_DETAIL_SHORTCUTS: ShortcutGroup[] = [
 export const MAIL_HUB_SHORTCUTS: ShortcutGroup[] = [
 	[
 		{ keys: ["I"], label: "inbox" },
+		{ keys: ["S"], label: "sent" },
 		{ keys: ["A"], label: "attachments" },
 	],
 	[
 		{ keys: ["1-9"], label: "filter account" },
 		{ keys: ["0"], label: "all accounts" },
+	],
+];
+
+export const SENT_SHORTCUTS: ShortcutGroup[] = [
+	[{ keys: ["\u23CE"], label: "select" }],
+	[
+		{ keys: ["E"], label: "archive" },
+		{ keys: ["S"], label: "star" },
+	],
+	[
+		{ keys: ["/"], label: "search" },
+		{ keys: ["["], label: "back" },
 	],
 ];
 
