@@ -11,6 +11,7 @@ import {
 } from "@/components/mail/KeyboardShortcutBar";
 import { useEmailDetailKeyboard } from "@/hooks/use-email-detail-keyboard";
 import { mailKeys, useMailThreadDetail } from "@/hooks/use-mail";
+import { recordThreadVisit } from "@/hooks/use-merge-suggestions";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -66,6 +67,11 @@ function EmailDetail() {
 	const threadSubject = data?.subject;
 	const isMerged = data?.isMerged ?? false;
 	const latestMessage = messages[messages.length - 1];
+
+	// Record visit for merge suggestions
+	useEffect(() => {
+		recordThreadVisit(emailId);
+	}, [emailId]);
 
 	// Update document title
 	useEffect(() => {
