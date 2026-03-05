@@ -192,6 +192,8 @@ export function ThreadRow({
 	onSelect,
 	onDragStartThread,
 	onDropThread,
+	variant = "inbox",
+	linkSearch,
 }: {
 	thread: SerializedThread;
 	highlightTerms?: string[];
@@ -201,10 +203,20 @@ export function ThreadRow({
 	onSelect?: (threadId: string) => void;
 	onDragStartThread?: (threadId: string) => void;
 	onDropThread?: (targetThreadId: string) => void;
+	variant?: "inbox" | "sent";
+	linkSearch?: Record<string, unknown>;
 }) {
-	const { fromName, fromAddress } = thread.latestMessage;
-	const initial = getInitial(fromName, fromAddress);
-	const senderDisplay = fromName || fromAddress || "Unknown";
+	const { fromName, fromAddress, toAddresses } = thread.latestMessage;
+	const isSent = variant === "sent";
+	const displayName = isSent
+		? (toAddresses?.[0] ?? "Unknown recipient")
+		: fromName || fromAddress || "Unknown";
+	const senderDisplay = isSent
+		? `To: ${displayName}`
+		: fromName || fromAddress || "Unknown";
+	const initial = isSent
+		? getInitial(null, toAddresses?.[0] ?? null)
+		: getInitial(fromName, fromAddress);
 	const isUrgent = thread.category === "urgent";
 	const isUnread = thread.unreadCount > 0;
 	const queryClient = useQueryClient();
@@ -284,6 +296,7 @@ export function ThreadRow({
 				search={{
 					view: view ?? undefined,
 					category: category ?? undefined,
+					...linkSearch,
 				}}
 				className="flex items-start gap-3 py-3.5 px-2 cursor-pointer"
 			>
