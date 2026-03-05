@@ -157,6 +157,7 @@ type SerializedThread = {
 		id: string;
 		fromAddress: string | null;
 		fromName: string | null;
+		toAddresses: string[] | null;
 	};
 	participants: Array<{ address: string; name: string | null }>;
 };
@@ -378,6 +379,7 @@ type FilterOptions = {
 	after?: string;
 	before?: string;
 	accountIds?: string[];
+	sentOnly?: boolean;
 };
 
 function buildFilterConditions(
@@ -473,6 +475,11 @@ function buildFilterConditions(
 	}
 	if (options.before) {
 		conditions.push(lte(emails.receivedAt, new Date(options.before)));
+	}
+	if (options.sentOnly) {
+		conditions.push(
+			sql`${emails.fromAddress} IN (SELECT ${emailAccounts.email} FROM ${emailAccounts} WHERE ${emailAccounts.userId} = ${userId})`,
+		);
 	}
 	return { ok: true, conditions };
 }
@@ -1653,6 +1660,7 @@ class MailService {
 					snippet: emails.snippet,
 					fromAddress: emails.fromAddress,
 					fromName: emails.fromName,
+					toAddresses: emails.toAddresses,
 					category: emails.category,
 					aiSummary: emails.aiSummary,
 					receivedAt: emails.receivedAt,
@@ -1715,6 +1723,7 @@ class MailService {
 						id: latest?.id ?? "",
 						fromAddress: latest?.fromAddress ?? null,
 						fromName: latest?.fromName ?? null,
+						toAddresses: latest?.toAddresses ?? null,
 					},
 					participants: participantsByThread.get(t.threadId) ?? [],
 				};

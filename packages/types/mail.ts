@@ -128,6 +128,7 @@ export type SerializedThread = {
 		id: string;
 		fromAddress: string | null;
 		fromName: string | null;
+		toAddresses: string[] | null;
 	};
 	participants: Array<{ address: string; name: string | null }>;
 };

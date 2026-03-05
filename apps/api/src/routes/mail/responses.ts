@@ -260,6 +260,7 @@ export const threadSchema = t.Object({
 		id: t.String(),
 		fromAddress: t.Union([t.String(), t.Null()]),
 		fromName: t.Union([t.String(), t.Null()]),
+		toAddresses: t.Union([t.Array(t.String()), t.Null()]),
 	}),
 	participants: t.Array(threadParticipantSchema),
 });
