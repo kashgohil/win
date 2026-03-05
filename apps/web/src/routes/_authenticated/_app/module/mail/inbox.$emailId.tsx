@@ -35,6 +35,7 @@ const detailSearchSchema = z.object({
 		.string()
 		.optional()
 		.transform((v) => (v === "read" ? ("read" as const) : undefined)),
+	source: z.string().optional(),
 });
 
 export const Route = createFileRoute(
@@ -46,7 +47,7 @@ export const Route = createFileRoute(
 
 function EmailDetail() {
 	const { emailId } = Route.useParams();
-	const { category, view } = Route.useSearch();
+	const { category, view, source } = Route.useSearch();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const inboxSearch = {
@@ -123,8 +124,14 @@ function EmailDetail() {
 	// ── Action handlers ──
 
 	const navigateBack = useCallback(
-		() => navigate({ to: "/module/mail/inbox", search: inboxSearch }),
-		[navigate, inboxSearch],
+		() =>
+			source === "sent"
+				? navigate({
+						to: "/module/mail/sent",
+						search: { starred: undefined, attachment: undefined },
+					})
+				: navigate({ to: "/module/mail/inbox", search: inboxSearch }),
+		[navigate, inboxSearch, source],
 	);
 
 	const handleStar = useCallback(() => {
