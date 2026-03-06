@@ -1,4 +1,5 @@
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import { Kbd } from "@/components/ui/kbd";
 import {
 	Tooltip,
 	TooltipContent,
@@ -48,145 +49,98 @@ export function EmailActions({
 	return (
 		<TooltipProvider sliding>
 			<div className="flex items-center gap-1 py-2">
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<motion.button
-							type="button"
-							onClick={onReply}
-							whileTap={{ scale: 0.85 }}
-							className="size-8 rounded-full flex items-center justify-center text-grey-3 hover:text-foreground/60 hover:bg-secondary/30 transition-colors duration-200 cursor-pointer"
-						>
-							<Reply className="size-3.5" />
-							<span className="sr-only">Reply</span>
-						</motion.button>
-					</TooltipTrigger>
-					<TooltipWithShortcut label="Reply" shortcut="R" />
-				</Tooltip>
+				<ActionButton onClick={onReply} label="Reply" shortcut="Q">
+					<Reply className="size-3.5" />
+				</ActionButton>
 
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<motion.button
-							type="button"
-							onClick={onForward}
-							whileTap={{ scale: 0.85 }}
-							className="size-8 rounded-full flex items-center justify-center text-grey-3 hover:text-foreground/60 hover:bg-secondary/30 transition-colors duration-200 cursor-pointer"
-						>
-							<Forward className="size-3.5" />
-							<span className="sr-only">Forward</span>
-						</motion.button>
-					</TooltipTrigger>
-					<TooltipWithShortcut label="Forward" shortcut="F" />
-				</Tooltip>
+				<ActionButton onClick={onForward} label="Forward">
+					<Forward className="size-3.5" />
+				</ActionButton>
 
 				<Separator />
 
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<motion.button
-							type="button"
-							onClick={onStar}
-							whileTap={{ scale: 0.85 }}
-							className={cn(
-								"relative size-8 rounded-full flex items-center justify-center transition-colors duration-300 cursor-pointer",
-								isStarred
-									? "bg-amber-400/10 text-amber-500"
-									: "text-grey-3 hover:text-foreground/60 hover:bg-secondary/30",
-							)}
+				<motion.button
+					type="button"
+					onClick={onStar}
+					whileTap={{ scale: 0.85 }}
+					className={cn(
+						"relative h-8 rounded-full flex items-center gap-1.5 px-2.5 transition-colors duration-300 cursor-pointer",
+						isStarred
+							? "bg-amber-400/10 text-amber-500"
+							: "text-grey-3 hover:text-foreground/60 hover:bg-secondary/30",
+					)}
+				>
+					<AnimatePresence mode="wait" initial={false}>
+						<motion.div
+							key={isStarred ? "starred" : "unstarred"}
+							initial={{ scale: 0.5, opacity: 0, rotate: -30 }}
+							animate={{ scale: 1, opacity: 1, rotate: 0 }}
+							exit={{ scale: 0.5, opacity: 0, rotate: 30 }}
+							transition={{
+								type: "spring",
+								stiffness: 500,
+								damping: 25,
+							}}
 						>
-							<AnimatePresence mode="wait" initial={false}>
-								<motion.div
-									key={isStarred ? "starred" : "unstarred"}
-									initial={{ scale: 0.5, opacity: 0, rotate: -30 }}
-									animate={{ scale: 1, opacity: 1, rotate: 0 }}
-									exit={{ scale: 0.5, opacity: 0, rotate: 30 }}
-									transition={{
-										type: "spring",
-										stiffness: 500,
-										damping: 25,
-									}}
-								>
-									<Star
-										className={cn(
-											"size-3.5",
-											isStarred &&
-												"fill-amber-400 drop-shadow-[0_0_4px_rgba(251,191,36,0.4)]",
-										)}
-									/>
-								</motion.div>
-							</AnimatePresence>
-							{isStarred && (
-								<motion.div
-									className="absolute inset-0 rounded-full border border-amber-400/40"
-									initial={{ scale: 0.8, opacity: 0 }}
-									animate={{ scale: 1, opacity: 1 }}
-									transition={{ duration: 0.3 }}
-								/>
-							)}
-							<span className="sr-only">{isStarred ? "Unstar" : "Star"}</span>
-						</motion.button>
-					</TooltipTrigger>
-					<TooltipWithShortcut
-						label={isStarred ? "Unstar" : "Star"}
-						shortcut="S"
-					/>
-				</Tooltip>
+							<Star
+								className={cn(
+									"size-3.5",
+									isStarred &&
+										"fill-amber-400 drop-shadow-[0_0_4px_rgba(251,191,36,0.4)]",
+								)}
+							/>
+						</motion.div>
+					</AnimatePresence>
+					<Kbd>F</Kbd>
+					{isStarred && (
+						<motion.div
+							className="absolute inset-0 rounded-full border border-amber-400/40"
+							initial={{ scale: 0.8, opacity: 0 }}
+							animate={{ scale: 1, opacity: 1 }}
+							transition={{ duration: 0.3 }}
+						/>
+					)}
+					<span className="sr-only">{isStarred ? "Unstar" : "Star"}</span>
+				</motion.button>
 
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<motion.button
-							type="button"
-							onClick={onToggleRead}
-							whileTap={{ scale: 0.85 }}
-							className={cn(
-								"size-8 rounded-full flex items-center justify-center transition-colors duration-200 cursor-pointer",
-								!isRead
-									? "bg-foreground/5 text-foreground/70"
-									: "text-grey-3 hover:text-foreground/60 hover:bg-secondary/30",
-							)}
+				<motion.button
+					type="button"
+					onClick={onToggleRead}
+					whileTap={{ scale: 0.85 }}
+					className={cn(
+						"h-8 rounded-full flex items-center gap-1.5 px-2.5 transition-colors duration-200 cursor-pointer",
+						!isRead
+							? "bg-foreground/5 text-foreground/70"
+							: "text-grey-3 hover:text-foreground/60 hover:bg-secondary/30",
+					)}
+				>
+					<AnimatePresence mode="wait" initial={false}>
+						<motion.div
+							key={isRead ? "read" : "unread"}
+							initial={{ rotateY: -90, opacity: 0 }}
+							animate={{ rotateY: 0, opacity: 1 }}
+							exit={{ rotateY: 90, opacity: 0 }}
+							transition={{ duration: 0.2 }}
+							style={{ perspective: 200 }}
 						>
-							<AnimatePresence mode="wait" initial={false}>
-								<motion.div
-									key={isRead ? "read" : "unread"}
-									initial={{ rotateY: -90, opacity: 0 }}
-									animate={{ rotateY: 0, opacity: 1 }}
-									exit={{ rotateY: 90, opacity: 0 }}
-									transition={{ duration: 0.2 }}
-									style={{ perspective: 200 }}
-								>
-									{isRead ? (
-										<MailOpen className="size-3.5" />
-									) : (
-										<Mail className="size-3.5" />
-									)}
-								</motion.div>
-							</AnimatePresence>
-							<span className="sr-only">
-								{isRead ? "Mark as unread" : "Mark as read"}
-							</span>
-						</motion.button>
-					</TooltipTrigger>
-					<TooltipWithShortcut
-						label={isRead ? "Mark as unread" : "Mark as read"}
-						shortcut="U"
-					/>
-				</Tooltip>
+							{isRead ? (
+								<MailOpen className="size-3.5" />
+							) : (
+								<Mail className="size-3.5" />
+							)}
+						</motion.div>
+					</AnimatePresence>
+					<Kbd>U</Kbd>
+					<span className="sr-only">
+						{isRead ? "Mark as unread" : "Mark as read"}
+					</span>
+				</motion.button>
 
 				<Separator />
 
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<motion.button
-							type="button"
-							onClick={onArchive}
-							whileTap={{ scale: 0.85 }}
-							className="size-8 rounded-full flex items-center justify-center text-grey-3 hover:text-foreground/60 hover:bg-secondary/30 transition-colors duration-200 cursor-pointer"
-						>
-							<Archive className="size-3.5" />
-							<span className="sr-only">Archive</span>
-						</motion.button>
-					</TooltipTrigger>
-					<TooltipWithShortcut label="Archive" shortcut="E" />
-				</Tooltip>
+				<ActionButton onClick={onArchive} label="Archive" shortcut="E">
+					<Archive className="size-3.5" />
+				</ActionButton>
 
 				<Tooltip>
 					<TooltipTrigger asChild>
@@ -208,7 +162,7 @@ export function EmailActions({
 							</ConfirmButton>
 						</div>
 					</TooltipTrigger>
-					<TooltipWithShortcut label="Delete" shortcut="#" />
+					<TooltipContent side="bottom">Delete</TooltipContent>
 				</Tooltip>
 
 				<div className="flex-1" />
@@ -233,21 +187,32 @@ function Separator() {
 	return <span className="w-px h-4 bg-border/60 mx-1.5" aria-hidden />;
 }
 
-function TooltipWithShortcut({
+function ActionButton({
+	onClick,
 	label,
 	shortcut,
+	children,
 }: {
+	onClick: () => void;
 	label: string;
-	shortcut: string;
+	shortcut?: string;
+	children: React.ReactNode;
 }) {
 	return (
-		<TooltipContent side="bottom">
-			<span className="inline-flex items-center gap-2">
-				{label}
-				<kbd className="font-mono text-[10px] text-background/50 bg-background/10 border border-background/15 px-1 py-px rounded leading-none">
-					{shortcut}
-				</kbd>
-			</span>
-		</TooltipContent>
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<motion.button
+					type="button"
+					onClick={onClick}
+					whileTap={{ scale: 0.85 }}
+					className="h-8 rounded-full flex items-center gap-1.5 px-2.5 text-grey-3 hover:text-foreground/60 hover:bg-secondary/30 transition-colors duration-200 cursor-pointer"
+				>
+					{children}
+					{shortcut && <Kbd>{shortcut}</Kbd>}
+					<span className="sr-only">{label}</span>
+				</motion.button>
+			</TooltipTrigger>
+			<TooltipContent side="bottom">{label}</TooltipContent>
+		</Tooltip>
 	);
 }

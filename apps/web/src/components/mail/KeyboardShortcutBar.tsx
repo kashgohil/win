@@ -38,13 +38,7 @@ export const INBOX_SHORTCUTS: ShortcutGroup[] = [
 	[
 		{ keys: ["\u23CE"], label: "open" },
 		{ keys: ["\u2423"], label: "peek" },
-		{ keys: ["Q"], label: "reply" },
-	],
-	[
 		{ keys: ["X"], label: "select" },
-		{ keys: ["E"], label: "archive" },
-		{ keys: ["F"], label: "star" },
-		{ keys: ["R"], label: "read" },
 	],
 	[
 		{ keys: ["/"], label: "search" },
@@ -56,10 +50,6 @@ export const INBOX_INLINE_SHORTCUTS: ShortcutGroup[] = [
 	[
 		{ keys: ["ESC"], label: "close" },
 		{ keys: ["\u23CE"], label: "full view" },
-	],
-	[
-		{ keys: ["E"], label: "archive" },
-		{ keys: ["F"], label: "star" },
 	],
 	[
 		{ keys: ["/"], label: "search" },
@@ -87,11 +77,6 @@ export const SENT_SHORTCUTS: ShortcutGroup[] = [
 	[
 		{ keys: ["\u23CE"], label: "open" },
 		{ keys: ["\u2423"], label: "peek" },
-		{ keys: ["Q"], label: "reply" },
-	],
-	[
-		{ keys: ["E"], label: "archive" },
-		{ keys: ["F"], label: "star" },
 	],
 	[
 		{ keys: ["I"], label: "inbox" },
@@ -107,10 +92,6 @@ export const SENT_INLINE_SHORTCUTS: ShortcutGroup[] = [
 	[
 		{ keys: ["ESC"], label: "close" },
 		{ keys: ["\u23CE"], label: "full view" },
-	],
-	[
-		{ keys: ["E"], label: "archive" },
-		{ keys: ["F"], label: "star" },
 	],
 	[
 		{ keys: ["/"], label: "search" },
