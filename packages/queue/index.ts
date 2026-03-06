@@ -28,10 +28,15 @@ export {
 	type MailSyncJobData,
 } from "./src/jobs/mail-sync";
 export {
+	scheduleTaskReminderCheck,
+	type TaskReminderJobData,
+} from "./src/jobs/task-reminder";
+export {
 	mailAiQueue,
 	mailAutoHandleQueue,
 	mailFollowUpQueue,
 	mailSendQueue,
 	mailSnoozeQueue,
 	mailSyncQueue,
+	taskReminderQueue,
 } from "./src/queues";

@@ -6,6 +6,7 @@ import type { MailFollowUpJobData } from "./jobs/mail-followup";
 import type { MailSendJobData } from "./jobs/mail-send";
 import type { MailSnoozeJobData } from "./jobs/mail-snooze";
 import type { MailSyncJobData } from "./jobs/mail-sync";
+import type { TaskReminderJobData } from "./jobs/task-reminder";
 
 export const mailSyncQueue = new Queue<MailSyncJobData>("mail-sync", {
 	connection,
@@ -61,6 +62,19 @@ export const mailSendQueue = new Queue<MailSendJobData>("mail-send", {
 
 export const mailFollowUpQueue = new Queue<MailFollowUpJobData>(
 	"mail-follow-up",
+	{
+		connection,
+		defaultJobOptions: {
+			attempts: 2,
+			backoff: { type: "exponential", delay: 5000 },
+			removeOnComplete: { count: 100 },
+			removeOnFail: { count: 500 },
+		},
+	},
+);
+
+export const taskReminderQueue = new Queue<TaskReminderJobData>(
+	"task-reminder",
 	{
 		connection,
 		defaultJobOptions: {
