@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
@@ -35,12 +35,31 @@ function GroupSeparator() {
 }
 
 export const INBOX_SHORTCUTS: ShortcutGroup[] = [
-	[{ keys: ["\u23CE"], label: "select" }],
+	[
+		{ keys: ["\u23CE"], label: "open" },
+		{ keys: ["\u2423"], label: "peek" },
+		{ keys: ["Q"], label: "reply" },
+	],
 	[
 		{ keys: ["X"], label: "select" },
 		{ keys: ["E"], label: "archive" },
 		{ keys: ["F"], label: "star" },
 		{ keys: ["R"], label: "read" },
+	],
+	[
+		{ keys: ["/"], label: "search" },
+		{ keys: ["["], label: "back" },
+	],
+];
+
+export const INBOX_INLINE_SHORTCUTS: ShortcutGroup[] = [
+	[
+		{ keys: ["ESC"], label: "close" },
+		{ keys: ["\u23CE"], label: "full view" },
+	],
+	[
+		{ keys: ["E"], label: "archive" },
+		{ keys: ["F"], label: "star" },
 	],
 	[
 		{ keys: ["/"], label: "search" },
@@ -65,7 +84,11 @@ export const MAIL_HUB_SHORTCUTS: ShortcutGroup[] = [
 ];
 
 export const SENT_SHORTCUTS: ShortcutGroup[] = [
-	[{ keys: ["\u23CE"], label: "select" }],
+	[
+		{ keys: ["\u23CE"], label: "open" },
+		{ keys: ["\u2423"], label: "peek" },
+		{ keys: ["Q"], label: "reply" },
+	],
 	[
 		{ keys: ["E"], label: "archive" },
 		{ keys: ["F"], label: "star" },
@@ -73,6 +96,21 @@ export const SENT_SHORTCUTS: ShortcutGroup[] = [
 	[
 		{ keys: ["I"], label: "inbox" },
 		{ keys: ["A"], label: "attachments" },
+	],
+	[
+		{ keys: ["/"], label: "search" },
+		{ keys: ["["], label: "back" },
+	],
+];
+
+export const SENT_INLINE_SHORTCUTS: ShortcutGroup[] = [
+	[
+		{ keys: ["ESC"], label: "close" },
+		{ keys: ["\u23CE"], label: "full view" },
+	],
+	[
+		{ keys: ["E"], label: "archive" },
+		{ keys: ["F"], label: "star" },
 	],
 	[
 		{ keys: ["/"], label: "search" },
@@ -92,6 +130,42 @@ export const ATTACHMENTS_SHORTCUTS: ShortcutGroup[] = [
 	],
 ];
 
+function useIsTyping() {
+	const [isTyping, setIsTyping] = useState(false);
+
+	useEffect(() => {
+		const onFocusIn = (e: FocusEvent) => {
+			const t = e.target as HTMLElement;
+			if (
+				t.tagName === "INPUT" ||
+				t.tagName === "TEXTAREA" ||
+				t.isContentEditable
+			) {
+				setIsTyping(true);
+			}
+		};
+		const onFocusOut = (e: FocusEvent) => {
+			const t = e.relatedTarget as HTMLElement | null;
+			if (
+				!t ||
+				(t.tagName !== "INPUT" &&
+					t.tagName !== "TEXTAREA" &&
+					!t.isContentEditable)
+			) {
+				setIsTyping(false);
+			}
+		};
+		document.addEventListener("focusin", onFocusIn);
+		document.addEventListener("focusout", onFocusOut);
+		return () => {
+			document.removeEventListener("focusin", onFocusIn);
+			document.removeEventListener("focusout", onFocusOut);
+		};
+	}, []);
+
+	return isTyping;
+}
+
 export function KeyboardShortcutBar({
 	shortcuts,
 	visible = true,
@@ -99,9 +173,11 @@ export function KeyboardShortcutBar({
 	shortcuts: ShortcutGroup[];
 	visible?: boolean;
 }) {
+	const isTyping = useIsTyping();
+
 	return (
 		<AnimatePresence>
-			{visible && (
+			{visible && !isTyping && (
 				<motion.div
 					initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
 					animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}

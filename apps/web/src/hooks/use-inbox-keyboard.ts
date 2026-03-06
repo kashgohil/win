@@ -19,7 +19,20 @@ type UseInboxKeyboardOptions = {
 	onNavigateAttachments?: () => void;
 	onNavigateSent?: () => void;
 	onToggleView?: () => void;
+	onToggleViewMode?: () => void;
 	onGoBack?: () => void;
+	/** View mode for quick-view feature */
+	viewMode?: "inline" | "sidepanel";
+	/** Currently expanded thread ID (inline mode) */
+	expandedThreadId?: string | null;
+	/** Toggle expand on a thread (inline mode, Space key) */
+	onToggleExpand?: (index: number) => void;
+	/** Peek at a thread (sidepanel mode, auto on j/k) */
+	onPeekEmail?: (index: number) => void;
+	/** Collapse expanded thread (inline mode, Escape key) */
+	onCollapseExpand?: () => void;
+	/** Quick reply (q key) — expand + focus reply in inline, focus reply in sidepanel */
+	onQuickReply?: (index: number) => void;
 };
 
 type UseInboxKeyboardReturn = {
@@ -53,7 +66,14 @@ export function useInboxKeyboard({
 	onNavigateAttachments,
 	onNavigateSent,
 	onToggleView,
+	onToggleViewMode,
 	onGoBack,
+	viewMode,
+	expandedThreadId,
+	onToggleExpand,
+	onCollapseExpand,
+	onPeekEmail,
+	onQuickReply,
 }: UseInboxKeyboardOptions): UseInboxKeyboardReturn {
 	const [isActive, setIsActive] = useState(false);
 	const [activeSection, setActiveSection] = useState<Section>("emails");
@@ -163,17 +183,17 @@ export function useInboxKeyboard({
 				return;
 			}
 
+			// Global shortcut: p to toggle panel mode
+			if (key === "p") {
+				e.preventDefault();
+				onToggleViewMode?.();
+				return;
+			}
+
 			// Global shortcut: [ to go back
 			if (key === "[") {
 				e.preventDefault();
 				onGoBack?.();
-				return;
-			}
-
-			// Global shortcut: k to open search (only when keyboard nav is inactive)
-			if (key === "k" && !isActive) {
-				e.preventDefault();
-				onOpenSearch?.();
 				return;
 			}
 
@@ -202,11 +222,17 @@ export function useInboxKeyboard({
 					setActiveSection("emails");
 					setFocusedEmailIndex(0);
 					scrollEmailIntoView(0);
+					if (viewMode === "sidepanel" && onPeekEmail) {
+						onPeekEmail(0);
+					}
 				} else {
 					// Move down in email list
 					setFocusedEmailIndex((prev) => {
 						const next = Math.min(prev + 1, emailCount - 1);
 						scrollEmailIntoView(next);
+						if (viewMode === "sidepanel" && onPeekEmail) {
+							onPeekEmail(next);
+						}
 						return next;
 					});
 				}
@@ -223,6 +249,9 @@ export function useInboxKeyboard({
 					setFocusedEmailIndex((prev) => {
 						const next = Math.max(prev - 1, 0);
 						scrollEmailIntoView(next);
+						if (viewMode === "sidepanel" && onPeekEmail) {
+							onPeekEmail(next);
+						}
 						return next;
 					});
 				} else if (activeSection === "categories") {
@@ -257,7 +286,7 @@ export function useInboxKeyboard({
 
 			// --- Activation ---
 
-			if (key === "Enter" || key === " ") {
+			if (key === "Enter") {
 				e.preventDefault();
 				if (activeSection === "header") {
 					onActivateHeader(focusedHeaderIndex);
@@ -269,9 +298,33 @@ export function useInboxKeyboard({
 				return;
 			}
 
+			if (key === " ") {
+				e.preventDefault();
+				if (activeSection === "header") {
+					onActivateHeader(focusedHeaderIndex);
+				} else if (activeSection === "categories") {
+					onSelectCategory(focusedCategoryIndex);
+				} else if (
+					activeSection === "emails" &&
+					emailCount > 0 &&
+					viewMode === "inline" &&
+					onToggleExpand
+				) {
+					onToggleExpand(focusedEmailIndex);
+				} else if (activeSection === "emails" && emailCount > 0) {
+					onOpenEmail(focusedEmailIndex);
+				}
+				return;
+			}
+
 			// --- Email actions (only when focused on email list) ---
 
 			if (activeSection === "emails" && emailCount > 0) {
+				if (key === "q") {
+					e.preventDefault();
+					onQuickReply?.(focusedEmailIndex);
+					return;
+				}
 				if (key === "e") {
 					e.preventDefault();
 					onArchiveEmail(focusedEmailIndex);
@@ -294,11 +347,15 @@ export function useInboxKeyboard({
 				}
 			}
 
-			// --- Deactivate ---
+			// --- Deactivate / Collapse ---
 
 			if (key === "Escape") {
 				e.preventDefault();
-				setIsActive(false);
+				if (viewMode === "inline" && expandedThreadId && onCollapseExpand) {
+					onCollapseExpand();
+				} else {
+					setIsActive(false);
+				}
 				return;
 			}
 		};
@@ -326,9 +383,16 @@ export function useInboxKeyboard({
 		onNavigateAttachments,
 		onNavigateSent,
 		onToggleView,
+		onToggleViewMode,
 		onGoBack,
 		scrollEmailIntoView,
 		scrollSectionIntoView,
+		viewMode,
+		expandedThreadId,
+		onToggleExpand,
+		onCollapseExpand,
+		onPeekEmail,
+		onQuickReply,
 	]);
 
 	return {
