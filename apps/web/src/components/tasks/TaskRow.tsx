@@ -8,6 +8,7 @@ import {
 import type { Task } from "@/hooks/use-tasks";
 import { cn } from "@/lib/utils";
 import {
+	AlarmClock,
 	AlertTriangle,
 	Calendar,
 	CheckCircle2,
@@ -188,6 +189,12 @@ export function TaskRow({
 								>
 									<Calendar className="size-3" />
 									{due.text}
+								</span>
+							)}
+							{task.snoozedUntil && (
+								<span className="inline-flex items-center gap-1 font-mono text-[10px] text-amber-500">
+									<AlarmClock className="size-3" />
+									Snoozed
 								</span>
 							)}
 							{task.source === "external" && (

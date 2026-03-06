@@ -284,6 +284,32 @@ export function useDeleteTaskItem() {
 	});
 }
 
+export function useSnoozeTask() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			id,
+			snoozedUntil,
+		}: {
+			id: string;
+			snoozedUntil: string;
+		}) => {
+			const { data, error } = await api
+				.tasks({ taskId: id })
+				.snooze.post({ snoozedUntil });
+			if (error) throw new Error("Failed to snooze task");
+			return data;
+		},
+		onSuccess: (_data, variables) => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.list() });
+			queryClient.invalidateQueries({
+				queryKey: taskKeys.detail(variables.id),
+			});
+		},
+	});
+}
+
 export function useCreateProject() {
 	const queryClient = useQueryClient();
 

@@ -10,12 +10,14 @@ import {
 	useCreateTaskItem,
 	useDeleteTask,
 	useDeleteTaskItem,
+	useSnoozeTask,
 	useTaskDetail,
 	useUpdateTask,
 	useUpdateTaskItem,
 } from "@/hooks/use-tasks";
 import { cn } from "@/lib/utils";
 import {
+	AlarmClock,
 	AlertTriangle,
 	Calendar,
 	CheckCircle2,
@@ -61,6 +63,7 @@ export function TaskDetailDrawer({
 	const { data: task, isLoading } = useTaskDetail(taskId);
 	const updateTask = useUpdateTask();
 	const deleteTask = useDeleteTask();
+	const snoozeTask = useSnoozeTask();
 	const createItem = useCreateTaskItem();
 	const updateItem = useUpdateTaskItem();
 	const deleteItem = useDeleteTaskItem();
@@ -138,6 +141,22 @@ export function TaskDetailDrawer({
 	const handleDeleteItem = (itemId: string) => {
 		if (!task) return;
 		deleteItem.mutate({ taskId: task.id, itemId });
+	};
+
+	const handleSnooze = (snoozedUntil: string) => {
+		if (!task) return;
+		snoozeTask.mutate(
+			{ id: task.id, snoozedUntil },
+			{ onSuccess: () => toast("Task snoozed") },
+		);
+	};
+
+	const handleUnsnooze = () => {
+		if (!task) return;
+		updateTask.mutate(
+			{ id: task.id, snoozedUntil: null },
+			{ onSuccess: () => toast("Snooze removed") },
+		);
 	};
 
 	if (!open) return null;
@@ -302,6 +321,75 @@ export function TaskDetailDrawer({
 									</button>
 								)}
 							</div>
+						</div>
+
+						{/* Snooze */}
+						<div>
+							<span className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 block mb-2">
+								Snooze
+							</span>
+							{task.snoozedUntil ? (
+								<div className="flex items-center gap-2">
+									<AlarmClock className="size-3.5 text-amber-500" />
+									<span className="font-mono text-[12px] text-amber-500">
+										Until{" "}
+										{new Date(task.snoozedUntil).toLocaleDateString(undefined, {
+											month: "short",
+											day: "numeric",
+											hour: "numeric",
+											minute: "2-digit",
+										})}
+									</span>
+									<button
+										type="button"
+										onClick={handleUnsnooze}
+										className="text-grey-3 hover:text-foreground transition-colors cursor-pointer"
+									>
+										<X className="size-3" />
+									</button>
+								</div>
+							) : (
+								<div className="flex gap-1.5 flex-wrap">
+									{[
+										{
+											label: "Later today",
+											getDate: () => {
+												const d = new Date();
+												d.setHours(d.getHours() + 3);
+												return d.toISOString();
+											},
+										},
+										{
+											label: "Tomorrow",
+											getDate: () => {
+												const d = new Date();
+												d.setDate(d.getDate() + 1);
+												d.setHours(9, 0, 0, 0);
+												return d.toISOString();
+											},
+										},
+										{
+											label: "Next week",
+											getDate: () => {
+												const d = new Date();
+												d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
+												d.setHours(9, 0, 0, 0);
+												return d.toISOString();
+											},
+										},
+									].map((opt) => (
+										<button
+											key={opt.label}
+											type="button"
+											onClick={() => handleSnooze(opt.getDate())}
+											className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-mono text-[11px] tracking-wide bg-secondary/40 text-grey-2 hover:bg-secondary/70 transition-colors cursor-pointer"
+										>
+											<AlarmClock className="size-3" />
+											{opt.label}
+										</button>
+									))}
+								</div>
+							)}
 						</div>
 
 						{/* Description */}
