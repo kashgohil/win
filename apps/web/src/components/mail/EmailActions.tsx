@@ -241,11 +241,13 @@ function TooltipWithShortcut({
 	shortcut: string;
 }) {
 	return (
-		<TooltipContent side="bottom" className="flex items-center gap-2">
-			{label}
-			<kbd className="font-mono text-[10px] text-foreground/40 bg-foreground/[0.06] border border-foreground/[0.08] px-1 py-px rounded leading-none">
-				{shortcut}
-			</kbd>
+		<TooltipContent side="bottom">
+			<span className="inline-flex items-center gap-2">
+				{label}
+				<kbd className="font-mono text-[10px] text-background/50 bg-background/10 border border-background/15 px-1 py-px rounded leading-none">
+					{shortcut}
+				</kbd>
+			</span>
 		</TooltipContent>
 	);
 }
