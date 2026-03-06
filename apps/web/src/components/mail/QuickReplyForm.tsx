@@ -1,4 +1,4 @@
-import { useReplyToEmail } from "@/hooks/use-mail";
+import { useCancelSend, useReplyDelayed } from "@/hooks/use-mail";
 import { Send } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -17,17 +17,34 @@ export function QuickReplyForm({
 	onSent,
 }: QuickReplyFormProps) {
 	const [body, setBody] = useState("");
-	const reply = useReplyToEmail();
+	const reply = useReplyDelayed();
+	const cancelSend = useCancelSend();
 
 	const handleSend = () => {
 		if (!body.trim()) return;
 		reply.mutate(
 			{ id: emailId, body },
 			{
-				onSuccess: () => {
-					toast("Reply sent");
+				onSuccess: (data) => {
 					setBody("");
 					onSent?.();
+					const jobId = data?.jobId;
+					if (jobId) {
+						toast("Reply sent", {
+							duration: 10500,
+							action: {
+								label: "Undo",
+								onClick: () => {
+									cancelSend.mutate(jobId, {
+										onSuccess: () => toast("Send cancelled"),
+										onError: () => toast.error("Could not undo — already sent"),
+									});
+								},
+							},
+						});
+					} else {
+						toast("Reply sent");
+					}
 				},
 				onError: () => toast.error("Failed to send reply"),
 			},

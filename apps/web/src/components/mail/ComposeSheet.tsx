@@ -6,7 +6,11 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@/components/ui/sheet";
-import { useForwardEmail, useReplyToEmail } from "@/hooks/use-mail";
+import {
+	useCancelSend,
+	useForwardDelayed,
+	useReplyDelayed,
+} from "@/hooks/use-mail";
 import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -37,8 +41,9 @@ export function ComposeSheet({
 	const [body, setBody] = useState("");
 	const [showOriginal, setShowOriginal] = useState(false);
 
-	const reply = useReplyToEmail();
-	const forward = useForwardEmail();
+	const reply = useReplyDelayed();
+	const forward = useForwardDelayed();
+	const cancelSend = useCancelSend();
 
 	const isPending = reply.isPending || forward.isPending;
 
@@ -47,9 +52,26 @@ export function ComposeSheet({
 			reply.mutate(
 				{ id: emailId, body },
 				{
-					onSuccess: () => {
-						toast("Reply sent");
+					onSuccess: (data) => {
 						resetAndClose();
+						const jobId = data?.jobId;
+						if (jobId) {
+							toast("Reply sent", {
+								duration: 10500,
+								action: {
+									label: "Undo",
+									onClick: () => {
+										cancelSend.mutate(jobId, {
+											onSuccess: () => toast("Send cancelled"),
+											onError: () =>
+												toast.error("Could not undo — already sent"),
+										});
+									},
+								},
+							});
+						} else {
+							toast("Reply sent");
+						}
 					},
 					onError: () => toast.error("Failed to send reply"),
 				},
@@ -66,9 +88,26 @@ export function ComposeSheet({
 			forward.mutate(
 				{ id: emailId, to: recipients, body },
 				{
-					onSuccess: () => {
-						toast("Email forwarded");
+					onSuccess: (data) => {
 						resetAndClose();
+						const jobId = data?.jobId;
+						if (jobId) {
+							toast("Email forwarded", {
+								duration: 10500,
+								action: {
+									label: "Undo",
+									onClick: () => {
+										cancelSend.mutate(jobId, {
+											onSuccess: () => toast("Send cancelled"),
+											onError: () =>
+												toast.error("Could not undo — already sent"),
+										});
+									},
+								},
+							});
+						} else {
+							toast("Email forwarded");
+						}
 					},
 					onError: () => toast.error("Failed to forward email"),
 				},
