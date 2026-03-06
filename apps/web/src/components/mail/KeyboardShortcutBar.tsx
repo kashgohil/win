@@ -41,6 +41,7 @@ export const INBOX_SHORTCUTS: ShortcutGroup[] = [
 		{ keys: ["X"], label: "select" },
 	],
 	[
+		{ keys: ["H"], label: "snooze" },
 		{ keys: ["/"], label: "search" },
 		{ keys: ["["], label: "back" },
 	],

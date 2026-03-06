@@ -21,6 +21,8 @@ type UseInboxKeyboardOptions = {
 	onToggleView?: () => void;
 	onToggleViewMode?: () => void;
 	onGoBack?: () => void;
+	/** Snooze the focused email (h key) */
+	onSnoozeEmail?: (index: number) => void;
 	/** View mode for quick-view feature */
 	viewMode?: "inline" | "sidepanel";
 	/** Currently expanded thread ID (inline mode) */
@@ -74,6 +76,7 @@ export function useInboxKeyboard({
 	onCollapseExpand,
 	onPeekEmail,
 	onQuickReply,
+	onSnoozeEmail,
 }: UseInboxKeyboardOptions): UseInboxKeyboardReturn {
 	const [isActive, setIsActive] = useState(false);
 	const [activeSection, setActiveSection] = useState<Section>("emails");
@@ -328,6 +331,11 @@ export function useInboxKeyboard({
 					onQuickReply?.(focusedEmailIndex);
 					return;
 				}
+				if (key === "h") {
+					e.preventDefault();
+					onSnoozeEmail?.(focusedEmailIndex);
+					return;
+				}
 				if (key === "e") {
 					e.preventDefault();
 					onArchiveEmail(focusedEmailIndex);
@@ -396,6 +404,7 @@ export function useInboxKeyboard({
 		onCollapseExpand,
 		onPeekEmail,
 		onQuickReply,
+		onSnoozeEmail,
 	]);
 
 	return {
