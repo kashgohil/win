@@ -14,6 +14,7 @@ import { health } from "./routes/health";
 import { mail } from "./routes/mail";
 import { me } from "./routes/me";
 import { onboarding } from "./routes/onboarding";
+import { tasksRoutes } from "./routes/tasks";
 import { waitlist } from "./routes/waitlist";
 
 const app = new Elysia({ name: "wingmnn-api" })
@@ -41,6 +42,10 @@ const app = new Elysia({ name: "wingmnn-api" })
 						name: "Mail",
 						description: "Mail module — emails, triage, accounts",
 					},
+					{
+						name: "Tasks",
+						description: "Tasks module — tasks, projects, integrations",
+					},
 					{ name: "Waitlist", description: "Waitlist signup" },
 					{ name: "Onboarding", description: "User onboarding flow" },
 				],
@@ -67,6 +72,7 @@ const app = new Elysia({ name: "wingmnn-api" })
 	.use(isDev ? (app) => app : strictLimit())
 	.use(isDev ? (app) => app : lenientLimit())
 	.use(mail)
+	.use(tasksRoutes)
 	.use(me)
 	.use(onboarding)
 	.use(waitlist)
