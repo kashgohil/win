@@ -338,7 +338,7 @@ export function useInboxKeyboard({
 					onStarEmail(focusedEmailIndex);
 					return;
 				}
-				if (key === "r") {
+				if (key === "r" || key === "u") {
 					e.preventDefault();
 					onToggleReadEmail(focusedEmailIndex);
 					return;
