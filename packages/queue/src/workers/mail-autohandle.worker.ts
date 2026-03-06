@@ -1,4 +1,12 @@
-import { db, emailAccounts, emails, eq, mailAutoHandled } from "@wingmnn/db";
+import {
+	and,
+	db,
+	emailAccounts,
+	emails,
+	eq,
+	mailAutoHandled,
+	mailSenderRules,
+} from "@wingmnn/db";
 import { getProvider, getValidAccessToken } from "@wingmnn/mail";
 import { Worker } from "bullmq";
 import { connection } from "../connection";
@@ -21,6 +29,22 @@ async function processAutoHandle(data: MailAutoHandleJobData): Promise<void> {
 	const email = await db.query.emails.findFirst({
 		where: eq(emails.id, data.emailId),
 	});
+
+	// Check mute rules — auto-archive muted senders
+	if (email?.fromAddress) {
+		const muteRule = await db.query.mailSenderRules.findFirst({
+			where: and(
+				eq(mailSenderRules.userId, data.userId),
+				eq(mailSenderRules.senderAddress, email.fromAddress),
+				eq(mailSenderRules.muted, true),
+			),
+		});
+		if (muteRule) {
+			// Force archive for muted sender
+			data.action = "archived";
+			data.category = "spam";
+		}
+	}
 
 	// Execute provider action (archive/filter)
 	if (data.action === "archived" || data.action === "filtered") {

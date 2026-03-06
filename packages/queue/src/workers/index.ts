@@ -1,5 +1,8 @@
 import { createMailAiWorker } from "./mail-ai.worker";
 import { createMailAutoHandleWorker } from "./mail-autohandle.worker";
+import { createMailFollowUpWorker } from "./mail-followup.worker";
+import { createMailSendWorker } from "./mail-send.worker";
+import { createMailSnoozeWorker } from "./mail-snooze.worker";
 import { createMailSyncWorker } from "./mail-sync.worker";
 
 console.log("[workers] Starting mail workers...");
@@ -7,6 +10,9 @@ console.log("[workers] Starting mail workers...");
 const mailSyncWorker = createMailSyncWorker();
 const mailAiWorker = createMailAiWorker();
 const mailAutoHandleWorker = createMailAutoHandleWorker();
+const mailSnoozeWorker = createMailSnoozeWorker();
+const mailSendWorker = createMailSendWorker();
+const mailFollowUpWorker = createMailFollowUpWorker();
 
 console.log("[workers] All workers started");
 
@@ -16,6 +22,9 @@ async function shutdown() {
 		mailSyncWorker.close(),
 		mailAiWorker.close(),
 		mailAutoHandleWorker.close(),
+		mailSnoozeWorker.close(),
+		mailSendWorker.close(),
+		mailFollowUpWorker.close(),
 	]);
 	console.log("[workers] All workers stopped");
 	process.exit(0);
