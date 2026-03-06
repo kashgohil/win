@@ -134,6 +134,9 @@ export const emails = pgTable(
 		snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
 		triageActedAt: timestamp("triage_acted_at", { withTimezone: true }),
 		threadGroupId: uuid("thread_group_id"),
+		unsubscribeUrl: text("unsubscribe_url"),
+		followUpAt: timestamp("follow_up_at", { withTimezone: true }),
+		followUpDismissed: boolean("follow_up_dismissed").default(false).notNull(),
 		updatedAt: timestamp("updated_at", { withTimezone: true })
 			.defaultNow()
 			.notNull()
@@ -154,6 +157,7 @@ export const emails = pgTable(
 			table.receivedAt,
 		),
 		index("emails_user_thread_group_idx").on(table.userId, table.threadGroupId),
+		index("emails_follow_up_idx").on(table.userId, table.followUpAt),
 	],
 );
 
@@ -193,6 +197,9 @@ export const mailSenderRules = pgTable(
 			.references(() => users.id, { onDelete: "cascade" }),
 		senderAddress: varchar("sender_address", { length: 255 }).notNull(),
 		category: emailCategoryEnum().notNull(),
+		muted: boolean().default(false).notNull(),
+		vip: boolean().default(false).notNull(),
+		unsubscribed: boolean().default(false).notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),
