@@ -1,0 +1,304 @@
+import { api } from "@/lib/api";
+import {
+	useInfiniteQuery,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
+
+/* ── Query keys ── */
+
+export const taskKeys = {
+	all: ["tasks"] as const,
+	list: (params?: {
+		statusKey?: string;
+		projectId?: string;
+		priority?: string;
+		source?: string;
+		dueBefore?: string;
+		dueAfter?: string;
+		sort?: string;
+	}) => [...taskKeys.all, "list", params] as const,
+	detail: (id: string) => [...taskKeys.all, "detail", id] as const,
+	projects: () => [...taskKeys.all, "projects"] as const,
+	integrations: () => [...taskKeys.all, "integrations"] as const,
+};
+
+/* ── Task type (inferred from API response) ── */
+
+export type Task = {
+	id: string;
+	source: "native" | "external";
+	provider?: string | null;
+	externalId?: string | null;
+	externalUrl?: string | null;
+	title: string;
+	description?: string | null;
+	statusKey: "todo" | "in_progress" | "done" | "blocked" | "cancelled";
+	priority: "none" | "low" | "medium" | "high" | "urgent";
+	priorityScore: number;
+	dueAt?: string | null;
+	assigneeUserId?: string | null;
+	externalAssigneeName?: string | null;
+	projectId?: string | null;
+	sourceEmailId?: string | null;
+	completedAt?: string | null;
+	reminderAt?: string | null;
+	snoozedUntil?: string | null;
+	writeBackState?: string | null;
+	items: { id: string; title: string; completed: boolean; position: number }[];
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type Project = {
+	id: string;
+	name: string;
+	description?: string | null;
+	source: "native" | "external";
+	externalId?: string | null;
+	color?: string | null;
+	archived: boolean;
+	createdAt: string;
+};
+
+/* ── Queries ── */
+
+export function useTasksInfinite(params?: {
+	statusKey?: string;
+	projectId?: string;
+	priority?: string;
+	source?: string;
+	dueBefore?: string;
+	dueAfter?: string;
+	sort?: string;
+	limit?: number;
+}) {
+	const pageSize = params?.limit ?? 50;
+
+	return useInfiniteQuery({
+		queryKey: taskKeys.list({
+			statusKey: params?.statusKey,
+			projectId: params?.projectId,
+			priority: params?.priority,
+			source: params?.source,
+			dueBefore: params?.dueBefore,
+			dueAfter: params?.dueAfter,
+			sort: params?.sort,
+		}),
+		queryFn: async ({ pageParam }) => {
+			const { data, error } = await api.tasks.get({
+				query: {
+					statusKey: params?.statusKey,
+					projectId: params?.projectId,
+					priority: params?.priority,
+					source: params?.source,
+					dueBefore: params?.dueBefore,
+					dueAfter: params?.dueAfter,
+					sort: params?.sort,
+					limit: pageSize.toString(),
+					cursor: pageParam,
+				},
+			});
+			if (error) throw new Error("Failed to load tasks");
+			return data;
+		},
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
+	});
+}
+
+export function useTaskDetail(id: string) {
+	return useQuery({
+		queryKey: taskKeys.detail(id),
+		queryFn: async () => {
+			const { data, error } = await api.tasks({ taskId: id }).get();
+			if (error) throw new Error("Failed to load task");
+			return data;
+		},
+		enabled: !!id,
+	});
+}
+
+export function useProjects() {
+	return useQuery({
+		queryKey: taskKeys.projects(),
+		queryFn: async () => {
+			const { data, error } = await api.tasks.projects.get();
+			if (error) throw new Error("Failed to load projects");
+			return data;
+		},
+	});
+}
+
+/* ── Mutations ── */
+
+export function useCreateTask() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (input: {
+			title: string;
+			description?: string;
+			statusKey?: "todo" | "in_progress" | "done" | "blocked" | "cancelled";
+			priority?: "none" | "low" | "medium" | "high" | "urgent";
+			dueAt?: string | null;
+			projectId?: string | null;
+			sourceEmailId?: string | null;
+			reminderAt?: string | null;
+		}) => {
+			const { data, error } = await api.tasks.post(input);
+			if (error) throw new Error("Failed to create task");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.all });
+		},
+	});
+}
+
+export function useUpdateTask() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			id,
+			...input
+		}: {
+			id: string;
+			title?: string;
+			description?: string | null;
+			statusKey?: "todo" | "in_progress" | "done" | "blocked" | "cancelled";
+			priority?: "none" | "low" | "medium" | "high" | "urgent";
+			dueAt?: string | null;
+			projectId?: string | null;
+			reminderAt?: string | null;
+			snoozedUntil?: string | null;
+		}) => {
+			const { data, error } = await api.tasks({ taskId: id }).patch(input);
+			if (error) throw new Error("Failed to update task");
+			return data;
+		},
+		onSuccess: (_data, variables) => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.list() });
+			queryClient.invalidateQueries({
+				queryKey: taskKeys.detail(variables.id),
+			});
+		},
+	});
+}
+
+export function useDeleteTask() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (id: string) => {
+			const { data, error } = await api.tasks({ taskId: id }).delete();
+			if (error) throw new Error("Failed to delete task");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.all });
+		},
+	});
+}
+
+export function useCreateTaskItem() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			taskId,
+			title,
+		}: {
+			taskId: string;
+			title: string;
+		}) => {
+			const { data, error } = await api.tasks({ taskId }).items.post({ title });
+			if (error) throw new Error("Failed to add subtask");
+			return data;
+		},
+		onSuccess: (_data, variables) => {
+			queryClient.invalidateQueries({
+				queryKey: taskKeys.detail(variables.taskId),
+			});
+			queryClient.invalidateQueries({ queryKey: taskKeys.list() });
+		},
+	});
+}
+
+export function useUpdateTaskItem() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			taskId,
+			itemId,
+			...input
+		}: {
+			taskId: string;
+			itemId: string;
+			title?: string;
+			completed?: boolean;
+		}) => {
+			const { data, error } = await api
+				.tasks({ taskId })
+				.items({ itemId })
+				.patch(input);
+			if (error) throw new Error("Failed to update subtask");
+			return data;
+		},
+		onSuccess: (_data, variables) => {
+			queryClient.invalidateQueries({
+				queryKey: taskKeys.detail(variables.taskId),
+			});
+			queryClient.invalidateQueries({ queryKey: taskKeys.list() });
+		},
+	});
+}
+
+export function useDeleteTaskItem() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			taskId,
+			itemId,
+		}: {
+			taskId: string;
+			itemId: string;
+		}) => {
+			const { data, error } = await api
+				.tasks({ taskId })
+				.items({ itemId })
+				.delete();
+			if (error) throw new Error("Failed to delete subtask");
+			return data;
+		},
+		onSuccess: (_data, variables) => {
+			queryClient.invalidateQueries({
+				queryKey: taskKeys.detail(variables.taskId),
+			});
+			queryClient.invalidateQueries({ queryKey: taskKeys.list() });
+		},
+	});
+}
+
+export function useCreateProject() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (input: {
+			name: string;
+			description?: string;
+			color?: string;
+		}) => {
+			const { data, error } = await api.tasks.projects.post(input);
+			if (error) throw new Error("Failed to create project");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.projects() });
+		},
+	});
+}
