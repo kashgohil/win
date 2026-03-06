@@ -310,6 +310,23 @@ export function useSnoozeTask() {
 	});
 }
 
+export function useCreateTaskFromEmail() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (emailId: string) => {
+			const { data, error } = await api.tasks["from-email"]({
+				emailId,
+			}).post();
+			if (error) throw new Error("Failed to create task from email");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.all });
+		},
+	});
+}
+
 export function useCreateProject() {
 	const queryClient = useQueryClient();
 

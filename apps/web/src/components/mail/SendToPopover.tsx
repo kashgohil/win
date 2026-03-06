@@ -8,6 +8,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useCreateTaskFromEmail } from "@/hooks/use-tasks";
 import {
 	CalendarPlus,
 	CheckSquare,
@@ -18,34 +19,62 @@ import {
 	UserPlus,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 const sendToOptions = [
 	{
 		label: "create task",
 		icon: CheckSquare,
+		key: "task",
 	},
 	{
 		label: "add to calendar",
 		icon: CalendarPlus,
+		key: "calendar",
 	},
 	{
 		label: "save contact",
 		icon: UserPlus,
+		key: "contact",
 	},
 	{
 		label: "add note",
 		icon: StickyNote,
+		key: "note",
 	},
 	{
 		label: "track expense",
 		icon: Receipt,
+		key: "expense",
 	},
 ] as const;
 
-export function SendToPopover() {
+export function SendToPopover({ emailId }: { emailId?: string }) {
+	const [open, setOpen] = useState(false);
+	const createTaskFromEmail = useCreateTaskFromEmail();
+
+	const handleAction = (key: string) => {
+		if (key === "task" && emailId) {
+			createTaskFromEmail.mutate(emailId, {
+				onSuccess: (data) => {
+					toast("Task created", {
+						description: data?.title,
+					});
+					setOpen(false);
+				},
+				onError: () => {
+					toast.error("Failed to create task from email");
+				},
+			});
+			return;
+		}
+		toast("Coming soon");
+		setOpen(false);
+	};
+
 	return (
-		<Popover>
+		<Popover open={open} onOpenChange={setOpen}>
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<PopoverTrigger asChild>
@@ -65,9 +94,10 @@ export function SendToPopover() {
 				<div className="space-y-0.5">
 					{sendToOptions.map((opt, i) => (
 						<motion.button
-							key={opt.label}
+							key={opt.key}
 							type="button"
-							onClick={() => toast("Coming soon")}
+							onClick={() => handleAction(opt.key)}
+							disabled={opt.key === "task" && createTaskFromEmail.isPending}
 							initial={{ opacity: 0, x: -4 }}
 							animate={{ opacity: 1, x: 0 }}
 							transition={{
@@ -75,13 +105,15 @@ export function SendToPopover() {
 								delay: i * 0.03,
 								ease: [0.22, 1, 0.36, 1],
 							}}
-							className="group/item flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors duration-150 cursor-pointer hover:bg-secondary/40"
+							className="group/item flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors duration-150 cursor-pointer hover:bg-secondary/40 disabled:opacity-50"
 						>
 							<div className="size-7 rounded-md flex items-center justify-center bg-secondary/30 group-hover/item:bg-secondary/60 transition-colors duration-150">
 								<opt.icon className="size-3.5 text-grey-2" />
 							</div>
 							<span className="font-body text-[13px] text-foreground/70 group-hover/item:text-foreground transition-colors duration-150">
-								{opt.label}
+								{opt.key === "task" && createTaskFromEmail.isPending
+									? "Creating..."
+									: opt.label}
 							</span>
 							<ChevronRight className="size-2.5 ml-auto text-grey-3/0 group-hover/item:text-grey-3 transition-all duration-150" />
 						</motion.button>

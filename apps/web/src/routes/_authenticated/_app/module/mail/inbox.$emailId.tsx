@@ -310,6 +310,7 @@ function EmailDetail() {
 					isRead={latestMessage?.isRead ?? true}
 					fromAddress={latestMessage?.fromAddress ?? null}
 					category={latestMessage?.category ?? "uncategorized"}
+					emailId={latestMessage?.id ?? emailId}
 					onReply={handleReply}
 					onForward={handleForward}
 					onStar={handleStar}

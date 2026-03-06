@@ -43,6 +43,7 @@ interface EmailActionsProps {
 	onVipSender?: () => void;
 	onUnsubscribe?: () => void;
 	onSetFollowUp?: (followUpAt: string) => void;
+	emailId?: string;
 }
 
 export function EmailActions({
@@ -62,6 +63,7 @@ export function EmailActions({
 	onVipSender,
 	onUnsubscribe,
 	onSetFollowUp,
+	emailId,
 }: EmailActionsProps) {
 	return (
 		<TooltipProvider sliding>
@@ -207,7 +209,7 @@ export function EmailActions({
 					</Tooltip>
 				)}
 
-				<SendToPopover />
+				<SendToPopover emailId={emailId} />
 
 				{fromAddress && (
 					<>
