@@ -17,7 +17,7 @@ import { useMailAccountFilter } from "@/hooks/use-mail-account-filter";
 import { api } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, Inbox, Paperclip, Search } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -253,6 +253,17 @@ function SentPage() {
 					e.preventDefault();
 					navigate({ to: "/module/mail" });
 					return;
+				case "i":
+					e.preventDefault();
+					navigate({
+						to: "/module/mail/inbox",
+						search: { view: undefined, starred: undefined, attachment: undefined },
+					});
+					return;
+				case "a":
+					e.preventDefault();
+					navigate({ to: "/module/mail/attachments" });
+					return;
 			}
 
 			// Activate on first nav key
@@ -300,7 +311,7 @@ function SentPage() {
 				return;
 			}
 
-			if (e.key === "s") {
+			if (e.key === "f") {
 				e.preventDefault();
 				const thread = threads[focusedIndex];
 				if (thread) {
@@ -373,6 +384,25 @@ function SentPage() {
 				</Link>
 
 				<div className="flex items-center gap-3">
+					<Link
+						to="/module/mail/inbox"
+						search={{ view: undefined, starred: undefined, attachment: undefined }}
+						className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
+					>
+						<Inbox className="size-3" />
+						<span className="font-body text-[12px]">Inbox</span>
+						<Kbd>I</Kbd>
+					</Link>
+
+					<Link
+						to="/module/mail/attachments"
+						className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
+					>
+						<Paperclip className="size-3" />
+						<span className="font-body text-[12px]">Attachments</span>
+						<Kbd>A</Kbd>
+					</Link>
+
 					<button
 						type="button"
 						onClick={() => setSearchOpen(true)}

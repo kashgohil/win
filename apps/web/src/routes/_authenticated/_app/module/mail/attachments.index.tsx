@@ -31,7 +31,15 @@ import type {
 	EmailCategory,
 	SerializedAttachmentWithContext,
 } from "@wingmnn/types";
-import { ArrowLeft, Download, Inbox, Paperclip, Search, X } from "lucide-react";
+import {
+	ArrowLeft,
+	Download,
+	Inbox,
+	Paperclip,
+	Search,
+	Send,
+	X,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -176,7 +184,7 @@ function SkeletonCard() {
 
 /* ─── Header items for keyboard nav ─── */
 
-const HEADER_ITEMS = ["back", "inbox"] as const;
+const HEADER_ITEMS = ["back", "inbox", "sent"] as const;
 
 /* ─── Main page ─── */
 
@@ -370,6 +378,13 @@ function AttachmentsPage() {
 		});
 	}, [appNavigate]);
 
+	const handleNavigateSent = useCallback(() => {
+		appNavigate({
+			to: "/module/mail/sent",
+			search: { starred: undefined, attachment: undefined },
+		});
+	}, [appNavigate]);
+
 	const handleActivateHeader = useCallback(
 		(index: number) => {
 			const item = HEADER_ITEMS[index];
@@ -377,9 +392,11 @@ function AttachmentsPage() {
 				appNavigate({ to: "/module/mail" });
 			} else if (item === "inbox") {
 				handleNavigateInbox();
+			} else if (item === "sent") {
+				handleNavigateSent();
 			}
 		},
-		[appNavigate, handleNavigateInbox],
+		[appNavigate, handleNavigateInbox, handleNavigateSent],
 	);
 
 	const handleActivateSearch = useCallback(() => {
@@ -431,6 +448,7 @@ function AttachmentsPage() {
 		onActivateSearch: handleActivateSearch,
 		onOpenSearch: handleOpenSearch,
 		onNavigateInbox: handleNavigateInbox,
+		onNavigateSent: handleNavigateSent,
 		onGoBack: handleGoBack,
 	});
 
@@ -473,6 +491,22 @@ function AttachmentsPage() {
 								<Inbox className="size-3" />
 								<span className="font-body text-[12px]">Inbox</span>
 								<Kbd>I</Kbd>
+							</Link>
+
+							<Link
+								to="/module/mail/sent"
+								search={{ starred: undefined, attachment: undefined }}
+								className={cn(
+									"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
+									keyboard.isActive &&
+										keyboard.activeSection === "header" &&
+										keyboard.focusedHeaderIndex === 2 &&
+										"ring-2 ring-foreground/30 text-foreground",
+								)}
+							>
+								<Send className="size-3" />
+								<span className="font-body text-[12px]">Sent</span>
+								<Kbd>S</Kbd>
 							</Link>
 
 							<div className="w-px h-3.5 bg-border/40" />

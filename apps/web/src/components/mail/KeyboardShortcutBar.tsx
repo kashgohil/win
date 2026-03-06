@@ -39,7 +39,7 @@ export const INBOX_SHORTCUTS: ShortcutGroup[] = [
 	[
 		{ keys: ["X"], label: "select" },
 		{ keys: ["E"], label: "archive" },
-		{ keys: ["S"], label: "star" },
+		{ keys: ["F"], label: "star" },
 		{ keys: ["R"], label: "read" },
 	],
 	[
@@ -68,7 +68,11 @@ export const SENT_SHORTCUTS: ShortcutGroup[] = [
 	[{ keys: ["\u23CE"], label: "select" }],
 	[
 		{ keys: ["E"], label: "archive" },
-		{ keys: ["S"], label: "star" },
+		{ keys: ["F"], label: "star" },
+	],
+	[
+		{ keys: ["I"], label: "inbox" },
+		{ keys: ["A"], label: "attachments" },
 	],
 	[
 		{ keys: ["/"], label: "search" },
@@ -82,7 +86,10 @@ export const ATTACHMENTS_SHORTCUTS: ShortcutGroup[] = [
 		{ keys: ["["], label: "back" },
 		{ keys: ["/"], label: "search" },
 	],
-	[{ keys: ["I"], label: "inbox" }],
+	[
+		{ keys: ["I"], label: "inbox" },
+		{ keys: ["S"], label: "sent" },
+	],
 ];
 
 export function KeyboardShortcutBar({

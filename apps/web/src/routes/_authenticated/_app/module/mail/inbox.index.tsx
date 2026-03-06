@@ -42,6 +42,7 @@ import {
 	Merge,
 	Paperclip,
 	Search,
+	Send,
 	Star,
 	Trash2,
 	X,
@@ -52,7 +53,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 const PAGE_SIZE = 30;
-const HEADER_ITEMS = ["back", "attachments", "search", "view"] as const;
+const HEADER_ITEMS = ["back", "attachments", "sent", "search", "view"] as const;
 
 /* ── Cache helpers ── */
 
@@ -353,6 +354,11 @@ function MailInbox() {
 				navigate({ to: "/module/mail" });
 			} else if (item === "attachments") {
 				navigate({ to: "/module/mail/attachments" });
+			} else if (item === "sent") {
+				navigate({
+					to: "/module/mail/sent",
+					search: { starred: undefined, attachment: undefined },
+				});
 			} else if (item === "search") {
 				setSearchOpen(true);
 			} else if (item === "view") {
@@ -462,6 +468,13 @@ function MailInbox() {
 		navigate({ to: "/module/mail/attachments" });
 	}, [navigate]);
 
+	const handleNavigateSent = useCallback(() => {
+		navigate({
+			to: "/module/mail/sent",
+			search: { starred: undefined, attachment: undefined },
+		});
+	}, [navigate]);
+
 	const handleToggleView = useCallback(() => {
 		switchView(activeView === "unread" ? "read" : "unread");
 	}, [activeView, switchView]);
@@ -480,6 +493,7 @@ function MailInbox() {
 		onActivateHeader: handleActivateHeader,
 		onOpenSearch: handleOpenSearch,
 		onNavigateAttachments: handleNavigateAttachments,
+		onNavigateSent: handleNavigateSent,
 		onToggleView: handleToggleView,
 		onGoBack: handleGoBack,
 	});
@@ -664,6 +678,22 @@ function MailInbox() {
 						<Kbd>A</Kbd>
 					</Link>
 
+					<Link
+						to="/module/mail/sent"
+						search={{ starred: undefined, attachment: undefined }}
+						className={cn(
+							"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
+							keyboard.isActive &&
+								keyboard.activeSection === "header" &&
+								keyboard.focusedHeaderIndex === 2 &&
+								"ring-2 ring-foreground/30 text-foreground",
+						)}
+					>
+						<Send className="size-3" />
+						<span className="font-body text-[12px]">Sent</span>
+						<Kbd>S</Kbd>
+					</Link>
+
 					<button
 						type="button"
 						onClick={() => setSearchOpen(true)}
@@ -671,7 +701,7 @@ function MailInbox() {
 							"inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer",
 							keyboard.isActive &&
 								keyboard.activeSection === "header" &&
-								keyboard.focusedHeaderIndex === 2 &&
+								keyboard.focusedHeaderIndex === 3 &&
 								"ring-2 ring-foreground/30 text-foreground",
 						)}
 					>
@@ -685,7 +715,7 @@ function MailInbox() {
 							"rounded-lg transition-all duration-150",
 							keyboard.isActive &&
 								keyboard.activeSection === "header" &&
-								keyboard.focusedHeaderIndex === 3 &&
+								keyboard.focusedHeaderIndex === 4 &&
 								"ring-2 ring-foreground/30",
 						)}
 					>
@@ -696,11 +726,19 @@ function MailInbox() {
 							<TabsList size="sm">
 								<TabsTrigger size="sm" value="unread">
 									Unread
-									{activeView === "read" && <Kbd>V</Kbd>}
+									{activeView === "read" && (
+										<span className="ml-1">
+											<Kbd>V</Kbd>
+										</span>
+									)}
 								</TabsTrigger>
 								<TabsTrigger size="sm" value="read">
 									Read
-									{activeView === "unread" && <Kbd>V</Kbd>}
+									{activeView === "unread" && (
+										<span className="ml-1">
+											<Kbd>V</Kbd>
+										</span>
+									)}
 								</TabsTrigger>
 							</TabsList>
 						</Tabs>

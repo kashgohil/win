@@ -14,6 +14,7 @@ type UseAttachmentsKeyboardOptions = {
 	onActivateSearch?: () => void;
 	onOpenSearch?: () => void;
 	onNavigateInbox?: () => void;
+	onNavigateSent?: () => void;
 	onGoBack?: () => void;
 };
 
@@ -45,6 +46,7 @@ export function useAttachmentsKeyboard({
 	onActivateSearch,
 	onOpenSearch,
 	onNavigateInbox,
+	onNavigateSent,
 	onGoBack,
 }: UseAttachmentsKeyboardOptions): UseAttachmentsKeyboardReturn {
 	const [isActive, setIsActive] = useState(false);
@@ -156,6 +158,13 @@ export function useAttachmentsKeyboard({
 			if (key === "i") {
 				e.preventDefault();
 				onNavigateInbox?.();
+				return;
+			}
+
+			// Global shortcut: s to navigate to sent
+			if (key === "s") {
+				e.preventDefault();
+				onNavigateSent?.();
 				return;
 			}
 
@@ -300,6 +309,7 @@ export function useAttachmentsKeyboard({
 		onActivateSearch,
 		onOpenSearch,
 		onNavigateInbox,
+		onNavigateSent,
 		onGoBack,
 		scrollAttachmentIntoView,
 		scrollSectionIntoView,

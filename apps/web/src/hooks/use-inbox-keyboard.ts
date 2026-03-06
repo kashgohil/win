@@ -17,6 +17,7 @@ type UseInboxKeyboardOptions = {
 	onActivateHeader: (index: number) => void;
 	onOpenSearch?: () => void;
 	onNavigateAttachments?: () => void;
+	onNavigateSent?: () => void;
 	onToggleView?: () => void;
 	onGoBack?: () => void;
 };
@@ -50,6 +51,7 @@ export function useInboxKeyboard({
 	onActivateHeader,
 	onOpenSearch,
 	onNavigateAttachments,
+	onNavigateSent,
 	onToggleView,
 	onGoBack,
 }: UseInboxKeyboardOptions): UseInboxKeyboardReturn {
@@ -144,6 +146,13 @@ export function useInboxKeyboard({
 			if (key === "a") {
 				e.preventDefault();
 				onNavigateAttachments?.();
+				return;
+			}
+
+			// Global shortcut: s to navigate to sent
+			if (key === "s") {
+				e.preventDefault();
+				onNavigateSent?.();
 				return;
 			}
 
@@ -268,7 +277,7 @@ export function useInboxKeyboard({
 					onArchiveEmail(focusedEmailIndex);
 					return;
 				}
-				if (key === "s") {
+				if (key === "f") {
 					e.preventDefault();
 					onStarEmail(focusedEmailIndex);
 					return;
@@ -315,6 +324,7 @@ export function useInboxKeyboard({
 		onActivateHeader,
 		onOpenSearch,
 		onNavigateAttachments,
+		onNavigateSent,
 		onToggleView,
 		onGoBack,
 		scrollEmailIntoView,
