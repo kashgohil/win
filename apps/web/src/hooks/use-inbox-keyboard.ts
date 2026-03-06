@@ -204,6 +204,9 @@ export function useInboxKeyboard({
 			) {
 				e.preventDefault();
 				setIsActive(true);
+				if (viewMode === "sidepanel" && onPeekEmail) {
+					onPeekEmail(focusedEmailIndex);
+				}
 				return;
 			}
 
