@@ -36,6 +36,7 @@ export interface SyncedEmail {
 	labels: string[];
 	bodyPlain: string | null;
 	bodyHtml: string | null;
+	unsubscribeUrl: string | null;
 }
 
 export interface SyncResult {

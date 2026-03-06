@@ -99,7 +99,7 @@ export class OutlookProvider implements EmailProvider {
 		const sinceIso = since.toISOString();
 		const allEmails: SyncedEmail[] = [];
 		let nextLink: string | undefined =
-			`${GRAPH_API}/me/messages?$filter=receivedDateTime ge ${sinceIso}&$orderby=receivedDateTime desc&$top=100&$expand=attachments&$select=id,conversationId,subject,from,toRecipients,ccRecipients,bodyPreview,receivedDateTime,isRead,flag,hasAttachments,body,internetMessageId`;
+			`${GRAPH_API}/me/messages?$filter=receivedDateTime ge ${sinceIso}&$orderby=receivedDateTime desc&$top=100&$expand=attachments&$select=id,conversationId,subject,from,toRecipients,ccRecipients,bodyPreview,receivedDateTime,isRead,flag,hasAttachments,body,internetMessageId,internetMessageHeaders`;
 
 		do {
 			const res = await this.graphFetch(accessToken, nextLink);
@@ -443,10 +443,23 @@ interface OutlookMessage {
 		content: string;
 	};
 	internetMessageId?: string;
+	internetMessageHeaders?: { name: string; value: string }[];
 	attachments?: OutlookAttachment[];
 }
 
 /* ── Message parsing ── */
+
+function parseOutlookListUnsubscribe(
+	headers: { name: string; value: string }[] | undefined,
+): string | null {
+	if (!headers) return null;
+	const header = headers.find(
+		(h) => h.name.toLowerCase() === "list-unsubscribe",
+	);
+	if (!header) return null;
+	const httpMatch = header.value.match(/<(https?:\/\/[^>]+)>/);
+	return httpMatch ? httpMatch[1]! : null;
+}
 
 function parseOutlookMessage(msg: OutlookMessage): SyncedEmail {
 	const attachments: SyncedAttachment[] = [];
@@ -483,5 +496,6 @@ function parseOutlookMessage(msg: OutlookMessage): SyncedEmail {
 		labels: [],
 		bodyHtml: isHtml ? msg.body.content : null,
 		bodyPlain: isHtml ? null : msg.body.content,
+		unsubscribeUrl: parseOutlookListUnsubscribe(msg.internetMessageHeaders),
 	};
 }

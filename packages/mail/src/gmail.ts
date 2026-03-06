@@ -515,6 +515,14 @@ function extractAttachments(
 	return attachments;
 }
 
+function parseListUnsubscribe(header: string | null): string | null {
+	if (!header) return null;
+	// Prefer https:// URL over mailto:
+	const httpMatch = header.match(/<(https?:\/\/[^>]+)>/);
+	if (httpMatch) return httpMatch[1]!;
+	return null;
+}
+
 function parseGmailMessage(msg: GmailMessage): SyncedEmail {
 	const from = parseAddress(getHeader(msg, "From"));
 	const attachments = extractAttachments(msg.payload);
@@ -536,5 +544,6 @@ function parseGmailMessage(msg: GmailMessage): SyncedEmail {
 		labels: msg.labelIds,
 		bodyPlain: extractBody(msg.payload, "text/plain"),
 		bodyHtml: extractBody(msg.payload, "text/html"),
+		unsubscribeUrl: parseListUnsubscribe(getHeader(msg, "List-Unsubscribe")),
 	};
 }
