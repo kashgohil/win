@@ -273,6 +273,30 @@ export const tasksRoutes = new Elysia({
 		},
 	)
 
+	/* ── Create from email ── */
+
+	.post(
+		"/from-email/:emailId",
+		async ({ params, user, set }) => {
+			const result = await taskService.createFromEmail(user.id, params.emailId);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ emailId: t.String() }),
+			response: {
+				200: taskDetailResponse,
+				400: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Create task from email" },
+		},
+	)
+
 	/* ── Projects ── */
 
 	.get(

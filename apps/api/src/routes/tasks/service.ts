@@ -4,6 +4,7 @@ import {
 	count,
 	db,
 	desc,
+	emails,
 	eq,
 	gte,
 	lte,
@@ -727,6 +728,69 @@ export const taskService = {
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
 			console.error("[tasks] snoozeTask error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
+	/* ── Create task from email ── */
+	async createFromEmail(
+		userId: string,
+		emailId: string,
+	): Promise<TaskCreateResult> {
+		try {
+			const email = await db.query.emails.findFirst({
+				where: and(eq(emails.id, emailId), eq(emails.userId, userId)),
+			});
+
+			if (!email) {
+				return { ok: false, error: "Email not found", status: 400 };
+			}
+
+			const title =
+				email.subject?.replace(/^(Re|Fwd|Fw):\s*/gi, "").trim() ||
+				"Task from email";
+			const description = [
+				email.fromName || email.fromAddress
+					? `From: ${email.fromName || email.fromAddress}`
+					: null,
+				email.snippet ? `\n${email.snippet}` : null,
+			]
+				.filter(Boolean)
+				.join("");
+
+			const rows = await db
+				.insert(tasks)
+				.values({
+					userId,
+					title,
+					description: description || null,
+					source: "native",
+					sourceEmailId: emailId,
+					statusKey: "todo",
+					priority: "none",
+				})
+				.returning();
+
+			const created = rows[0];
+			if (!created) {
+				return {
+					ok: false,
+					error: "Failed to create task",
+					status: 500 as const,
+				};
+			}
+
+			await db.insert(taskActivityLog).values({
+				userId,
+				taskId: created.id,
+				action: "created",
+				details: { source: "email", emailId },
+			});
+
+			return { ok: true, data: serializeTask(created, []) };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] createFromEmail error:", message);
 			return { ok: false, error: message, status: 500 };
 		}
 	},
