@@ -227,6 +227,12 @@
         "typescript": "^5",
       },
     },
+    "packages/tasks": {
+      "name": "@wingmnn/tasks",
+      "dependencies": {
+        "@wingmnn/db": "workspace:*",
+      },
+    },
     "packages/types": {
       "name": "@wingmnn/types",
       "devDependencies": {
@@ -1231,6 +1237,8 @@
     "@wingmnn/queue": ["@wingmnn/queue@workspace:packages/queue"],
 
     "@wingmnn/redis": ["@wingmnn/redis@workspace:packages/redis"],
+
+    "@wingmnn/tasks": ["@wingmnn/tasks@workspace:packages/tasks"],
 
     "@wingmnn/types": ["@wingmnn/types@workspace:packages/types"],
 
