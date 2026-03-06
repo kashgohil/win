@@ -444,3 +444,303 @@ export function useForwardEmail() {
 		},
 	});
 }
+
+/* ── Feature 1: Snooze ── */
+
+export function useSnoozeEmail() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			id,
+			snoozedUntil,
+		}: {
+			id: string;
+			snoozedUntil: string;
+		}) => {
+			const { data, error } = await api.mail
+				.emails({ id })
+				.snooze.post({ snoozedUntil });
+			if (error) throw new Error("Failed to snooze email");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: mailKeys.all });
+		},
+	});
+}
+
+export function useSnoozeThread() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			threadId,
+			snoozedUntil,
+		}: {
+			threadId: string;
+			snoozedUntil: string;
+		}) => {
+			const { data, error } = await api.mail
+				.threads({ threadId })
+				.snooze.post({ snoozedUntil });
+			if (error) throw new Error("Failed to snooze thread");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: mailKeys.all });
+		},
+	});
+}
+
+export function useUnsnoozeEmail() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (id: string) => {
+			const { data, error } = await api.mail.emails({ id }).snooze.delete();
+			if (error) throw new Error("Failed to unsnooze email");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: mailKeys.all });
+		},
+	});
+}
+
+/* ── Feature 2: Draft Review ── */
+
+export function useDrafts(params?: { limit?: number }) {
+	return useInfiniteQuery({
+		queryKey: [...mailKeys.all, "drafts"] as const,
+		queryFn: async ({ pageParam }) => {
+			const { data, error } = await api.mail.drafts.get({
+				query: {
+					limit: (params?.limit ?? 20).toString(),
+					cursor: pageParam,
+				},
+			});
+			if (error) throw new Error("Failed to load drafts");
+			return data;
+		},
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
+	});
+}
+
+export function useUpdateDraft() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			id,
+			draftResponse,
+		}: {
+			id: string;
+			draftResponse: string;
+		}) => {
+			const { data, error } = await api.mail
+				.emails({ id })
+				.draft.patch({ draftResponse });
+			if (error) throw new Error("Failed to update draft");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: [...mailKeys.all, "drafts"],
+			});
+		},
+	});
+}
+
+export function useSendDraft() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (id: string) => {
+			const { data, error } = await api.mail
+				.triage({ id })
+				.action.post({ action: "send_draft" });
+			if (error) throw new Error("Failed to send draft");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: [...mailKeys.all, "drafts"],
+			});
+			queryClient.invalidateQueries({ queryKey: mailKeys.data() });
+		},
+	});
+}
+
+/* ── Feature 3: Delayed Send (Undo) ── */
+
+export function useReplyDelayed() {
+	return useMutation({
+		mutationFn: async ({
+			id,
+			body,
+			cc,
+		}: {
+			id: string;
+			body: string;
+			cc?: string[];
+		}) => {
+			const { data, error } = await api.mail
+				.emails({ id })
+				["reply-delayed"].post({ body, cc });
+			if (error) throw new Error("Failed to queue reply");
+			return data;
+		},
+	});
+}
+
+export function useForwardDelayed() {
+	return useMutation({
+		mutationFn: async ({
+			id,
+			to,
+			body,
+		}: {
+			id: string;
+			to: string[];
+			body: string;
+		}) => {
+			const { data, error } = await api.mail
+				.emails({ id })
+				["forward-delayed"].post({ to, body });
+			if (error) throw new Error("Failed to queue forward");
+			return data;
+		},
+	});
+}
+
+export function useCancelSend() {
+	return useMutation({
+		mutationFn: async (jobId: string) => {
+			const { data, error } = await api.mail.send({ jobId }).delete();
+			if (error) throw new Error("Failed to cancel send");
+			return data;
+		},
+	});
+}
+
+/* ── Feature 4: Sender Mute / VIP ── */
+
+export function useMuteSender() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			senderAddress,
+			muted,
+		}: {
+			senderAddress: string;
+			muted: boolean;
+		}) => {
+			const { data, error } = await api.mail["sender-rules"].mute.post({
+				senderAddress,
+				muted,
+			});
+			if (error) throw new Error("Failed to mute sender");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: mailKeys.all });
+		},
+	});
+}
+
+export function useVipSender() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			senderAddress,
+			vip,
+		}: {
+			senderAddress: string;
+			vip: boolean;
+		}) => {
+			const { data, error } = await api.mail["sender-rules"].vip.post({
+				senderAddress,
+				vip,
+			});
+			if (error) throw new Error("Failed to update VIP status");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: mailKeys.all });
+		},
+	});
+}
+
+/* ── Feature 5: Unsubscribe ── */
+
+export function useUnsubscribe() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (id: string) => {
+			const { data, error } = await api.mail.emails({ id }).unsubscribe.post();
+			if (error) throw new Error("Failed to unsubscribe");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: mailKeys.all });
+		},
+	});
+}
+
+/* ── Feature 6: Follow-Up ── */
+
+export function useSetFollowUp() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			id,
+			followUpAt,
+		}: {
+			id: string;
+			followUpAt: string;
+		}) => {
+			const { data, error } = await api.mail
+				.emails({ id })
+				["follow-up"].post({ followUpAt });
+			if (error) throw new Error("Failed to set follow-up");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: mailKeys.all });
+		},
+	});
+}
+
+export function useClearFollowUp() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (id: string) => {
+			const { data, error } = await api.mail
+				.emails({ id })
+				["follow-up"].delete();
+			if (error) throw new Error("Failed to clear follow-up");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: mailKeys.all });
+		},
+	});
+}
+
+export function useFollowUps() {
+	return useQuery({
+		queryKey: [...mailKeys.all, "follow-ups"] as const,
+		queryFn: async () => {
+			const { data, error } = await api.mail["follow-ups"].get();
+			if (error) throw new Error("Failed to load follow-ups");
+			return data;
+		},
+	});
+}
