@@ -688,6 +688,49 @@ export const taskService = {
 		}
 	},
 
+	/* ── Snooze task ── */
+	async snoozeTask(
+		userId: string,
+		taskId: string,
+		snoozedUntil: string,
+	): Promise<TaskUpdateResult> {
+		try {
+			const existing = await db.query.tasks.findFirst({
+				where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
+			});
+
+			if (!existing) {
+				return { ok: false, error: "Task not found", status: 404 };
+			}
+
+			const updatedRows = await db
+				.update(tasks)
+				.set({ snoozedUntil: new Date(snoozedUntil) })
+				.where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
+				.returning();
+
+			const updated = updatedRows[0];
+			if (!updated) {
+				return {
+					ok: false,
+					error: "Failed to snooze task",
+					status: 500 as const,
+				};
+			}
+
+			const items = await db.query.taskItems.findMany({
+				where: eq(taskItems.taskId, taskId),
+				orderBy: asc(taskItems.position),
+			});
+
+			return { ok: true, data: serializeTask(updated, items) };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] snoozeTask error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
 	/* ── List connections ── */
 	async listConnections(userId: string): Promise<ConnectionListResult> {
 		try {

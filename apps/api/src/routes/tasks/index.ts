@@ -244,6 +244,35 @@ export const tasksRoutes = new Elysia({
 		},
 	)
 
+	/* ── Snooze ── */
+
+	.post(
+		"/:taskId/snooze",
+		async ({ params, body, user, set }) => {
+			const result = await taskService.snoozeTask(
+				user.id,
+				params.taskId,
+				body.snoozedUntil,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ taskId: t.String() }),
+			body: t.Object({ snoozedUntil: t.String() }),
+			response: {
+				200: taskDetailResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Snooze task" },
+		},
+	)
+
 	/* ── Projects ── */
 
 	.get(
