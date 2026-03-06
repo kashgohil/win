@@ -725,160 +725,166 @@ function MailInbox() {
 		});
 	}, [peekedThreadId, navigate, view, category]);
 
-	const threadListContent = (
-		<>
-			{/* Floating selection actions — rail-style, hangs in left margin */}
-			<AnimatePresence>
-				{selectedThreads.size > 0 && viewMode !== "sidepanel" && (
-					<TooltipProvider sliding>
-						<motion.div
-							layout
-							initial={{ opacity: 0, x: 8 }}
-							animate={{ opacity: 1, x: 0 }}
-							exit={{ opacity: 0, x: 8 }}
-							transition={{
+	const selectionRail = (
+		<AnimatePresence>
+			{selectedThreads.size > 0 && (
+				<TooltipProvider sliding>
+					<motion.div
+						layout
+						initial={{ opacity: 0, x: 8 }}
+						animate={{ opacity: 1, x: 0 }}
+						exit={{ opacity: 0, x: 8 }}
+						transition={{
+							duration: 0.2,
+							ease: MOTION_CONSTANTS.EASE,
+							layout: {
 								duration: 0.2,
 								ease: MOTION_CONSTANTS.EASE,
-								layout: {
+							},
+						}}
+						className={cn(
+							"sticky top-8 z-20 w-10 flex-col items-center gap-1",
+							viewMode === "sidepanel"
+								? "flex mt-2"
+								: "float-left -ml-15 mt-6 hidden xl:flex",
+						)}
+					>
+						<motion.span
+							layout
+							className="font-mono text-[11px] font-semibold text-grey-2 mb-1 inline-flex tabular-nums overflow-hidden"
+						>
+							{String(selectedThreads.size)
+								.split("")
+								.map((char, i) => (
+									<AnimatePresence mode="popLayout" key={i}>
+										<motion.span
+											key={char}
+											initial={{ y: 10, opacity: 0 }}
+											animate={{ y: 0, opacity: 1 }}
+											exit={{ y: -10, opacity: 0 }}
+											transition={{
+												duration: 0.3,
+												ease: MOTION_CONSTANTS.EASE,
+											}}
+											className="inline-block"
+										>
+											{char}
+										</motion.span>
+									</AnimatePresence>
+								))}
+						</motion.span>
+						{selectedThreads.size >= 2 && (
+							<motion.div
+								layout
+								initial={{ opacity: 0, height: 0 }}
+								animate={{ opacity: 1, height: "auto" }}
+								exit={{ opacity: 0, height: 0 }}
+								transition={{
 									duration: 0.2,
 									ease: MOTION_CONSTANTS.EASE,
-								},
-							}}
-							className="sticky top-8 z-20 float-left -ml-15 mt-6 w-10 hidden xl:flex flex-col items-center gap-1"
-						>
-							<motion.span
-								layout
-								className="font-mono text-[11px] font-semibold text-grey-2 mb-1 inline-flex tabular-nums overflow-hidden"
+								}}
+								className="overflow-hidden"
 							>
-								{String(selectedThreads.size)
-									.split("")
-									.map((char, i) => (
-										<AnimatePresence mode="popLayout" key={i}>
-											<motion.span
-												key={char}
-												initial={{ y: 10, opacity: 0 }}
-												animate={{ y: 0, opacity: 1 }}
-												exit={{ y: -10, opacity: 0 }}
-												transition={{
-													duration: 0.3,
-													ease: MOTION_CONSTANTS.EASE,
-												}}
-												className="inline-block"
-											>
-												{char}
-											</motion.span>
-										</AnimatePresence>
-									))}
-							</motion.span>
-							{selectedThreads.size >= 2 && (
-								<motion.div
-									layout
-									initial={{ opacity: 0, height: 0 }}
-									animate={{ opacity: 1, height: "auto" }}
-									exit={{ opacity: 0, height: 0 }}
-									transition={{
-										duration: 0.2,
-										ease: MOTION_CONSTANTS.EASE,
-									}}
-									className="overflow-hidden"
-								>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<button
-												type="button"
-												onClick={handleMergeSelected}
-												disabled={mergeThreads.isPending}
-												className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer disabled:opacity-50"
-											>
-												<Merge className="size-3.5" />
-											</button>
-										</TooltipTrigger>
-										<TooltipContent side="left">Merge threads</TooltipContent>
-									</Tooltip>
-								</motion.div>
-							)}
-							<motion.div layout>
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<button
 											type="button"
-											onClick={handleBulkArchive}
-											className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
+											onClick={handleMergeSelected}
+											disabled={mergeThreads.isPending}
+											className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer disabled:opacity-50"
 										>
-											<Archive className="size-3.5" />
+											<Merge className="size-3.5" />
 										</button>
 									</TooltipTrigger>
-									<TooltipContent side="left">Archive</TooltipContent>
+									<TooltipContent side="left">Merge threads</TooltipContent>
 								</Tooltip>
 							</motion.div>
-							<motion.div layout>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<button
-											type="button"
-											onClick={handleBulkStar}
-											className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-amber-500 hover:bg-amber-500/5 transition-colors duration-150 cursor-pointer"
-										>
-											<Star className="size-3.5" />
-										</button>
-									</TooltipTrigger>
-									<TooltipContent side="left">Star</TooltipContent>
-								</Tooltip>
-							</motion.div>
-							<motion.div layout>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<button
-											type="button"
-											onClick={handleBulkToggleRead}
-											className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
-										>
-											{activeView === "unread" ? (
-												<MailOpen className="size-3.5" />
-											) : (
-												<Mail className="size-3.5" />
-											)}
-										</button>
-									</TooltipTrigger>
-									<TooltipContent side="left">
-										{activeView === "unread"
-											? "Mark as read"
-											: "Mark as unread"}
-									</TooltipContent>
-								</Tooltip>
-							</motion.div>
-							<motion.div layout>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<button
-											type="button"
-											onClick={handleBulkDelete}
-											className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-accent-red hover:bg-accent-red/5 transition-colors duration-150 cursor-pointer"
-										>
-											<Trash2 className="size-3.5" />
-										</button>
-									</TooltipTrigger>
-									<TooltipContent side="left">Delete</TooltipContent>
-								</Tooltip>
-							</motion.div>
-							<motion.div layout>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<button
-											type="button"
-											onClick={() => setSelectedThreads(new Set())}
-											className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
-										>
-											<X className="size-3.5" />
-										</button>
-									</TooltipTrigger>
-									<TooltipContent side="left">Clear selection</TooltipContent>
-								</Tooltip>
-							</motion.div>
+						)}
+						<motion.div layout>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										type="button"
+										onClick={handleBulkArchive}
+										className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
+									>
+										<Archive className="size-3.5" />
+									</button>
+								</TooltipTrigger>
+								<TooltipContent side="left">Archive</TooltipContent>
+							</Tooltip>
 						</motion.div>
-					</TooltipProvider>
-				)}
-			</AnimatePresence>
+						<motion.div layout>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										type="button"
+										onClick={handleBulkStar}
+										className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-amber-500 hover:bg-amber-500/5 transition-colors duration-150 cursor-pointer"
+									>
+										<Star className="size-3.5" />
+									</button>
+								</TooltipTrigger>
+								<TooltipContent side="left">Star</TooltipContent>
+							</Tooltip>
+						</motion.div>
+						<motion.div layout>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										type="button"
+										onClick={handleBulkToggleRead}
+										className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
+									>
+										{activeView === "unread" ? (
+											<MailOpen className="size-3.5" />
+										) : (
+											<Mail className="size-3.5" />
+										)}
+									</button>
+								</TooltipTrigger>
+								<TooltipContent side="left">
+									{activeView === "unread" ? "Mark as read" : "Mark as unread"}
+								</TooltipContent>
+							</Tooltip>
+						</motion.div>
+						<motion.div layout>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										type="button"
+										onClick={handleBulkDelete}
+										className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-accent-red hover:bg-accent-red/5 transition-colors duration-150 cursor-pointer"
+									>
+										<Trash2 className="size-3.5" />
+									</button>
+								</TooltipTrigger>
+								<TooltipContent side="left">Delete</TooltipContent>
+							</Tooltip>
+						</motion.div>
+						<motion.div layout>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										type="button"
+										onClick={() => setSelectedThreads(new Set())}
+										className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
+									>
+										<X className="size-3.5" />
+									</button>
+								</TooltipTrigger>
+								<TooltipContent side="left">Clear selection</TooltipContent>
+							</Tooltip>
+						</motion.div>
+					</motion.div>
+				</TooltipProvider>
+			)}
+		</AnimatePresence>
+	);
+
+	const threadListContent = (
+		<>
+			{viewMode !== "sidepanel" && selectionRail}
 			<motion.div
 				initial={{ opacity: 0, y: 12 }}
 				animate={{ opacity: 1, y: 0 }}
@@ -916,15 +922,9 @@ function MailInbox() {
 										}
 										focusRef={(el) => keyboard.emailRowRef(idx, el)}
 										isSelected={selectedThreads.has(thread.threadId)}
-										onSelect={
-											viewMode !== "sidepanel" ? handleSelectThread : undefined
-										}
-										onDragStartThread={
-											viewMode !== "sidepanel" ? handleDragStart : undefined
-										}
-										onDropThread={
-											viewMode !== "sidepanel" ? handleDrop : undefined
-										}
+										onSelect={handleSelectThread}
+										onDragStartThread={handleDragStart}
+										onDropThread={handleDrop}
 										compact={viewMode === "sidepanel"}
 										isExpanded={isThisExpanded}
 										onToggleExpand={
@@ -1202,7 +1202,14 @@ function MailInbox() {
 					</p>
 				</motion.div>
 			) : viewMode === "sidepanel" ? (
-				<div className="flex flex-1 overflow-hidden mt-4 px-(--page-px)">
+				<div className="relative flex flex-1 overflow-hidden mt-4 px-(--page-px)">
+					{/* Selection rail — absolutely positioned so it doesn't consume width */}
+					<div
+						className="absolute top-6 z-20"
+						style={{ left: "calc(var(--page-px) - 52px)" }}
+					>
+						{selectionRail}
+					</div>
 					{/* Left column — compact thread list */}
 					<div
 						data-sidepanel-list
