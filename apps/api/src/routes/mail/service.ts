@@ -13,10 +13,13 @@ import {
 	gte,
 	ilike,
 	inArray,
+	isNotNull,
+	isNull,
 	lt,
 	lte,
 	mailAutoHandled,
 	mailSenderRules,
+	not,
 	or,
 	sql,
 	syncStatusEnum,
@@ -389,6 +392,10 @@ function buildFilterConditions(
 	| { ok: true; conditions: ReturnType<typeof and>[] }
 	| { ok: false; error: string; status: 400 } {
 	const conditions: any[] = [eq(emails.userId, userId)];
+	// Exclude snoozed emails from normal listings
+	conditions.push(
+		or(isNull(emails.triageStatus), not(eq(emails.triageStatus, "snoozed")))!,
+	);
 	if (options.accountIds && options.accountIds.length > 0) {
 		conditions.push(inArray(emails.emailAccountId, options.accountIds));
 	}
@@ -2179,6 +2186,594 @@ class MailService {
 				ok: false,
 				error: "Failed to execute triage action",
 				status: 500,
+			};
+		}
+	}
+
+	/* ── Feature 1: Snooze ── */
+
+	async snoozeEmail(
+		userId: string,
+		emailId: string,
+		snoozedUntil: string,
+	): Promise<ActionResult> {
+		try {
+			const email = await db.query.emails.findFirst({
+				where: and(eq(emails.id, emailId), eq(emails.userId, userId)),
+			});
+			if (!email) return { ok: false, error: "Email not found", status: 404 };
+
+			await db
+				.update(emails)
+				.set({
+					triageStatus: "snoozed",
+					snoozedUntil: new Date(snoozedUntil),
+					isRead: true,
+				})
+				.where(eq(emails.id, emailId));
+
+			await invalidateCache(`mail:briefing:${userId}`);
+			return { ok: true, message: "Email snoozed" };
+		} catch (err) {
+			console.error("[mail] snoozeEmail failed:", err);
+			return { ok: false, error: "Failed to snooze email", status: 500 };
+		}
+	}
+
+	async snoozeThread(
+		userId: string,
+		threadId: string,
+		snoozedUntil: string,
+	): Promise<ActionResult> {
+		try {
+			const threadEmails = await db
+				.select({ id: emails.id })
+				.from(emails)
+				.where(
+					and(eq(emails.userId, userId), sql`${threadKeyExpr} = ${threadId}`),
+				);
+			if (threadEmails.length === 0)
+				return { ok: false, error: "Thread not found", status: 404 };
+
+			await db
+				.update(emails)
+				.set({
+					triageStatus: "snoozed",
+					snoozedUntil: new Date(snoozedUntil),
+					isRead: true,
+				})
+				.where(
+					inArray(
+						emails.id,
+						threadEmails.map((e) => e.id),
+					),
+				);
+
+			await invalidateCache(`mail:briefing:${userId}`);
+			return { ok: true, message: "Thread snoozed" };
+		} catch (err) {
+			console.error("[mail] snoozeThread failed:", err);
+			return { ok: false, error: "Failed to snooze thread", status: 500 };
+		}
+	}
+
+	async unsnoozeEmail(userId: string, emailId: string): Promise<ActionResult> {
+		try {
+			const email = await db.query.emails.findFirst({
+				where: and(eq(emails.id, emailId), eq(emails.userId, userId)),
+			});
+			if (!email) return { ok: false, error: "Email not found", status: 404 };
+
+			await db
+				.update(emails)
+				.set({ triageStatus: null, snoozedUntil: null })
+				.where(eq(emails.id, emailId));
+
+			await invalidateCache(`mail:briefing:${userId}`);
+			return { ok: true, message: "Email unsnoozed" };
+		} catch (err) {
+			console.error("[mail] unsnoozeEmail failed:", err);
+			return { ok: false, error: "Failed to unsnooze email", status: 500 };
+		}
+	}
+
+	/* ── Feature 2: Draft Review Queue ── */
+
+	async getDrafts(
+		userId: string,
+		options: { limit?: number; cursor?: string },
+	) {
+		const limit = options.limit ?? 20;
+		try {
+			const conditions: any[] = [
+				eq(emails.userId, userId),
+				isNotNull(emails.draftResponse),
+				eq(emails.triageStatus, "pending"),
+			];
+
+			if (options.cursor) {
+				try {
+					const decoded = JSON.parse(atob(options.cursor)) as {
+						receivedAt: string;
+						id: string;
+					};
+					conditions.push(
+						or(
+							lt(emails.receivedAt, new Date(decoded.receivedAt)),
+							and(
+								eq(emails.receivedAt, new Date(decoded.receivedAt)),
+								lt(emails.id, decoded.id),
+							),
+						)!,
+					);
+				} catch {
+					return {
+						ok: false as const,
+						error: "Invalid cursor",
+						status: 400 as const,
+					};
+				}
+			}
+
+			const rows = await db
+				.select({
+					id: emails.id,
+					subject: emails.subject,
+					fromAddress: emails.fromAddress,
+					fromName: emails.fromName,
+					snippet: emails.snippet,
+					draftResponse: emails.draftResponse,
+					receivedAt: emails.receivedAt,
+					aiSummary: emails.aiSummary,
+				})
+				.from(emails)
+				.where(and(...conditions))
+				.orderBy(desc(emails.receivedAt), desc(emails.id))
+				.limit(limit + 1);
+
+			const hasMore = rows.length > limit;
+			const trimmed = hasMore ? rows.slice(0, limit) : rows;
+
+			let nextCursor: string | undefined;
+			if (hasMore && trimmed.length > 0) {
+				const last = trimmed[trimmed.length - 1]!;
+				nextCursor = btoa(
+					JSON.stringify({
+						receivedAt: last.receivedAt.toISOString(),
+						id: last.id,
+					}),
+				);
+			}
+
+			return {
+				ok: true as const,
+				data: {
+					drafts: trimmed.map((d) => ({
+						...d,
+						receivedAt: d.receivedAt.toISOString(),
+					})),
+					hasMore,
+					nextCursor,
+				},
+			};
+		} catch (err) {
+			console.error("[mail] getDrafts failed:", err);
+			return {
+				ok: false as const,
+				error: "Failed to load drafts",
+				status: 500 as const,
+			};
+		}
+	}
+
+	async updateDraft(
+		userId: string,
+		emailId: string,
+		draftResponse: string,
+	): Promise<ActionResult> {
+		try {
+			const email = await db.query.emails.findFirst({
+				where: and(eq(emails.id, emailId), eq(emails.userId, userId)),
+			});
+			if (!email) return { ok: false, error: "Email not found", status: 404 };
+
+			await db
+				.update(emails)
+				.set({ draftResponse })
+				.where(eq(emails.id, emailId));
+
+			return { ok: true, message: "Draft updated" };
+		} catch (err) {
+			console.error("[mail] updateDraft failed:", err);
+			return { ok: false, error: "Failed to update draft", status: 500 };
+		}
+	}
+
+	/* ── Feature 3: Delayed Send ── */
+
+	async replyToEmailDelayed(
+		userId: string,
+		emailId: string,
+		body: string,
+		cc?: string[],
+	): Promise<
+		| { ok: true; jobId: string; message: string }
+		| { ok: false; error: string; status: 404 | 500 }
+	> {
+		try {
+			const ctx = await getEmailProviderContext(emailId);
+			if (!ctx.ok) return { ok: false, error: ctx.error, status: 500 };
+			if (ctx.email.userId !== userId)
+				return { ok: false, error: "Email not found", status: 404 };
+
+			const { enqueueDelayedSend } = await import("@wingmnn/queue");
+			const jobId = await enqueueDelayedSend({
+				type: "reply",
+				emailId,
+				userId,
+				emailAccountId: ctx.email.emailAccountId,
+				body,
+				cc,
+			});
+
+			return { ok: true, jobId, message: "Queued" };
+		} catch (err) {
+			console.error("[mail] replyToEmailDelayed failed:", err);
+			return { ok: false, error: "Failed to queue reply", status: 500 };
+		}
+	}
+
+	async forwardEmailDelayed(
+		userId: string,
+		emailId: string,
+		to: string[],
+		body: string,
+	): Promise<
+		| { ok: true; jobId: string; message: string }
+		| { ok: false; error: string; status: 404 | 500 }
+	> {
+		try {
+			const ctx = await getEmailProviderContext(emailId);
+			if (!ctx.ok) return { ok: false, error: ctx.error, status: 500 };
+			if (ctx.email.userId !== userId)
+				return { ok: false, error: "Email not found", status: 404 };
+
+			const { enqueueDelayedSend } = await import("@wingmnn/queue");
+			const jobId = await enqueueDelayedSend({
+				type: "forward",
+				emailId,
+				userId,
+				emailAccountId: ctx.email.emailAccountId,
+				to,
+				body,
+			});
+
+			return { ok: true, jobId, message: "Queued" };
+		} catch (err) {
+			console.error("[mail] forwardEmailDelayed failed:", err);
+			return { ok: false, error: "Failed to queue forward", status: 500 };
+		}
+	}
+
+	async cancelDelayedSend(
+		jobId: string,
+	): Promise<
+		| { ok: true; message: string }
+		| { ok: false; error: string; status: 410 | 500 }
+	> {
+		try {
+			const { cancelDelayedSend: cancel } = await import("@wingmnn/queue");
+			const cancelled = await cancel(jobId);
+			if (!cancelled) return { ok: false, error: "Already sent", status: 410 };
+			return { ok: true, message: "Send cancelled" };
+		} catch (err) {
+			console.error("[mail] cancelDelayedSend failed:", err);
+			return { ok: false, error: "Failed to cancel send", status: 500 };
+		}
+	}
+
+	/* ── Feature 4: Sender Mute / VIP ── */
+
+	async muteSender(
+		userId: string,
+		senderAddress: string,
+		muted: boolean,
+	): Promise<
+		| { ok: true; message: string; archivedCount: number }
+		| { ok: false; error: string; status: 500 }
+	> {
+		try {
+			await db
+				.insert(mailSenderRules)
+				.values({
+					userId,
+					senderAddress,
+					category: "spam",
+					muted,
+				})
+				.onConflictDoUpdate({
+					target: [mailSenderRules.userId, mailSenderRules.senderAddress],
+					set: { muted },
+				});
+
+			let archivedCount = 0;
+			if (muted) {
+				const result = await db
+					.update(emails)
+					.set({ isRead: true })
+					.where(
+						and(
+							eq(emails.userId, userId),
+							eq(emails.fromAddress, senderAddress),
+							eq(emails.isRead, false),
+						),
+					)
+					.returning({ id: emails.id });
+				archivedCount = result.length;
+
+				for (const row of result) {
+					try {
+						const ctx = await getEmailProviderContext(row.id);
+						if (ctx.ok) {
+							await ctx.provider.archive(
+								ctx.accessToken,
+								ctx.email.providerMessageId,
+							);
+						}
+					} catch {
+						// Best-effort archive
+					}
+				}
+			}
+
+			await invalidateCache(`mail:briefing:${userId}`);
+			return {
+				ok: true,
+				message: muted ? `Muted ${senderAddress}` : `Unmuted ${senderAddress}`,
+				archivedCount,
+			};
+		} catch (err) {
+			console.error("[mail] muteSender failed:", err);
+			return { ok: false, error: "Failed to mute sender", status: 500 };
+		}
+	}
+
+	async vipSender(
+		userId: string,
+		senderAddress: string,
+		vip: boolean,
+	): Promise<ActionResult> {
+		try {
+			await db
+				.insert(mailSenderRules)
+				.values({
+					userId,
+					senderAddress,
+					category: "urgent",
+					vip,
+				})
+				.onConflictDoUpdate({
+					target: [mailSenderRules.userId, mailSenderRules.senderAddress],
+					set: { vip },
+				});
+
+			return {
+				ok: true,
+				message: vip
+					? `${senderAddress} marked as VIP`
+					: `${senderAddress} removed from VIP`,
+			};
+		} catch (err) {
+			console.error("[mail] vipSender failed:", err);
+			return { ok: false, error: "Failed to update VIP status", status: 500 };
+		}
+	}
+
+	/* ── Feature 5: One-Click Unsubscribe ── */
+
+	async unsubscribeEmail(
+		userId: string,
+		emailId: string,
+	): Promise<
+		| {
+				ok: true;
+				message: string;
+				method: "one-click" | "link" | "failed";
+		  }
+		| { ok: false; error: string; status: 404 | 500 }
+	> {
+		try {
+			const email = await db.query.emails.findFirst({
+				where: and(eq(emails.id, emailId), eq(emails.userId, userId)),
+			});
+			if (!email) return { ok: false, error: "Email not found", status: 404 };
+			if (!email.unsubscribeUrl)
+				return {
+					ok: false,
+					error: "No unsubscribe URL available",
+					status: 404,
+				};
+
+			let method: "one-click" | "link" | "failed" = "failed";
+
+			try {
+				const postRes = await fetch(email.unsubscribeUrl, {
+					method: "POST",
+					headers: { "Content-Type": "application/x-www-form-urlencoded" },
+					body: "List-Unsubscribe=One-Click",
+				});
+				if (postRes.ok || postRes.status === 204) {
+					method = "one-click";
+				}
+			} catch {
+				// POST failed, try GET
+			}
+
+			if (method === "failed") {
+				try {
+					const getRes = await fetch(email.unsubscribeUrl, {
+						method: "GET",
+						redirect: "follow",
+					});
+					if (getRes.ok) {
+						method = "link";
+					}
+				} catch {
+					// GET also failed
+				}
+			}
+
+			if (email.fromAddress) {
+				await db
+					.insert(mailSenderRules)
+					.values({
+						userId,
+						senderAddress: email.fromAddress,
+						category: email.category,
+						unsubscribed: true,
+					})
+					.onConflictDoUpdate({
+						target: [mailSenderRules.userId, mailSenderRules.senderAddress],
+						set: { unsubscribed: true },
+					});
+			}
+
+			return {
+				ok: true,
+				message:
+					method !== "failed"
+						? `Unsubscribed from ${email.fromAddress}`
+						: "Unsubscribe request sent (may take time to process)",
+				method,
+			};
+		} catch (err) {
+			console.error("[mail] unsubscribeEmail failed:", err);
+			return { ok: false, error: "Failed to unsubscribe", status: 500 };
+		}
+	}
+
+	/* ── Feature 6: Follow-Up Reminders ── */
+
+	async setFollowUp(
+		userId: string,
+		emailId: string,
+		followUpAt: string,
+	): Promise<ActionResult> {
+		try {
+			const email = await db.query.emails.findFirst({
+				where: and(eq(emails.id, emailId), eq(emails.userId, userId)),
+			});
+			if (!email) return { ok: false, error: "Email not found", status: 404 };
+
+			await db
+				.update(emails)
+				.set({ followUpAt: new Date(followUpAt), followUpDismissed: false })
+				.where(eq(emails.id, emailId));
+
+			return { ok: true, message: "Follow-up set" };
+		} catch (err) {
+			console.error("[mail] setFollowUp failed:", err);
+			return { ok: false, error: "Failed to set follow-up", status: 500 };
+		}
+	}
+
+	async clearFollowUp(userId: string, emailId: string): Promise<ActionResult> {
+		try {
+			const email = await db.query.emails.findFirst({
+				where: and(eq(emails.id, emailId), eq(emails.userId, userId)),
+			});
+			if (!email) return { ok: false, error: "Email not found", status: 404 };
+
+			await db
+				.update(emails)
+				.set({ followUpAt: null, followUpDismissed: false })
+				.where(eq(emails.id, emailId));
+
+			return { ok: true, message: "Follow-up cleared" };
+		} catch (err) {
+			console.error("[mail] clearFollowUp failed:", err);
+			return { ok: false, error: "Failed to clear follow-up", status: 500 };
+		}
+	}
+
+	async getFollowUps(userId: string) {
+		try {
+			const now = new Date();
+			const dueEmails = await db
+				.select({
+					id: emails.id,
+					subject: emails.subject,
+					fromAddress: emails.fromAddress,
+					fromName: emails.fromName,
+					followUpAt: emails.followUpAt,
+					receivedAt: emails.receivedAt,
+					providerThreadId: emails.providerThreadId,
+					threadGroupId: emails.threadGroupId,
+					emailAccountId: emails.emailAccountId,
+				})
+				.from(emails)
+				.where(
+					and(
+						eq(emails.userId, userId),
+						lte(emails.followUpAt, now),
+						eq(emails.followUpDismissed, false),
+						isNotNull(emails.followUpAt),
+					),
+				)
+				.orderBy(asc(emails.followUpAt))
+				.limit(50);
+
+			const followUps = [];
+			for (const email of dueEmails) {
+				const threadKey = email.threadGroupId
+					? email.threadGroupId
+					: email.providerThreadId
+						? `${email.emailAccountId}:${email.providerThreadId}`
+						: email.id;
+
+				const reply = await db
+					.select({ id: emails.id })
+					.from(emails)
+					.where(
+						and(
+							eq(emails.userId, userId),
+							sql`${threadKeyExpr} = ${threadKey}`,
+							gte(emails.receivedAt, email.receivedAt),
+							sql`${emails.fromAddress} != ${email.fromAddress}`,
+						),
+					)
+					.limit(1);
+
+				if (reply.length > 0) {
+					await db
+						.update(emails)
+						.set({ followUpAt: null })
+						.where(eq(emails.id, email.id));
+					continue;
+				}
+
+				const daysWaiting = Math.floor(
+					(now.getTime() - email.receivedAt.getTime()) / (1000 * 60 * 60 * 24),
+				);
+
+				followUps.push({
+					id: email.id,
+					subject: email.subject,
+					fromAddress: email.fromAddress,
+					fromName: email.fromName,
+					followUpAt: email.followUpAt!.toISOString(),
+					receivedAt: email.receivedAt.toISOString(),
+					daysWaiting,
+				});
+			}
+
+			return { ok: true as const, data: followUps };
+		} catch (err) {
+			console.error("[mail] getFollowUps failed:", err);
+			return {
+				ok: false as const,
+				error: "Failed to load follow-ups",
+				status: 500 as const,
 			};
 		}
 	}

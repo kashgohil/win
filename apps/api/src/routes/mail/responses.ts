@@ -302,3 +302,99 @@ export const triageActionBody = t.Object({
 export const triageActionResponse = t.Object({
 	message: t.String(),
 });
+
+/* ── Snooze ── */
+
+export const snoozeBody = t.Object({
+	snoozedUntil: t.String({ format: "date-time" }),
+});
+
+/* ── Draft review ── */
+
+export const draftItemSchema = t.Object({
+	id: t.String({ format: "uuid" }),
+	subject: t.Union([t.String(), t.Null()]),
+	fromAddress: t.Union([t.String(), t.Null()]),
+	fromName: t.Union([t.String(), t.Null()]),
+	snippet: t.Union([t.String(), t.Null()]),
+	draftResponse: t.Union([t.String(), t.Null()]),
+	receivedAt: t.String({ format: "date-time" }),
+	aiSummary: t.Union([t.String(), t.Null()]),
+});
+
+export const draftListResponse = t.Object({
+	drafts: t.Array(draftItemSchema),
+	hasMore: t.Boolean(),
+	nextCursor: t.Optional(t.String()),
+});
+
+export const updateDraftBody = t.Object({
+	draftResponse: t.String(),
+});
+
+/* ── Delayed send ── */
+
+export const delayedComposeBody = t.Object({
+	body: t.String(),
+	cc: t.Optional(t.Array(t.String())),
+	delayed: t.Optional(t.Boolean()),
+});
+
+export const delayedForwardBody = t.Object({
+	to: t.Array(t.String()),
+	body: t.String(),
+	delayed: t.Optional(t.Boolean()),
+});
+
+export const delayedSendResponse = t.Object({
+	jobId: t.String(),
+	message: t.String(),
+});
+
+/* ── Sender mute / VIP ── */
+
+export const muteSenderBody = t.Object({
+	senderAddress: t.String(),
+	muted: t.Boolean(),
+});
+
+export const muteSenderResponse = t.Object({
+	message: t.String(),
+	archivedCount: t.Number(),
+});
+
+export const vipSenderBody = t.Object({
+	senderAddress: t.String(),
+	vip: t.Boolean(),
+});
+
+/* ── Unsubscribe ── */
+
+export const unsubscribeResponse = t.Object({
+	message: t.String(),
+	method: t.Union([
+		t.Literal("one-click"),
+		t.Literal("link"),
+		t.Literal("failed"),
+	]),
+});
+
+/* ── Follow-up ── */
+
+export const followUpBody = t.Object({
+	followUpAt: t.String({ format: "date-time" }),
+});
+
+export const followUpItemSchema = t.Object({
+	id: t.String({ format: "uuid" }),
+	subject: t.Union([t.String(), t.Null()]),
+	fromAddress: t.Union([t.String(), t.Null()]),
+	fromName: t.Union([t.String(), t.Null()]),
+	followUpAt: t.String({ format: "date-time" }),
+	receivedAt: t.String({ format: "date-time" }),
+	daysWaiting: t.Number(),
+});
+
+export const followUpListResponse = t.Object({
+	followUps: t.Array(followUpItemSchema),
+});

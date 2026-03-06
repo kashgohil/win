@@ -9,23 +9,34 @@ import {
 	connectResponse,
 	createSenderRuleBody,
 	createSenderRuleResponse,
+	delayedComposeBody,
+	delayedForwardBody,
+	delayedSendResponse,
 	disconnectResponse,
+	draftListResponse,
 	emailDetailResponse,
 	emailListResponse,
 	errorResponse,
+	followUpListResponse,
 	forwardBody,
 	mergeThreadsBody,
 	mergeThreadsResponse,
 	messageResponse,
 	moduleDataResponse,
+	muteSenderBody,
+	muteSenderResponse,
 	senderListResponse,
 	senderRuleListResponse,
+	snoozeBody,
 	threadDetailResponse,
 	threadListResponse,
 	toggleReadResponse,
 	toggleStarResponse,
 	triageActionBody,
 	triageActionResponse,
+	unsubscribeResponse,
+	updateDraftBody,
+	vipSenderBody,
 } from "./responses";
 import { mailService } from "./service";
 
@@ -1002,6 +1013,385 @@ export const mail = new Elysia({
 				summary: "Execute triage action",
 				description:
 					"Perform an action on a triage item (send draft, dismiss, archive, snooze)",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	/* ── Feature 1: Snooze ── */
+	.post(
+		"/emails/:id/snooze",
+		async ({ user, params, body, set }) => {
+			const result = await mailService.snoozeEmail(
+				user.id,
+				params.id,
+				body.snoozedUntil,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			body: snoozeBody,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Snooze email",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.post(
+		"/threads/:threadId/snooze",
+		async ({ user, params, body, set }) => {
+			const result = await mailService.snoozeThread(
+				user.id,
+				params.threadId,
+				body.snoozedUntil,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			body: snoozeBody,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Snooze thread",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.delete(
+		"/emails/:id/snooze",
+		async ({ user, params, set }) => {
+			const result = await mailService.unsnoozeEmail(user.id, params.id);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Unsnooze email",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	/* ── Feature 2: Draft Review ── */
+	.get(
+		"/drafts",
+		async ({ user, query, set }) => {
+			const result = await mailService.getDrafts(user.id, {
+				limit: query.limit ? Number(query.limit) : undefined,
+				cursor: query.cursor ?? undefined,
+			});
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			query: t.Object({
+				limit: t.Optional(t.String()),
+				cursor: t.Optional(t.String()),
+			}),
+			response: {
+				200: draftListResponse,
+				400: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "List AI drafts",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.patch(
+		"/emails/:id/draft",
+		async ({ user, params, body, set }) => {
+			const result = await mailService.updateDraft(
+				user.id,
+				params.id,
+				body.draftResponse,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			body: updateDraftBody,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Update draft response",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	/* ── Feature 3: Delayed send / Undo ── */
+	.post(
+		"/emails/:id/reply-delayed",
+		async ({ user, params, body, set }) => {
+			const result = await mailService.replyToEmailDelayed(
+				user.id,
+				params.id,
+				body.body,
+				body.cc,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { jobId: result.jobId, message: result.message };
+		},
+		{
+			auth: true,
+			body: delayedComposeBody,
+			response: {
+				200: delayedSendResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Reply with undo delay",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.post(
+		"/emails/:id/forward-delayed",
+		async ({ user, params, body, set }) => {
+			const result = await mailService.forwardEmailDelayed(
+				user.id,
+				params.id,
+				body.to,
+				body.body,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { jobId: result.jobId, message: result.message };
+		},
+		{
+			auth: true,
+			body: delayedForwardBody,
+			response: {
+				200: delayedSendResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Forward with undo delay",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.delete(
+		"/send/:jobId",
+		async ({ params, set }) => {
+			const result = await mailService.cancelDelayedSend(params.jobId);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			response: {
+				200: messageResponse,
+				410: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Cancel delayed send",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	/* ── Feature 4: Sender Mute / VIP ── */
+	.post(
+		"/sender-rules/mute",
+		async ({ user, body, set }) => {
+			const result = await mailService.muteSender(
+				user.id,
+				body.senderAddress,
+				body.muted,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: result.message, archivedCount: result.archivedCount };
+		},
+		{
+			auth: true,
+			body: muteSenderBody,
+			response: { 200: muteSenderResponse, 500: errorResponse },
+			detail: {
+				summary: "Mute/unmute sender",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.post(
+		"/sender-rules/vip",
+		async ({ user, body, set }) => {
+			const result = await mailService.vipSender(
+				user.id,
+				body.senderAddress,
+				body.vip,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			body: vipSenderBody,
+			response: { 200: messageResponse, 500: errorResponse },
+			detail: {
+				summary: "Set/unset VIP sender",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	/* ── Feature 5: Unsubscribe ── */
+	.post(
+		"/emails/:id/unsubscribe",
+		async ({ user, params, set }) => {
+			const result = await mailService.unsubscribeEmail(user.id, params.id);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: result.message, method: result.method };
+		},
+		{
+			auth: true,
+			response: {
+				200: unsubscribeResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "One-click unsubscribe",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	/* ── Feature 6: Follow-up ── */
+	.post(
+		"/emails/:id/follow-up",
+		async ({ user, params, body, set }) => {
+			const result = await mailService.setFollowUp(
+				user.id,
+				params.id,
+				body.followUpAt,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			body: t.Object({ followUpAt: t.String() }),
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Set follow-up reminder",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.delete(
+		"/emails/:id/follow-up",
+		async ({ user, params, set }) => {
+			const result = await mailService.clearFollowUp(user.id, params.id);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Clear follow-up reminder",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.get(
+		"/follow-ups",
+		async ({ user, set }) => {
+			const result = await mailService.getFollowUps(user.id);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { followUps: result.data };
+		},
+		{
+			auth: true,
+			response: { 200: followUpListResponse, 500: errorResponse },
+			detail: {
+				summary: "List due follow-ups",
 				tags: ["Mail"],
 				security: [{ bearerAuth: [] }],
 			},
