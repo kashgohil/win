@@ -2,22 +2,42 @@ import { MOTION_CONSTANTS } from "@/components/constant";
 import { AccountSelector } from "@/components/mail/AccountSelector";
 import {
 	KeyboardShortcutBar,
+	SENT_INLINE_SHORTCUTS,
 	SENT_SHORTCUTS,
 } from "@/components/mail/KeyboardShortcutBar";
+import { ReadingPane } from "@/components/mail/ReadingPane";
+import { ResizeHandle } from "@/components/mail/ResizeHandle";
 import {
 	hasActiveFilters,
 	SearchCommand,
 	SearchFilterChips,
 	type SearchFilters,
 } from "@/components/mail/SearchBar";
+import { ThreadPreview } from "@/components/mail/ThreadPreview";
 import { groupThreadsByTime, ThreadRow } from "@/components/mail/ThreadRow";
 import { Kbd } from "@/components/ui/kbd";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { mailKeys, useMailThreadsInfinite } from "@/hooks/use-mail";
 import { useMailAccountFilter } from "@/hooks/use-mail-account-filter";
+import { useMailViewMode } from "@/hooks/use-mail-view-mode";
+import { useSidepanelWidth } from "@/hooks/use-sidepanel-width";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Inbox, Paperclip, Search } from "lucide-react";
+import {
+	ArrowLeft,
+	Columns2,
+	Inbox,
+	Paperclip,
+	Rows2,
+	Search,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -105,6 +125,15 @@ function SentPage() {
 	const sentinelRef = useRef<HTMLDivElement>(null);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const queryClient = useQueryClient();
+	const { mode: viewMode, toggle: toggleViewMode } = useMailViewMode();
+	const {
+		width: panelWidth,
+		onResize: onPanelResize,
+		minWidth: panelMinWidth,
+		maxWidth: panelMaxWidth,
+	} = useSidepanelWidth();
+	const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
+	const [peekedThreadId, setPeekedThreadId] = useState<string | null>(null);
 
 	const activeAccountIds = useMailAccountFilter((s) => s.activeAccountIds);
 	const accountIds = useMemo(
@@ -257,12 +286,20 @@ function SentPage() {
 					e.preventDefault();
 					navigate({
 						to: "/module/mail/inbox",
-						search: { view: undefined, starred: undefined, attachment: undefined },
+						search: {
+							view: undefined,
+							starred: undefined,
+							attachment: undefined,
+						},
 					});
 					return;
 				case "a":
 					e.preventDefault();
 					navigate({ to: "/module/mail/attachments" });
+					return;
+				case "p":
+					e.preventDefault();
+					toggleViewMode();
 					return;
 			}
 
@@ -283,6 +320,10 @@ function SentPage() {
 				setFocusedIndex((prev) => {
 					const next = Math.min(prev + 1, threads.length - 1);
 					scrollIntoView(next);
+					if (viewMode === "sidepanel") {
+						const thread = threads[next];
+						if (thread) setPeekedThreadId(thread.threadId);
+					}
 					return next;
 				});
 				return;
@@ -293,6 +334,10 @@ function SentPage() {
 				setFocusedIndex((prev) => {
 					const next = Math.max(prev - 1, 0);
 					scrollIntoView(next);
+					if (viewMode === "sidepanel") {
+						const thread = threads[next];
+						if (thread) setPeekedThreadId(thread.threadId);
+					}
 					return next;
 				});
 				return;
@@ -306,6 +351,39 @@ function SentPage() {
 						to: "/module/mail/inbox/$emailId",
 						params: { emailId: thread.threadId },
 						search: { view: undefined, source: "sent" },
+					});
+				}
+				return;
+			}
+
+			if (e.key === " ") {
+				e.preventDefault();
+				if (viewMode === "inline") {
+					const thread = threads[focusedIndex];
+					if (thread) {
+						setExpandedThreadId((prev) =>
+							prev === thread.threadId ? null : thread.threadId,
+						);
+					}
+				}
+				return;
+			}
+
+			if (e.key === "q") {
+				e.preventDefault();
+				const thread = threads[focusedIndex];
+				if (thread) {
+					if (viewMode === "sidepanel") {
+						setPeekedThreadId(thread.threadId);
+					} else {
+						setExpandedThreadId(thread.threadId);
+					}
+					requestAnimationFrame(() => {
+						const el =
+							document.querySelector<HTMLTextAreaElement>("[data-quick-reply]");
+						if (el) {
+							el.focus({ preventScroll: true });
+						}
 					});
 				}
 				return;
@@ -341,7 +419,11 @@ function SentPage() {
 
 			if (e.key === "Escape") {
 				e.preventDefault();
-				setKbActive(false);
+				if (viewMode === "inline" && expandedThreadId) {
+					setExpandedThreadId(null);
+				} else {
+					setKbActive(false);
+				}
 				return;
 			}
 		};
@@ -356,6 +438,8 @@ function SentPage() {
 		navigate,
 		queryClient,
 		scrollIntoView,
+		viewMode,
+		expandedThreadId,
 	]);
 
 	const emailRowRef = useCallback((index: number, el: HTMLElement | null) => {
@@ -366,14 +450,123 @@ function SentPage() {
 		}
 	}, []);
 
+	const peekedThread =
+		threads.find((t) => t.threadId === peekedThreadId) ?? null;
+
+	const handleOpenPeekedDetail = useCallback(() => {
+		if (!peekedThreadId) return;
+		navigate({
+			to: "/module/mail/inbox/$emailId",
+			params: { emailId: peekedThreadId },
+			search: { view: undefined, source: "sent" },
+		});
+	}, [peekedThreadId, navigate]);
+
+	const threadListContent = (
+		<motion.div
+			initial={{ opacity: 0, y: 12 }}
+			animate={{ opacity: 1, y: 0 }}
+			transition={{
+				duration: 0.5,
+				delay: 0.08,
+				ease: MOTION_CONSTANTS.EASE,
+			}}
+			className="mt-4"
+		>
+			{(() => {
+				let flatIndex = 0;
+				return groupThreadsByTime(threads).map((cluster) => (
+					<div key={cluster.label ?? "today"}>
+						{cluster.label && (
+							<div className="pt-6 pb-2">
+								<span className="font-body text-[13px] text-grey-3">
+									{cluster.label}
+								</span>
+							</div>
+						)}
+						{cluster.threads.map((thread) => {
+							const idx = flatIndex++;
+							const isThisExpanded =
+								viewMode === "inline" && expandedThreadId === thread.threadId;
+							return (
+								<ThreadRow
+									key={thread.threadId}
+									thread={thread}
+									variant="sent"
+									highlightTerms={searchTerms}
+									isFocused={kbActive && focusedIndex === idx}
+									focusRef={(el) => emailRowRef(idx, el)}
+									linkSearch={{ source: "sent" }}
+									compact={viewMode === "sidepanel"}
+									isExpanded={isThisExpanded}
+									onToggleExpand={
+										viewMode === "inline"
+											? () => {
+													setExpandedThreadId((prev) =>
+														prev === thread.threadId ? null : thread.threadId,
+													);
+												}
+											: viewMode === "sidepanel"
+												? () => {
+														setPeekedThreadId(thread.threadId);
+													}
+												: undefined
+									}
+									expandedContent={
+										isThisExpanded ? (
+											<ThreadPreview
+												threadId={thread.threadId}
+												thread={thread}
+												variant="inline"
+												onOpenDetail={() => {
+													navigate({
+														to: "/module/mail/inbox/$emailId",
+														params: { emailId: thread.threadId },
+														search: {
+															view: undefined,
+															source: "sent",
+														},
+													});
+												}}
+												onClose={() => setExpandedThreadId(null)}
+											/>
+										) : undefined
+									}
+								/>
+							);
+						})}
+					</div>
+				));
+			})()}
+
+			{/* Sentinel for infinite scroll */}
+			<div ref={sentinelRef} className="h-px" />
+
+			{isFetchingNextPage && (
+				<div className="flex justify-center py-6">
+					<div className="size-5 border-2 border-border/60 border-t-foreground/60 rounded-full animate-spin" />
+				</div>
+			)}
+		</motion.div>
+	);
+
 	return (
-		<div className="px-(--page-px) py-8 max-w-5xl mx-auto">
+		<div
+			className={cn(
+				viewMode === "sidepanel"
+					? "h-[calc(100dvh)] overflow-hidden flex flex-col"
+					: "px-(--page-px) py-8 max-w-5xl mx-auto",
+			)}
+		>
 			{/* Header */}
 			<motion.div
 				initial={{ opacity: 0, x: -8 }}
 				animate={{ opacity: 1, x: 0 }}
 				transition={{ duration: 0.3, ease: MOTION_CONSTANTS.EASE }}
-				className="mb-6 flex items-center justify-between"
+				className={cn(
+					"mb-6 flex items-center justify-between",
+					viewMode === "sidepanel" && "shrink-0 px-(--page-px) pt-8",
+				)}
 			>
 				<Link
 					to="/module/mail"
@@ -386,7 +579,11 @@ function SentPage() {
 				<div className="flex items-center gap-3">
 					<Link
 						to="/module/mail/inbox"
-						search={{ view: undefined, starred: undefined, attachment: undefined }}
+						search={{
+							view: undefined,
+							starred: undefined,
+							attachment: undefined,
+						}}
 						className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
 					>
 						<Inbox className="size-3" />
@@ -410,8 +607,32 @@ function SentPage() {
 					>
 						<Search className="size-3" />
 						<span className="font-body text-[12px]">Search</span>
-						<Kbd>K</Kbd>
+						<Kbd>/</Kbd>
 					</button>
+
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<button
+									type="button"
+									onClick={toggleViewMode}
+									className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer"
+								>
+									{viewMode === "inline" ? (
+										<Columns2 className="size-3.5" />
+									) : (
+										<Rows2 className="size-3.5" />
+									)}
+									<Kbd>P</Kbd>
+								</button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{viewMode === "inline"
+									? "Switch to side panel"
+									: "Switch to inline"}
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 
 					<div className="w-px h-3.5 bg-border/40" />
 
@@ -425,7 +646,10 @@ function SentPage() {
 					initial={{ opacity: 0, y: 8 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.35, ease: MOTION_CONSTANTS.EASE }}
-					className="mb-4"
+					className={cn(
+						"mb-4",
+						viewMode === "sidepanel" && "shrink-0 px-(--page-px)",
+					)}
 				>
 					<SearchFilterChips
 						filters={searchFilters}
@@ -440,7 +664,10 @@ function SentPage() {
 				<motion.p
 					initial={{ opacity: 0 }}
 					animate={{ opacity: 1 }}
-					className="mt-3 font-mono text-[11px] text-grey-3"
+					className={cn(
+						"mt-3 font-mono text-[11px] text-grey-3",
+						viewMode === "sidepanel" && "px-(--page-px)",
+					)}
 				>
 					{total === 1 ? "1 result" : `${total ?? 0} results`}
 				</motion.p>
@@ -452,7 +679,10 @@ function SentPage() {
 					initial={{ opacity: 0, y: 8 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.4, ease: MOTION_CONSTANTS.EASE }}
-					className="font-serif text-[18px] text-foreground/80 mb-2"
+					className={cn(
+						"font-serif text-[18px] text-foreground/80 mb-2",
+						viewMode === "sidepanel" && "shrink-0 px-(--page-px)",
+					)}
 				>
 					Sent
 				</motion.h2>
@@ -473,55 +703,33 @@ function SentPage() {
 							: "No sent emails yet."}
 					</p>
 				</motion.div>
+			) : viewMode === "sidepanel" ? (
+				<div className="flex flex-1 overflow-hidden mt-4 px-(--page-px)">
+					{/* Left column — compact thread list */}
+					<div
+						data-sidepanel-list
+						style={{ width: panelWidth }}
+						className="shrink-0 overflow-y-auto px-3"
+					>
+						{threadListContent}
+					</div>
+					<ResizeHandle
+						onResize={onPanelResize}
+						minWidth={panelMinWidth}
+						maxWidth={panelMaxWidth}
+					/>
+					{/* Right column — reading pane */}
+					<div className="flex-1 overflow-y-auto">
+						<ReadingPane
+							threadId={peekedThreadId}
+							thread={peekedThread}
+							onOpenDetail={handleOpenPeekedDetail}
+							variant="sent"
+						/>
+					</div>
+				</div>
 			) : (
-				<motion.div
-					initial={{ opacity: 0, y: 12 }}
-					animate={{ opacity: 1, y: 0 }}
-					transition={{
-						duration: 0.5,
-						delay: 0.08,
-						ease: MOTION_CONSTANTS.EASE,
-					}}
-					className="mt-4"
-				>
-					{(() => {
-						let flatIndex = 0;
-						return groupThreadsByTime(threads).map((cluster) => (
-							<div key={cluster.label ?? "today"}>
-								{cluster.label && (
-									<div className="pt-6 pb-2">
-										<span className="font-body text-[13px] text-grey-3">
-											{cluster.label}
-										</span>
-									</div>
-								)}
-								{cluster.threads.map((thread) => {
-									const idx = flatIndex++;
-									return (
-										<ThreadRow
-											key={thread.threadId}
-											thread={thread}
-											variant="sent"
-											highlightTerms={searchTerms}
-											isFocused={kbActive && focusedIndex === idx}
-											focusRef={(el) => emailRowRef(idx, el)}
-											linkSearch={{ source: "sent" }}
-										/>
-									);
-								})}
-							</div>
-						));
-					})()}
-
-					{/* Sentinel for infinite scroll */}
-					<div ref={sentinelRef} className="h-px" />
-
-					{isFetchingNextPage && (
-						<div className="flex justify-center py-6">
-							<div className="size-5 border-2 border-border/60 border-t-foreground/60 rounded-full animate-spin" />
-						</div>
-					)}
-				</motion.div>
+				threadListContent
 			)}
 
 			{/* Search command dialog */}
@@ -533,7 +741,14 @@ function SentPage() {
 				activeCategory={null}
 			/>
 
-			<KeyboardShortcutBar shortcuts={SENT_SHORTCUTS} visible={!searchOpen} />
+			<KeyboardShortcutBar
+				shortcuts={
+					viewMode === "inline" && expandedThreadId
+						? SENT_INLINE_SHORTCUTS
+						: SENT_SHORTCUTS
+				}
+				visible={!searchOpen}
+			/>
 		</div>
 	);
 }

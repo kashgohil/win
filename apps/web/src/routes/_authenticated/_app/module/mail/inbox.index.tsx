@@ -3,16 +3,20 @@ import { AccountSelector } from "@/components/mail/AccountSelector";
 import { CATEGORIES } from "@/components/mail/category-colors";
 import { CategoryFilter } from "@/components/mail/CategoryFilter";
 import {
+	INBOX_INLINE_SHORTCUTS,
 	INBOX_SHORTCUTS,
 	KeyboardShortcutBar,
 } from "@/components/mail/KeyboardShortcutBar";
 import { MergeSuggestionPill } from "@/components/mail/MergeSuggestionPill";
+import { ReadingPane } from "@/components/mail/ReadingPane";
+import { ResizeHandle } from "@/components/mail/ResizeHandle";
 import {
 	hasActiveFilters,
 	SearchCommand,
 	SearchFilterChips,
 	type SearchFilters,
 } from "@/components/mail/SearchBar";
+import { ThreadPreview } from "@/components/mail/ThreadPreview";
 import { groupThreadsByTime, ThreadRow } from "@/components/mail/ThreadRow";
 import { Kbd } from "@/components/ui/kbd";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,7 +33,9 @@ import {
 	useMergeThreads,
 } from "@/hooks/use-mail";
 import { useMailAccountFilter } from "@/hooks/use-mail-account-filter";
+import { useMailViewMode } from "@/hooks/use-mail-view-mode";
 import { useMergeSuggestions } from "@/hooks/use-merge-suggestions";
+import { useSidepanelWidth } from "@/hooks/use-sidepanel-width";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,10 +43,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
 	Archive,
 	ArrowLeft,
+	Columns2,
 	Mail,
 	MailOpen,
 	Merge,
 	Paperclip,
+	Rows2,
 	Search,
 	Send,
 	Star,
@@ -167,6 +175,15 @@ function MailInbox() {
 		new Set(),
 	);
 	const [dragSourceId, setDragSourceId] = useState<string | null>(null);
+	const { mode: viewMode, toggle: toggleViewMode } = useMailViewMode();
+	const {
+		width: panelWidth,
+		onResize: onPanelResize,
+		minWidth: panelMinWidth,
+		maxWidth: panelMaxWidth,
+	} = useSidepanelWidth();
+	const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
+	const [peekedThreadId, setPeekedThreadId] = useState<string | null>(null);
 
 	const activeCategory = category ?? null;
 	const activeAccountIds = useMailAccountFilter((s) => s.activeAccountIds);
@@ -479,6 +496,57 @@ function MailInbox() {
 		switchView(activeView === "unread" ? "read" : "unread");
 	}, [activeView, switchView]);
 
+	const handleToggleExpand = useCallback(
+		(index: number) => {
+			const thread = threads[index];
+			if (!thread) return;
+			setExpandedThreadId((prev) =>
+				prev === thread.threadId ? null : thread.threadId,
+			);
+		},
+		[threads],
+	);
+
+	const handleCollapseExpand = useCallback(() => {
+		setExpandedThreadId(null);
+	}, []);
+
+	const handlePeekEmail = useCallback(
+		(index: number) => {
+			const thread = threads[index];
+			if (thread) {
+				setPeekedThreadId(thread.threadId);
+			}
+		},
+		[threads],
+	);
+
+	const handleQuickReply = useCallback(
+		(index: number) => {
+			const thread = threads[index];
+			if (!thread) return;
+
+			const focusReply = () => {
+				requestAnimationFrame(() => {
+					const el =
+						document.querySelector<HTMLTextAreaElement>("[data-quick-reply]");
+					if (el) {
+						el.focus({ preventScroll: true });
+					}
+				});
+			};
+
+			if (viewMode === "sidepanel") {
+				setPeekedThreadId(thread.threadId);
+				focusReply();
+			} else {
+				setExpandedThreadId(thread.threadId);
+				focusReply();
+			}
+		},
+		[threads, viewMode],
+	);
+
 	const keyboard = useInboxKeyboard({
 		emailCount: threads.length,
 		categoryCount,
@@ -495,7 +563,14 @@ function MailInbox() {
 		onNavigateAttachments: handleNavigateAttachments,
 		onNavigateSent: handleNavigateSent,
 		onToggleView: handleToggleView,
+		onToggleViewMode: toggleViewMode,
 		onGoBack: handleGoBack,
+		viewMode,
+		expandedThreadId,
+		onToggleExpand: handleToggleExpand,
+		onCollapseExpand: handleCollapseExpand,
+		onPeekEmail: handlePeekEmail,
+		onQuickReply: handleQuickReply,
 	});
 
 	const handleRemoveFilter = useCallback(
@@ -638,15 +713,292 @@ function MailInbox() {
 			? "No read emails yet."
 			: "No unread emails.";
 
+	const peekedThread =
+		threads.find((t) => t.threadId === peekedThreadId) ?? null;
+
+	const handleOpenPeekedDetail = useCallback(() => {
+		if (!peekedThreadId) return;
+		navigate({
+			to: "/module/mail/inbox/$emailId",
+			params: { emailId: peekedThreadId },
+			search: { view: view ?? undefined, category: category ?? undefined },
+		});
+	}, [peekedThreadId, navigate, view, category]);
+
+	const threadListContent = (
+		<>
+			{/* Floating selection actions — rail-style, hangs in left margin */}
+			<AnimatePresence>
+				{selectedThreads.size > 0 && viewMode !== "sidepanel" && (
+					<TooltipProvider sliding>
+						<motion.div
+							layout
+							initial={{ opacity: 0, x: 8 }}
+							animate={{ opacity: 1, x: 0 }}
+							exit={{ opacity: 0, x: 8 }}
+							transition={{
+								duration: 0.2,
+								ease: MOTION_CONSTANTS.EASE,
+								layout: {
+									duration: 0.2,
+									ease: MOTION_CONSTANTS.EASE,
+								},
+							}}
+							className="sticky top-8 z-20 float-left -ml-15 mt-6 w-10 hidden xl:flex flex-col items-center gap-1"
+						>
+							<motion.span
+								layout
+								className="font-mono text-[11px] font-semibold text-grey-2 mb-1 inline-flex tabular-nums overflow-hidden"
+							>
+								{String(selectedThreads.size)
+									.split("")
+									.map((char, i) => (
+										<AnimatePresence mode="popLayout" key={i}>
+											<motion.span
+												key={char}
+												initial={{ y: 10, opacity: 0 }}
+												animate={{ y: 0, opacity: 1 }}
+												exit={{ y: -10, opacity: 0 }}
+												transition={{
+													duration: 0.3,
+													ease: MOTION_CONSTANTS.EASE,
+												}}
+												className="inline-block"
+											>
+												{char}
+											</motion.span>
+										</AnimatePresence>
+									))}
+							</motion.span>
+							{selectedThreads.size >= 2 && (
+								<motion.div
+									layout
+									initial={{ opacity: 0, height: 0 }}
+									animate={{ opacity: 1, height: "auto" }}
+									exit={{ opacity: 0, height: 0 }}
+									transition={{
+										duration: 0.2,
+										ease: MOTION_CONSTANTS.EASE,
+									}}
+									className="overflow-hidden"
+								>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<button
+												type="button"
+												onClick={handleMergeSelected}
+												disabled={mergeThreads.isPending}
+												className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer disabled:opacity-50"
+											>
+												<Merge className="size-3.5" />
+											</button>
+										</TooltipTrigger>
+										<TooltipContent side="left">Merge threads</TooltipContent>
+									</Tooltip>
+								</motion.div>
+							)}
+							<motion.div layout>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<button
+											type="button"
+											onClick={handleBulkArchive}
+											className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
+										>
+											<Archive className="size-3.5" />
+										</button>
+									</TooltipTrigger>
+									<TooltipContent side="left">Archive</TooltipContent>
+								</Tooltip>
+							</motion.div>
+							<motion.div layout>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<button
+											type="button"
+											onClick={handleBulkStar}
+											className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-amber-500 hover:bg-amber-500/5 transition-colors duration-150 cursor-pointer"
+										>
+											<Star className="size-3.5" />
+										</button>
+									</TooltipTrigger>
+									<TooltipContent side="left">Star</TooltipContent>
+								</Tooltip>
+							</motion.div>
+							<motion.div layout>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<button
+											type="button"
+											onClick={handleBulkToggleRead}
+											className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
+										>
+											{activeView === "unread" ? (
+												<MailOpen className="size-3.5" />
+											) : (
+												<Mail className="size-3.5" />
+											)}
+										</button>
+									</TooltipTrigger>
+									<TooltipContent side="left">
+										{activeView === "unread"
+											? "Mark as read"
+											: "Mark as unread"}
+									</TooltipContent>
+								</Tooltip>
+							</motion.div>
+							<motion.div layout>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<button
+											type="button"
+											onClick={handleBulkDelete}
+											className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-accent-red hover:bg-accent-red/5 transition-colors duration-150 cursor-pointer"
+										>
+											<Trash2 className="size-3.5" />
+										</button>
+									</TooltipTrigger>
+									<TooltipContent side="left">Delete</TooltipContent>
+								</Tooltip>
+							</motion.div>
+							<motion.div layout>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<button
+											type="button"
+											onClick={() => setSelectedThreads(new Set())}
+											className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
+										>
+											<X className="size-3.5" />
+										</button>
+									</TooltipTrigger>
+									<TooltipContent side="left">Clear selection</TooltipContent>
+								</Tooltip>
+							</motion.div>
+						</motion.div>
+					</TooltipProvider>
+				)}
+			</AnimatePresence>
+			<motion.div
+				initial={{ opacity: 0, y: 12 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{
+					duration: 0.5,
+					delay: 0.08,
+					ease: MOTION_CONSTANTS.EASE,
+				}}
+				className="mt-4"
+			>
+				{(() => {
+					let flatIndex = 0;
+					return groupThreadsByTime(threads).map((cluster) => (
+						<div key={cluster.label ?? "today"}>
+							{cluster.label && (
+								<div className="pt-6 pb-2">
+									<span className="font-body text-[13px] text-grey-3">
+										{cluster.label}
+									</span>
+								</div>
+							)}
+							{cluster.threads.map((thread) => {
+								const idx = flatIndex++;
+								const isThisExpanded =
+									viewMode === "inline" && expandedThreadId === thread.threadId;
+								return (
+									<ThreadRow
+										key={thread.threadId}
+										thread={thread}
+										highlightTerms={searchTerms}
+										isFocused={
+											keyboard.isActive &&
+											keyboard.activeSection === "emails" &&
+											keyboard.focusedEmailIndex === idx
+										}
+										focusRef={(el) => keyboard.emailRowRef(idx, el)}
+										isSelected={selectedThreads.has(thread.threadId)}
+										onSelect={
+											viewMode !== "sidepanel" ? handleSelectThread : undefined
+										}
+										onDragStartThread={
+											viewMode !== "sidepanel" ? handleDragStart : undefined
+										}
+										onDropThread={
+											viewMode !== "sidepanel" ? handleDrop : undefined
+										}
+										compact={viewMode === "sidepanel"}
+										isExpanded={isThisExpanded}
+										onToggleExpand={
+											viewMode === "inline"
+												? () => {
+														setExpandedThreadId((prev) =>
+															prev === thread.threadId ? null : thread.threadId,
+														);
+													}
+												: viewMode === "sidepanel"
+													? () => {
+															setPeekedThreadId(thread.threadId);
+														}
+													: undefined
+										}
+										expandedContent={
+											isThisExpanded ? (
+												<ThreadPreview
+													threadId={thread.threadId}
+													thread={thread}
+													variant="inline"
+													onOpenDetail={() => {
+														navigate({
+															to: "/module/mail/inbox/$emailId",
+															params: {
+																emailId: thread.threadId,
+															},
+															search: {
+																view: view ?? undefined,
+																category: category ?? undefined,
+															},
+														});
+													}}
+													onClose={() => setExpandedThreadId(null)}
+												/>
+											) : undefined
+										}
+									/>
+								);
+							})}
+						</div>
+					));
+				})()}
+
+				{/* Sentinel for infinite scroll */}
+				<div ref={sentinelRef} className="h-px" />
+
+				{isFetchingNextPage && (
+					<div className="flex justify-center py-6">
+						<div className="size-5 border-2 border-border/60 border-t-foreground/60 rounded-full animate-spin" />
+					</div>
+				)}
+			</motion.div>
+		</>
+	);
+
 	return (
-		<div className="px-(--page-px) py-8 max-w-5xl mx-auto">
+		<div
+			className={cn(
+				viewMode === "sidepanel"
+					? "h-[calc(100dvh)] overflow-hidden flex flex-col"
+					: "px-(--page-px) py-8 max-w-5xl mx-auto",
+			)}
+		>
 			{/* Header — back link + search trigger + view toggle */}
 			<motion.div
 				ref={keyboard.headerRef}
 				initial={{ opacity: 0, x: -8 }}
 				animate={{ opacity: 1, x: 0 }}
 				transition={{ duration: 0.3, ease: MOTION_CONSTANTS.EASE }}
-				className="mb-6 flex items-center justify-between"
+				className={cn(
+					"mb-6 flex items-center justify-between",
+					viewMode === "sidepanel" && "shrink-0 px-(--page-px) pt-8",
+				)}
 			>
 				<Link
 					to="/module/mail"
@@ -707,7 +1059,7 @@ function MailInbox() {
 					>
 						<Search className="size-3" />
 						<span className="font-body text-[12px]">Search</span>
-						<Kbd>K</Kbd>
+						<Kbd>/</Kbd>
 					</button>
 
 					<div
@@ -744,6 +1096,30 @@ function MailInbox() {
 						</Tabs>
 					</div>
 
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<button
+									type="button"
+									onClick={toggleViewMode}
+									className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer"
+								>
+									{viewMode === "inline" ? (
+										<Columns2 className="size-3.5" />
+									) : (
+										<Rows2 className="size-3.5" />
+									)}
+									<Kbd>P</Kbd>
+								</button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{viewMode === "inline"
+									? "Switch to side panel"
+									: "Switch to inline"}
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+
 					<div className="w-px h-3.5 bg-border/40" />
 
 					<AccountSelector />
@@ -756,7 +1132,10 @@ function MailInbox() {
 					initial={{ opacity: 0, y: 8 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.35, ease: MOTION_CONSTANTS.EASE }}
-					className="mb-4"
+					className={cn(
+						"mb-4",
+						viewMode === "sidepanel" && "shrink-0 px-(--page-px)",
+					)}
 				>
 					<SearchFilterChips
 						filters={searchFilters}
@@ -772,6 +1151,7 @@ function MailInbox() {
 				initial={{ opacity: 0, y: 8 }}
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.4, ease: MOTION_CONSTANTS.EASE }}
+				className={cn(viewMode === "sidepanel" && "shrink-0 px-(--page-px)")}
 			>
 				<CategoryFilter
 					value={activeCategory}
@@ -821,219 +1201,33 @@ function MailInbox() {
 						{emptyMessage}
 					</p>
 				</motion.div>
-			) : (
-				<>
-					{/* Floating selection actions — rail-style, hangs in left margin */}
-					<AnimatePresence>
-						{selectedThreads.size > 0 && (
-							<TooltipProvider sliding>
-								<motion.div
-									layout
-									initial={{ opacity: 0, x: 8 }}
-									animate={{ opacity: 1, x: 0 }}
-									exit={{ opacity: 0, x: 8 }}
-									transition={{
-										duration: 0.2,
-										ease: MOTION_CONSTANTS.EASE,
-										layout: {
-											duration: 0.2,
-											ease: MOTION_CONSTANTS.EASE,
-										},
-									}}
-									className="sticky top-8 z-20 float-left -ml-15 mt-6 w-10 hidden xl:flex flex-col items-center gap-1"
-								>
-									<motion.span
-										layout
-										className="font-mono text-[11px] font-semibold text-grey-2 mb-1 inline-flex tabular-nums overflow-hidden"
-									>
-										{String(selectedThreads.size)
-											.split("")
-											.map((char, i) => (
-												<AnimatePresence mode="popLayout" key={i}>
-													<motion.span
-														key={char}
-														initial={{ y: 10, opacity: 0 }}
-														animate={{ y: 0, opacity: 1 }}
-														exit={{ y: -10, opacity: 0 }}
-														transition={{
-															duration: 0.3,
-															ease: MOTION_CONSTANTS.EASE,
-														}}
-														className="inline-block"
-													>
-														{char}
-													</motion.span>
-												</AnimatePresence>
-											))}
-									</motion.span>
-									{selectedThreads.size >= 2 && (
-										<motion.div
-											layout
-											initial={{ opacity: 0, height: 0 }}
-											animate={{ opacity: 1, height: "auto" }}
-											exit={{ opacity: 0, height: 0 }}
-											transition={{
-												duration: 0.2,
-												ease: MOTION_CONSTANTS.EASE,
-											}}
-											className="overflow-hidden"
-										>
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<button
-														type="button"
-														onClick={handleMergeSelected}
-														disabled={mergeThreads.isPending}
-														className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer disabled:opacity-50"
-													>
-														<Merge className="size-3.5" />
-													</button>
-												</TooltipTrigger>
-												<TooltipContent side="left">
-													Merge threads
-												</TooltipContent>
-											</Tooltip>
-										</motion.div>
-									)}
-									<motion.div layout>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<button
-													type="button"
-													onClick={handleBulkArchive}
-													className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
-												>
-													<Archive className="size-3.5" />
-												</button>
-											</TooltipTrigger>
-											<TooltipContent side="left">Archive</TooltipContent>
-										</Tooltip>
-									</motion.div>
-									<motion.div layout>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<button
-													type="button"
-													onClick={handleBulkStar}
-													className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-amber-500 hover:bg-amber-500/5 transition-colors duration-150 cursor-pointer"
-												>
-													<Star className="size-3.5" />
-												</button>
-											</TooltipTrigger>
-											<TooltipContent side="left">Star</TooltipContent>
-										</Tooltip>
-									</motion.div>
-									<motion.div layout>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<button
-													type="button"
-													onClick={handleBulkToggleRead}
-													className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
-												>
-													{activeView === "unread" ? (
-														<MailOpen className="size-3.5" />
-													) : (
-														<Mail className="size-3.5" />
-													)}
-												</button>
-											</TooltipTrigger>
-											<TooltipContent side="left">
-												{activeView === "unread"
-													? "Mark as read"
-													: "Mark as unread"}
-											</TooltipContent>
-										</Tooltip>
-									</motion.div>
-									<motion.div layout>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<button
-													type="button"
-													onClick={handleBulkDelete}
-													className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-accent-red hover:bg-accent-red/5 transition-colors duration-150 cursor-pointer"
-												>
-													<Trash2 className="size-3.5" />
-												</button>
-											</TooltipTrigger>
-											<TooltipContent side="left">Delete</TooltipContent>
-										</Tooltip>
-									</motion.div>
-									<motion.div layout>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<button
-													type="button"
-													onClick={() => setSelectedThreads(new Set())}
-													className="size-8 rounded-lg flex items-center justify-center text-grey-3 hover:text-foreground hover:bg-foreground/5 transition-colors duration-150 cursor-pointer"
-												>
-													<X className="size-3.5" />
-												</button>
-											</TooltipTrigger>
-											<TooltipContent side="left">
-												Clear selection
-											</TooltipContent>
-										</Tooltip>
-									</motion.div>
-								</motion.div>
-							</TooltipProvider>
-						)}
-					</AnimatePresence>
-					<motion.div
-						initial={{ opacity: 0, y: 12 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{
-							duration: 0.5,
-							delay: 0.08,
-							ease: MOTION_CONSTANTS.EASE,
-						}}
-						className="mt-4"
+			) : viewMode === "sidepanel" ? (
+				<div className="flex flex-1 overflow-hidden mt-4 px-(--page-px)">
+					{/* Left column — compact thread list */}
+					<div
+						data-sidepanel-list
+						style={{ width: panelWidth }}
+						className="shrink-0 overflow-y-auto px-3"
 					>
-						{(() => {
-							let flatIndex = 0;
-							return groupThreadsByTime(threads).map((cluster) => (
-								<div key={cluster.label ?? "today"}>
-									{cluster.label && (
-										<div className="pt-6 pb-2">
-											<span className="font-body text-[13px] text-grey-3">
-												{cluster.label}
-											</span>
-										</div>
-									)}
-									{cluster.threads.map((thread) => {
-										const idx = flatIndex++;
-										return (
-											<ThreadRow
-												key={thread.threadId}
-												thread={thread}
-												highlightTerms={searchTerms}
-												isFocused={
-													keyboard.isActive &&
-													keyboard.activeSection === "emails" &&
-													keyboard.focusedEmailIndex === idx
-												}
-												focusRef={(el) => keyboard.emailRowRef(idx, el)}
-												isSelected={selectedThreads.has(thread.threadId)}
-												onSelect={handleSelectThread}
-												onDragStartThread={handleDragStart}
-												onDropThread={handleDrop}
-											/>
-										);
-									})}
-								</div>
-							));
-						})()}
-
-						{/* Sentinel for infinite scroll */}
-						<div ref={sentinelRef} className="h-px" />
-
-						{isFetchingNextPage && (
-							<div className="flex justify-center py-6">
-								<div className="size-5 border-2 border-border/60 border-t-foreground/60 rounded-full animate-spin" />
-							</div>
-						)}
-					</motion.div>
-				</>
+						{threadListContent}
+					</div>
+					<ResizeHandle
+						onResize={onPanelResize}
+						minWidth={panelMinWidth}
+						maxWidth={panelMaxWidth}
+					/>
+					{/* Right column — reading pane */}
+					<div className="flex-1 overflow-y-auto">
+						<ReadingPane
+							threadId={peekedThreadId}
+							thread={peekedThread}
+							onOpenDetail={handleOpenPeekedDetail}
+							variant="inbox"
+						/>
+					</div>
+				</div>
+			) : (
+				threadListContent
 			)}
 
 			{/* Search command dialog */}
@@ -1045,7 +1239,14 @@ function MailInbox() {
 				activeCategory={activeCategory}
 			/>
 
-			<KeyboardShortcutBar shortcuts={INBOX_SHORTCUTS} visible={!searchOpen} />
+			<KeyboardShortcutBar
+				shortcuts={
+					viewMode === "inline" && expandedThreadId
+						? INBOX_INLINE_SHORTCUTS
+						: INBOX_SHORTCUTS
+				}
+				visible={!searchOpen}
+			/>
 		</div>
 	);
 }

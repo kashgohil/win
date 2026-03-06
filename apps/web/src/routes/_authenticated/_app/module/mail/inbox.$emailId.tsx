@@ -1,7 +1,7 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
 import { AccountSelector } from "@/components/mail/AccountSelector";
+import { AiSummary } from "@/components/mail/AiSummary";
 import { AttachmentList } from "@/components/mail/AttachmentList";
-import { CATEGORY_CONFIG } from "@/components/mail/category-colors";
 import { ComposeSheet } from "@/components/mail/ComposeSheet";
 import { EmailActions } from "@/components/mail/EmailActions";
 import { EmailBody } from "@/components/mail/EmailBody";
@@ -9,6 +9,7 @@ import {
 	EMAIL_DETAIL_SHORTCUTS,
 	KeyboardShortcutBar,
 } from "@/components/mail/KeyboardShortcutBar";
+import { MessageMetadata } from "@/components/mail/MessageMetadata";
 import { useEmailDetailKeyboard } from "@/hooks/use-email-detail-keyboard";
 import { mailKeys, useMailThreadDetail } from "@/hooks/use-mail";
 import { recordThreadVisit } from "@/hooks/use-merge-suggestions";
@@ -17,13 +18,7 @@ import { cn, formatDate } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { SerializedEmailDetail } from "@wingmnn/types";
-import {
-	ArrowLeft,
-	ChevronDown,
-	ChevronRight,
-	Sparkles,
-	Unlink,
-} from "lucide-react";
+import { ArrowLeft, ChevronRight, Unlink } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -563,127 +558,6 @@ function ConversationView({
 					</motion.div>
 				);
 			})}
-		</div>
-	);
-}
-
-/* ── Shared metadata block ── */
-
-function MessageMetadata({ email }: { email: SerializedEmailDetail }) {
-	return (
-		<dl className="px-4 py-3.5 space-y-2.5">
-			<div className="flex gap-3 min-w-0">
-				<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
-					From
-				</dt>
-				<dd className="font-body text-[13px] text-foreground min-w-0">
-					{email.fromName && (
-						<span className="font-medium">{email.fromName}</span>
-					)}
-					{email.fromAddress && (
-						<span className="text-grey-2 font-mono text-[12px]">
-							{email.fromName ? " " : ""}
-							&lt;{email.fromAddress}&gt;
-						</span>
-					)}
-				</dd>
-			</div>
-			{email.toAddresses && email.toAddresses.length > 0 && (
-				<div className="flex gap-3 min-w-0">
-					<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
-						To
-					</dt>
-					<dd className="font-mono text-[12px] text-grey-2 min-w-0 break-all">
-						{email.toAddresses.join(", ")}
-					</dd>
-				</div>
-			)}
-			{email.ccAddresses && email.ccAddresses.length > 0 && (
-				<div className="flex gap-3 min-w-0">
-					<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
-						Cc
-					</dt>
-					<dd className="font-mono text-[12px] text-grey-2 min-w-0 break-all">
-						{email.ccAddresses.join(", ")}
-					</dd>
-				</div>
-			)}
-			<div className="flex flex-wrap items-center gap-x-2 gap-y-0 pt-0.5">
-				<dt className="sr-only">Date and category</dt>
-				<dd className="font-body text-[12px] text-grey-2 flex flex-wrap items-center gap-x-2">
-					<time dateTime={email.receivedAt}>
-						{formatDate(email.receivedAt)}
-					</time>
-					<span className="text-grey-3">·</span>
-					<span
-						className={cn(
-							"inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px]",
-							CATEGORY_CONFIG[email.category].bg,
-							CATEGORY_CONFIG[email.category].text,
-						)}
-					>
-						<span
-							className={cn(
-								"size-1.5 rounded-full",
-								CATEGORY_CONFIG[email.category].dot,
-							)}
-							aria-hidden
-						/>
-						{CATEGORY_CONFIG[email.category].label}
-					</span>
-				</dd>
-			</div>
-		</dl>
-	);
-}
-
-/* ── AI Summary ── */
-
-function AiSummary({ summary }: { summary: string }) {
-	const [open, setOpen] = useState(false);
-
-	return (
-		<div className="border-t border-border/30 bg-secondary/5">
-			<button
-				type="button"
-				onClick={() => setOpen((o) => !o)}
-				className="flex w-full items-center gap-2 px-4 py-2.5 font-body text-[12px] text-grey-2 hover:text-foreground cursor-pointer select-none"
-			>
-				<Sparkles
-					className={cn(
-						"size-3.5 shrink-0 transition-colors duration-200",
-						open ? "text-foreground/80" : "text-grey-3",
-					)}
-				/>
-				<span>AI summary</span>
-				<motion.div
-					animate={{ rotate: open ? 180 : 0 }}
-					transition={{ duration: 0.25, ease: MOTION_CONSTANTS.EASE }}
-					className="ml-auto shrink-0"
-				>
-					<ChevronDown className="size-3 text-grey-3" />
-				</motion.div>
-			</button>
-			<AnimatePresence initial={false}>
-				{open && (
-					<motion.div
-						initial={{ height: 0, opacity: 0 }}
-						animate={{ height: "auto", opacity: 1 }}
-						exit={{ height: 0, opacity: 0 }}
-						transition={{
-							height: { duration: 0.3, ease: MOTION_CONSTANTS.EASE },
-							opacity: { duration: 0.2, ease: "easeInOut" },
-						}}
-						className="overflow-hidden"
-					>
-						<div className="px-4 pb-4 pt-1">
-							<p className="font-serif text-[14px] text-foreground/75 italic leading-relaxed border-l-2 border-grey-4/60 pl-3">
-								{summary}
-							</p>
-						</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
 		</div>
 	);
 }
