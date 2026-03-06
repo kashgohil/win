@@ -31,6 +31,7 @@ import { Route as AuthenticatedAppModuleFinRouteImport } from './routes/_authent
 import { Route as AuthenticatedAppModuleFilesRouteImport } from './routes/_authenticated/_app/module/files'
 import { Route as AuthenticatedAppModuleCrmRouteImport } from './routes/_authenticated/_app/module/crm'
 import { Route as AuthenticatedAppModuleCalRouteImport } from './routes/_authenticated/_app/module/cal'
+import { Route as AuthenticatedAppModuleTaskIndexRouteImport } from './routes/_authenticated/_app/module/task/index'
 import { Route as AuthenticatedAppModuleMailIndexRouteImport } from './routes/_authenticated/_app/module/mail/index'
 import { Route as AuthenticatedAppModuleMailSentIndexRouteImport } from './routes/_authenticated/_app/module/mail/sent.index'
 import { Route as AuthenticatedAppModuleMailInboxIndexRouteImport } from './routes/_authenticated/_app/module/mail/inbox.index'
@@ -162,6 +163,12 @@ const AuthenticatedAppModuleCalRoute =
     path: '/module/cal',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppModuleTaskIndexRoute =
+  AuthenticatedAppModuleTaskIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAppModuleTaskRoute,
+  } as any)
 const AuthenticatedAppModuleMailIndexRoute =
   AuthenticatedAppModuleMailIndexRouteImport.update({
     id: '/',
@@ -218,9 +225,10 @@ export interface FileRoutesByFullPath {
   '/module/mail': typeof AuthenticatedAppModuleMailRouteWithChildren
   '/module/notes': typeof AuthenticatedAppModuleNotesRoute
   '/module/social': typeof AuthenticatedAppModuleSocialRoute
-  '/module/task': typeof AuthenticatedAppModuleTaskRoute
+  '/module/task': typeof AuthenticatedAppModuleTaskRouteWithChildren
   '/module/travel': typeof AuthenticatedAppModuleTravelRoute
   '/module/mail/': typeof AuthenticatedAppModuleMailIndexRoute
+  '/module/task/': typeof AuthenticatedAppModuleTaskIndexRoute
   '/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
   '/module/mail/attachments/': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/module/mail/drafts/': typeof AuthenticatedAppModuleMailDraftsIndexRoute
@@ -244,9 +252,9 @@ export interface FileRoutesByTo {
   '/module/health': typeof AuthenticatedAppModuleHealthRoute
   '/module/notes': typeof AuthenticatedAppModuleNotesRoute
   '/module/social': typeof AuthenticatedAppModuleSocialRoute
-  '/module/task': typeof AuthenticatedAppModuleTaskRoute
   '/module/travel': typeof AuthenticatedAppModuleTravelRoute
   '/module/mail': typeof AuthenticatedAppModuleMailIndexRoute
+  '/module/task': typeof AuthenticatedAppModuleTaskIndexRoute
   '/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
   '/module/mail/attachments': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/module/mail/drafts': typeof AuthenticatedAppModuleMailDraftsIndexRoute
@@ -275,9 +283,10 @@ export interface FileRoutesById {
   '/_authenticated/_app/module/mail': typeof AuthenticatedAppModuleMailRouteWithChildren
   '/_authenticated/_app/module/notes': typeof AuthenticatedAppModuleNotesRoute
   '/_authenticated/_app/module/social': typeof AuthenticatedAppModuleSocialRoute
-  '/_authenticated/_app/module/task': typeof AuthenticatedAppModuleTaskRoute
+  '/_authenticated/_app/module/task': typeof AuthenticatedAppModuleTaskRouteWithChildren
   '/_authenticated/_app/module/travel': typeof AuthenticatedAppModuleTravelRoute
   '/_authenticated/_app/module/mail/': typeof AuthenticatedAppModuleMailIndexRoute
+  '/_authenticated/_app/module/task/': typeof AuthenticatedAppModuleTaskIndexRoute
   '/_authenticated/_app/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
   '/_authenticated/_app/module/mail/attachments/': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/_authenticated/_app/module/mail/drafts/': typeof AuthenticatedAppModuleMailDraftsIndexRoute
@@ -308,6 +317,7 @@ export interface FileRouteTypes {
     | '/module/task'
     | '/module/travel'
     | '/module/mail/'
+    | '/module/task/'
     | '/module/mail/inbox/$emailId'
     | '/module/mail/attachments/'
     | '/module/mail/drafts/'
@@ -331,9 +341,9 @@ export interface FileRouteTypes {
     | '/module/health'
     | '/module/notes'
     | '/module/social'
-    | '/module/task'
     | '/module/travel'
     | '/module/mail'
+    | '/module/task'
     | '/module/mail/inbox/$emailId'
     | '/module/mail/attachments'
     | '/module/mail/drafts'
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/module/task'
     | '/_authenticated/_app/module/travel'
     | '/_authenticated/_app/module/mail/'
+    | '/_authenticated/_app/module/task/'
     | '/_authenticated/_app/module/mail/inbox/$emailId'
     | '/_authenticated/_app/module/mail/attachments/'
     | '/_authenticated/_app/module/mail/drafts/'
@@ -532,6 +543,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppModuleCalRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/_app/module/task/': {
+      id: '/_authenticated/_app/module/task/'
+      path: '/'
+      fullPath: '/module/task/'
+      preLoaderRoute: typeof AuthenticatedAppModuleTaskIndexRouteImport
+      parentRoute: typeof AuthenticatedAppModuleTaskRoute
+    }
     '/_authenticated/_app/module/mail/': {
       id: '/_authenticated/_app/module/mail/'
       path: '/'
@@ -606,6 +624,20 @@ const AuthenticatedAppModuleMailRouteWithChildren =
     AuthenticatedAppModuleMailRouteChildren,
   )
 
+interface AuthenticatedAppModuleTaskRouteChildren {
+  AuthenticatedAppModuleTaskIndexRoute: typeof AuthenticatedAppModuleTaskIndexRoute
+}
+
+const AuthenticatedAppModuleTaskRouteChildren: AuthenticatedAppModuleTaskRouteChildren =
+  {
+    AuthenticatedAppModuleTaskIndexRoute: AuthenticatedAppModuleTaskIndexRoute,
+  }
+
+const AuthenticatedAppModuleTaskRouteWithChildren =
+  AuthenticatedAppModuleTaskRoute._addFileChildren(
+    AuthenticatedAppModuleTaskRouteChildren,
+  )
+
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppProfileRoute: typeof AuthenticatedAppProfileRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
@@ -617,7 +649,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppModuleMailRoute: typeof AuthenticatedAppModuleMailRouteWithChildren
   AuthenticatedAppModuleNotesRoute: typeof AuthenticatedAppModuleNotesRoute
   AuthenticatedAppModuleSocialRoute: typeof AuthenticatedAppModuleSocialRoute
-  AuthenticatedAppModuleTaskRoute: typeof AuthenticatedAppModuleTaskRoute
+  AuthenticatedAppModuleTaskRoute: typeof AuthenticatedAppModuleTaskRouteWithChildren
   AuthenticatedAppModuleTravelRoute: typeof AuthenticatedAppModuleTravelRoute
 }
 
@@ -632,7 +664,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppModuleMailRoute: AuthenticatedAppModuleMailRouteWithChildren,
   AuthenticatedAppModuleNotesRoute: AuthenticatedAppModuleNotesRoute,
   AuthenticatedAppModuleSocialRoute: AuthenticatedAppModuleSocialRoute,
-  AuthenticatedAppModuleTaskRoute: AuthenticatedAppModuleTaskRoute,
+  AuthenticatedAppModuleTaskRoute: AuthenticatedAppModuleTaskRouteWithChildren,
   AuthenticatedAppModuleTravelRoute: AuthenticatedAppModuleTravelRoute,
 }
 
