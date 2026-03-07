@@ -10,6 +10,8 @@ import {
 	createTaskItemBody,
 	errorResponse,
 	messageResponse,
+	parseTaskBody,
+	parseTaskResponse,
 	projectDetailResponse,
 	projectListResponse,
 	syncResponse,
@@ -297,6 +299,29 @@ export const tasksRoutes = new Elysia({
 				500: errorResponse,
 			},
 			detail: { tags: ["Tasks"], summary: "Create task from email" },
+		},
+	)
+
+	/* ── Parse (AI NL) ── */
+
+	.post(
+		"/parse",
+		async ({ body, user, set }) => {
+			const result = await taskService.parseTaskInput(user.id, body.input);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			body: parseTaskBody,
+			response: {
+				200: parseTaskResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Parse natural language task input" },
 		},
 	)
 

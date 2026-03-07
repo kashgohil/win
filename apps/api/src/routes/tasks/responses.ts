@@ -190,3 +190,22 @@ export const syncResponse = t.Object({
 	imported: t.Number(),
 	projects: t.Number(),
 });
+
+/* ── Task parse ── */
+
+export const parseTaskBody = t.Object({
+	input: t.String({ minLength: 1 }),
+});
+
+export const parseTaskResponse = t.Object({
+	title: t.String(),
+	dueAt: t.Nullable(t.String()),
+	priority: t.Union([
+		t.Literal("none"),
+		t.Literal("low"),
+		t.Literal("medium"),
+		t.Literal("high"),
+		t.Literal("urgent"),
+	]),
+	projectName: t.Nullable(t.String()),
+});

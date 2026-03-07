@@ -18,8 +18,10 @@ import {
 	tasks,
 } from "@wingmnn/db";
 import {
+	TASK_PARSE_SYSTEM_PROMPT,
 	enqueueFullTaskSync,
 	enqueueTaskWebhookEvent,
+	getAiProvider,
 	scheduleRecurringTaskSync,
 } from "@wingmnn/queue";
 import {
@@ -464,6 +466,15 @@ export const taskService = {
 		},
 	): Promise<TaskCreateResult> {
 		try {
+			const dueAt = input.dueAt ? new Date(input.dueAt) : null;
+			const priority = input.priority ?? "none";
+			const priorityScore = computePriorityScore({
+				priority,
+				dueAt,
+				createdAt: new Date(),
+				sourceEmailId: input.sourceEmailId ?? null,
+			});
+
 			const rows = await db
 				.insert(tasks)
 				.values({
@@ -1354,6 +1365,50 @@ export const taskService = {
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
 			console.error("[tasks] listConnections error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
+	/* ── Parse task input (AI NL parsing) ── */
+	async parseTaskInput(
+		userId: string,
+		input: string,
+	): Promise<
+		| {
+				ok: true;
+				data: {
+					title: string;
+					dueAt: string | null;
+					priority: "none" | "low" | "medium" | "high" | "urgent";
+					projectName: string | null;
+				};
+		  }
+		| { ok: false; error: string; status: 500 }
+	> {
+		try {
+			// Get user's project names for context
+			const projects = await db.query.taskProjects.findMany({
+				where: eq(taskProjects.userId, userId),
+				columns: { name: true },
+			});
+			const projectNames = projects.map((p) => p.name);
+
+			try {
+				const provider = getAiProvider();
+				if (!provider) throw new Error("No AI provider");
+				const result = await provider.parseTaskInput(
+					{ input, projectNames },
+					TASK_PARSE_SYSTEM_PROMPT,
+				);
+				return { ok: true, data: result };
+			} catch {
+				// Fall back to stub parser
+				const result = parseTaskInputStub(input);
+				return { ok: true, data: result };
+			}
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] parseTaskInput error:", message);
 			return { ok: false, error: message, status: 500 };
 		}
 	},
