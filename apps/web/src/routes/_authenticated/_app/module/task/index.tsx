@@ -5,7 +5,13 @@ import { TaskSuggestions } from "@/components/tasks/TaskSuggestions";
 import { useProjects, useTaskStats } from "@/hooks/use-tasks";
 import { MODULE_DATA } from "@/lib/module-data";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, FolderOpen, KanbanSquare, List } from "lucide-react";
+import {
+	ArrowRight,
+	Calendar,
+	FolderOpen,
+	KanbanSquare,
+	List,
+} from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -24,6 +30,7 @@ const TASK_HUB_SHORTCUTS = [
 	[
 		{ keys: ["L"], label: "list view" },
 		{ keys: ["B"], label: "board view" },
+		{ keys: ["C"], label: "calendar" },
 	],
 ];
 
@@ -62,6 +69,10 @@ function TaskModule() {
 					e.preventDefault();
 					navigate({ to: "/module/task/list", search: { view: "board" } });
 					break;
+				case "c":
+					e.preventDefault();
+					navigate({ to: "/module/task/calendar" });
+					break;
 			}
 		};
 
@@ -73,7 +84,7 @@ function TaskModule() {
 		<>
 			<ModulePage moduleKey="task" data={MODULE_DATA.task}>
 				<div className="px-(--page-px) max-w-5xl mx-auto pb-16">
-					<div className="grid grid-cols-2 gap-3">
+					<div className="grid grid-cols-3 gap-3">
 						<Link
 							to="/module/task/list"
 							className="group flex items-center justify-between rounded-lg border border-border/40 hover:border-border/70 transition-colors px-4 py-3.5"
@@ -95,6 +106,18 @@ function TaskModule() {
 								<KanbanSquare className="size-4 text-grey-3" />
 								<span className="font-body text-[14px] text-foreground tracking-[0.01em]">
 									Board view
+								</span>
+							</div>
+							<ArrowRight className="size-3.5 text-grey-3 group-hover:translate-x-0.5 transition-transform" />
+						</Link>
+						<Link
+							to="/module/task/calendar"
+							className="group flex items-center justify-between rounded-lg border border-border/40 hover:border-border/70 transition-colors px-4 py-3.5"
+						>
+							<div className="flex items-center gap-2.5">
+								<Calendar className="size-4 text-grey-3" />
+								<span className="font-body text-[14px] text-foreground tracking-[0.01em]">
+									Calendar
 								</span>
 							</div>
 							<ArrowRight className="size-3.5 text-grey-3 group-hover:translate-x-0.5 transition-transform" />
