@@ -42,6 +42,7 @@ export type Task = {
 	assigneeUserId?: string | null;
 	externalAssigneeName?: string | null;
 	projectId?: string | null;
+	suggestedProjectId?: string | null;
 	sourceEmailId?: string | null;
 	completedAt?: string | null;
 	reminderAt?: string | null;
@@ -183,6 +184,7 @@ export function useUpdateTask() {
 		priority?: "none" | "low" | "medium" | "high" | "urgent";
 		dueAt?: string | null;
 		projectId?: string | null;
+		suggestedProjectId?: string | null;
 		reminderAt?: string | null;
 		snoozedUntil?: string | null;
 	};

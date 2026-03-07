@@ -18,6 +18,7 @@ import {
 	useCreateTaskItem,
 	useDeleteTask,
 	useDeleteTaskItem,
+	useProjects,
 	useResolveConflict,
 	useRetrySync,
 	useSnoozeTask,
@@ -34,6 +35,7 @@ import {
 	Circle,
 	ExternalLink,
 	Flag,
+	FolderOpen,
 	Loader2,
 	Plus,
 	RefreshCw,
@@ -76,6 +78,7 @@ export function TaskDetailDrawer({
 	const deleteTask = useDeleteTask();
 	const retrySync = useRetrySync();
 	const resolveConflict = useResolveConflict();
+	const { data: allProjects } = useProjects();
 	const snoozeTask = useSnoozeTask();
 	const createItem = useCreateTaskItem();
 	const updateItem = useUpdateTaskItem();
@@ -328,6 +331,62 @@ export function TaskDetailDrawer({
 								)}
 							</div>
 						)}
+
+						{/* Project suggestion */}
+						{task.suggestedProjectId &&
+							!task.projectId &&
+							(() => {
+								const suggested = allProjects?.find(
+									(p) => p.id === task.suggestedProjectId,
+								);
+								if (!suggested) return null;
+								return (
+									<div className="rounded-md border border-violet-500/30 bg-violet-500/5 px-3 py-2.5">
+										<div className="flex items-center gap-2 mb-1.5">
+											<FolderOpen className="size-3 text-violet-500" />
+											<span className="font-mono text-[10px] text-violet-500">
+												Suggested project
+											</span>
+										</div>
+										<p className="font-body text-[13px] text-foreground mb-2">
+											{suggested.name}
+										</p>
+										<div className="flex items-center gap-2">
+											<button
+												type="button"
+												onClick={() =>
+													updateTask.mutate(
+														{
+															id: task.id,
+															projectId: suggested.id,
+														},
+														{
+															onSuccess: () =>
+																toast.success(`Moved to ${suggested.name}`),
+														},
+													)
+												}
+												className="font-mono text-[10px] text-violet-500 hover:text-violet-400 transition-colors cursor-pointer"
+											>
+												Accept
+											</button>
+											<span className="text-grey-3 text-[10px]">·</span>
+											<button
+												type="button"
+												onClick={() =>
+													updateTask.mutate({
+														id: task.id,
+														suggestedProjectId: null,
+													})
+												}
+												className="font-mono text-[10px] text-grey-3 hover:text-foreground transition-colors cursor-pointer"
+											>
+												Dismiss
+											</button>
+										</div>
+									</div>
+								);
+							})()}
 
 						{/* Status */}
 						<div>
