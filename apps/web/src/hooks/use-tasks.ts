@@ -92,6 +92,7 @@ export function useTasksInfinite(params?: {
 		queryFn: async ({ pageParam }) => {
 			const { data, error } = await api.tasks.get({
 				query: {
+					q: params?.q,
 					statusKey: params?.statusKey,
 					projectId: params?.projectId,
 					priority: params?.priority,
@@ -411,6 +412,42 @@ export function useParseTaskInput() {
 			const { data, error } = await api.tasks.parse.post({ input });
 			if (error) throw new Error("Failed to parse task input");
 			return data;
+		},
+	});
+}
+
+export function useBulkUpdateTasks() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (input: {
+			taskIds: string[];
+			statusKey?: "todo" | "in_progress" | "done" | "blocked" | "cancelled";
+			priority?: "none" | "low" | "medium" | "high" | "urgent";
+		}) => {
+			const { data, error } = await api.tasks["bulk-update"].post(input);
+			if (error) throw new Error("Failed to bulk update tasks");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.all });
+		},
+	});
+}
+
+export function useBulkDeleteTasks() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (taskIds: string[]) => {
+			const { data, error } = await api.tasks["bulk-delete"].post({
+				taskIds,
+			});
+			if (error) throw new Error("Failed to bulk delete tasks");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.all });
 		},
 	});
 }

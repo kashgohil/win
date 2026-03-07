@@ -11,6 +11,7 @@ import {
 	AlarmClock,
 	AlertTriangle,
 	Calendar,
+	Check,
 	CheckCircle2,
 	Circle,
 	ExternalLink,
@@ -83,12 +84,18 @@ export function TaskRow({
 	focusRef,
 	onToggleStatus,
 	onClick,
+	selectable,
+	selected,
+	onSelect,
 }: {
 	task: Task;
 	isFocused?: boolean;
 	focusRef?: (el: HTMLElement | null) => void;
 	onToggleStatus?: () => void;
 	onClick?: () => void;
+	selectable?: boolean;
+	selected?: boolean;
+	onSelect?: (id: string) => void;
 }) {
 	const priority = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.none;
 	const due = task.dueAt ? formatDueDate(task.dueAt) : null;
@@ -117,6 +124,27 @@ export function TaskRow({
 				}}
 				className="flex items-start gap-3 py-3 px-2 cursor-pointer"
 			>
+				{/* Selection checkbox */}
+				{selectable && (
+					<button
+						type="button"
+						onClick={(e) => {
+							e.stopPropagation();
+							onSelect?.(task.id);
+						}}
+						className={cn(
+							"mt-0.5 shrink-0 size-4 rounded border cursor-pointer transition-colors",
+							selected
+								? "bg-foreground border-foreground"
+								: "border-grey-3 hover:border-foreground",
+						)}
+					>
+						{selected && (
+							<Check className="size-3 text-background" strokeWidth={3} />
+						)}
+					</button>
+				)}
+
 				{/* Status toggle */}
 				<button
 					type="button"

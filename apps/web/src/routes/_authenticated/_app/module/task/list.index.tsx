@@ -6,9 +6,15 @@ import { TaskDetailDrawer } from "@/components/tasks/TaskDetailDrawer";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { TaskRow } from "@/components/tasks/TaskRow";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { type Task, useTasksInfinite, useUpdateTask } from "@/hooks/use-tasks";
+import {
+	type Task,
+	useBulkDeleteTasks,
+	useBulkUpdateTasks,
+	useTasksInfinite,
+	useUpdateTask,
+} from "@/hooks/use-tasks";
 import { createFileRoute } from "@tanstack/react-router";
-import { Check } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -41,7 +47,7 @@ const TASK_LIST_SHORTCUTS = [
 		{ keys: ["D"], label: "toggle done" },
 	],
 	[
-		{ keys: ["P"], label: "priority" },
+		{ keys: ["X"], label: "select" },
 		{ keys: ["V"], label: "view" },
 		{ keys: ["["], label: "back" },
 	],
@@ -74,12 +80,17 @@ function TaskListPage() {
 	const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [showSearch, setShowSearch] = useState(!!search.q);
 
+	// Selection state
+	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
 	const { data, isLoading, fetchNextPage, hasNextPage } = useTasksInfinite({
 		q: search.q,
 		statusKey,
 		sort: backendSort,
 	});
 	const updateTask = useUpdateTask();
+	const bulkUpdate = useBulkUpdateTasks();
+	const bulkDelete = useBulkDeleteTasks();
 
 	const allTasks: Task[] =
 		data?.pages.flatMap((page) => (page?.tasks as Task[]) ?? []) ?? [];
@@ -94,6 +105,19 @@ function TaskListPage() {
 		},
 		[navigate, search],
 	);
+
+	const toggleSelect = useCallback((id: string) => {
+		setSelectedIds((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	}, []);
+
+	const clearSelection = useCallback(() => {
+		setSelectedIds(new Set());
+	}, []);
 
 	// Keyboard navigation
 	useEffect(() => {
@@ -159,6 +183,12 @@ function TaskListPage() {
 					setTimeout(() => searchInputRef.current?.focus(), 0);
 					break;
 				}
+				case "x": {
+					e.preventDefault();
+					const task = allTasks[focusIndex];
+					if (task) toggleSelect(task.id);
+					break;
+				}
 				case "v": {
 					e.preventDefault();
 					navigate({
@@ -170,7 +200,9 @@ function TaskListPage() {
 					break;
 				}
 				case "Escape": {
-					if (selectedTaskId) {
+					if (selectedIds.size > 0) {
+						clearSelection();
+					} else if (selectedTaskId) {
 						setSelectedTaskId(null);
 					}
 					break;
@@ -184,11 +216,14 @@ function TaskListPage() {
 		allTasks,
 		focusIndex,
 		selectedTaskId,
+		selectedIds,
 		updateTask,
 		view,
 		navigate,
 		search,
 		searchInput,
+		toggleSelect,
+		clearSelection,
 	]);
 
 	// Scroll focused item into view
@@ -349,6 +384,9 @@ function TaskListPage() {
 										}}
 										onToggleStatus={() => handleToggleStatus(task)}
 										onClick={() => setSelectedTaskId(task.id)}
+										selectable={selectedIds.size > 0}
+										selected={selectedIds.has(task.id)}
+										onSelect={toggleSelect}
 									/>
 								))}
 								{hasNextPage && (
@@ -373,6 +411,66 @@ function TaskListPage() {
 					open={!!selectedTaskId}
 					onClose={() => setSelectedTaskId(null)}
 				/>
+			)}
+
+			{/* Bulk action bar */}
+			{selectedIds.size > 0 && (
+				<div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-foreground text-background rounded-lg px-4 py-2 shadow-lg">
+					<span className="font-mono text-[11px]">
+						{selectedIds.size} selected
+					</span>
+					<div className="w-px h-4 bg-background/20" />
+					<button
+						type="button"
+						onClick={() => {
+							bulkUpdate.mutate(
+								{
+									taskIds: [...selectedIds],
+									statusKey: "done",
+								},
+								{ onSuccess: clearSelection },
+							);
+						}}
+						className="font-mono text-[11px] px-2 py-1 rounded hover:bg-background/20 transition-colors cursor-pointer"
+					>
+						Mark done
+					</button>
+					<button
+						type="button"
+						onClick={() => {
+							bulkUpdate.mutate(
+								{
+									taskIds: [...selectedIds],
+									statusKey: "todo",
+								},
+								{ onSuccess: clearSelection },
+							);
+						}}
+						className="font-mono text-[11px] px-2 py-1 rounded hover:bg-background/20 transition-colors cursor-pointer"
+					>
+						Mark todo
+					</button>
+					<button
+						type="button"
+						onClick={() => {
+							bulkDelete.mutate([...selectedIds], {
+								onSuccess: clearSelection,
+							});
+						}}
+						className="font-mono text-[11px] px-2 py-1 rounded hover:bg-red-500/80 transition-colors cursor-pointer inline-flex items-center gap-1"
+					>
+						<Trash2 className="size-3" />
+						Delete
+					</button>
+					<div className="w-px h-4 bg-background/20" />
+					<button
+						type="button"
+						onClick={clearSelection}
+						className="font-mono text-[11px] px-2 py-1 rounded hover:bg-background/20 transition-colors cursor-pointer"
+					>
+						Cancel
+					</button>
+				</div>
 			)}
 
 			{/* Keyboard shortcut bar */}
