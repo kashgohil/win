@@ -46,6 +46,7 @@ const taskSchema = t.Object({
 	completedAt: t.Optional(t.Nullable(t.String())),
 	reminderAt: t.Optional(t.Nullable(t.String())),
 	snoozedUntil: t.Optional(t.Nullable(t.String())),
+	suggestedProjectId: t.Optional(t.Nullable(t.String())),
 	writeBackState: t.Optional(t.Nullable(t.String())),
 	items: t.Array(taskItemSchema),
 	createdAt: t.String(),
@@ -117,6 +118,7 @@ export const updateTaskBody = t.Object({
 	),
 	dueAt: t.Optional(t.Nullable(t.String())),
 	projectId: t.Optional(t.Nullable(t.String())),
+	suggestedProjectId: t.Optional(t.Nullable(t.String())),
 	reminderAt: t.Optional(t.Nullable(t.String())),
 	snoozedUntil: t.Optional(t.Nullable(t.String())),
 });

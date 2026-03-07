@@ -191,6 +191,7 @@ type SerializedTask = {
 	assigneeUserId: string | null;
 	externalAssigneeName: string | null;
 	projectId: string | null;
+	suggestedProjectId: string | null;
 	sourceEmailId: string | null;
 	completedAt: string | null;
 	reminderAt: string | null;
@@ -314,6 +315,7 @@ function serializeTask(
 		completedAt: task.completedAt?.toISOString() ?? null,
 		reminderAt: task.reminderAt?.toISOString() ?? null,
 		snoozedUntil: task.snoozedUntil?.toISOString() ?? null,
+		suggestedProjectId: task.suggestedProjectId,
 		writeBackState: task.writeBackState,
 		items: items.map((item) => ({
 			id: item.id,
@@ -542,6 +544,7 @@ export const taskService = {
 			priority?: "none" | "low" | "medium" | "high" | "urgent";
 			dueAt?: string | null;
 			projectId?: string | null;
+			suggestedProjectId?: string | null;
 			reminderAt?: string | null;
 			snoozedUntil?: string | null;
 		},
@@ -570,7 +573,13 @@ export const taskService = {
 			if (input.priority !== undefined) updates.priority = input.priority;
 			if (input.dueAt !== undefined)
 				updates.dueAt = input.dueAt ? new Date(input.dueAt) : null;
-			if (input.projectId !== undefined) updates.projectId = input.projectId;
+			if (input.projectId !== undefined) {
+				updates.projectId = input.projectId;
+				// Clear suggestion when project is explicitly set
+				updates.suggestedProjectId = null;
+			}
+			if (input.suggestedProjectId !== undefined)
+				updates.suggestedProjectId = input.suggestedProjectId;
 			if (input.reminderAt !== undefined)
 				updates.reminderAt = input.reminderAt
 					? new Date(input.reminderAt)
