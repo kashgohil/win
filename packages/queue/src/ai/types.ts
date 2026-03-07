@@ -66,6 +66,17 @@ export interface WorkSummaryResult {
 	highlights: string[];
 }
 
+export interface TaskCategorizeInput {
+	title: string;
+	description: string | null;
+	projects: { id: string; name: string }[];
+}
+
+export interface TaskCategorizeResult {
+	projectId: string | null;
+	confidence: number;
+}
+
 export interface AiProvider {
 	classify(
 		email: EmailInput,
@@ -80,4 +91,8 @@ export interface AiProvider {
 		input: WorkSummaryInput,
 		systemPrompt: string,
 	): Promise<WorkSummaryResult>;
+	categorizeTask(
+		input: TaskCategorizeInput,
+		systemPrompt: string,
+	): Promise<TaskCategorizeResult>;
 }

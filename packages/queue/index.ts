@@ -1,9 +1,12 @@
 export { getAiProvider } from "./src/ai/factory";
 export {
+	TASK_CATEGORIZE_SYSTEM_PROMPT,
 	TASK_PARSE_SYSTEM_PROMPT,
 	WORK_SUMMARY_SYSTEM_PROMPT,
 } from "./src/ai/prompts";
 export type {
+	TaskCategorizeInput,
+	TaskCategorizeResult,
 	TaskParseInput,
 	TaskParseResult,
 	WorkSummaryInput,

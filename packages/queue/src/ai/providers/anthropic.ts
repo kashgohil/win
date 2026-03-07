@@ -5,6 +5,8 @@ import type {
 	ClassificationResult,
 	DraftInput,
 	EmailInput,
+	TaskCategorizeInput,
+	TaskCategorizeResult,
 	TaskParseInput,
 	TaskParseResult,
 	WorkSummaryInput,
@@ -214,7 +216,61 @@ export class AnthropicProvider implements AiProvider {
 		const result = WorkSummarySchema.parse(parsed);
 		return result;
 	}
+	async categorizeTask(
+		input: TaskCategorizeInput,
+		systemPrompt: string,
+	): Promise<TaskCategorizeResult> {
+		if (input.projects.length === 0) {
+			return { projectId: null, confidence: 0 };
+		}
+
+		const lines = [
+			`Task title: ${input.title}`,
+			input.description
+				? `Description: ${input.description.slice(0, 500)}`
+				: "",
+			"",
+			"Projects:",
+			...input.projects.map((p) => `- ${p.id}: ${p.name}`),
+		]
+			.filter(Boolean)
+			.join("\n");
+
+		const response = await this.client.messages.create({
+			model: this.model,
+			max_tokens: 128,
+			system: [
+				{
+					type: "text",
+					text: systemPrompt,
+					cache_control: { type: "ephemeral" },
+				},
+			],
+			messages: [{ role: "user", content: lines }],
+		});
+
+		const text =
+			response.content[0]?.type === "text" ? response.content[0].text : "";
+
+		const parsed = parseJsonResponse(text);
+		const result = TaskCategorizeSchema.parse(parsed);
+
+		// Validate that returned projectId actually exists in input
+		if (
+			result.projectId &&
+			!input.projects.some((p) => p.id === result.projectId)
+		) {
+			return { projectId: null, confidence: 0 };
+		}
+
+		return result;
+	}
 }
+
+const TaskCategorizeSchema = z.object({
+	projectId: z.string().nullable(),
+	confidence: z.number().min(0).max(1),
+});
 
 const WorkSummarySchema = z.object({
 	summary: z.string(),
