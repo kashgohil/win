@@ -36,6 +36,7 @@ export const tasksRoutes = new Elysia({
 		"/",
 		async ({ query, user, set }) => {
 			const result = await taskService.listTasks(user.id, {
+				q: query.q,
 				statusKey: query.statusKey,
 				projectId: query.projectId,
 				priority: query.priority,
@@ -56,6 +57,7 @@ export const tasksRoutes = new Elysia({
 		{
 			auth: true,
 			query: t.Object({
+				q: t.Optional(t.String()),
 				statusKey: t.Optional(t.String()),
 				projectId: t.Optional(t.String()),
 				priority: t.Optional(t.String()),

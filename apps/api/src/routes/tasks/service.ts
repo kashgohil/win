@@ -7,7 +7,10 @@ import {
 	emails,
 	eq,
 	gte,
+	ilike,
+	inArray,
 	lte,
+	or,
 	sql,
 	taskActivityLog,
 	taskConnections,
@@ -329,6 +332,7 @@ export const taskService = {
 	async listTasks(
 		userId: string,
 		opts: {
+			q?: string;
 			statusKey?: string;
 			projectId?: string;
 			priority?: string;
@@ -376,6 +380,12 @@ export const taskService = {
 			}
 			if (opts.dueAfter) {
 				conditions.push(gte(tasks.dueAt, new Date(opts.dueAfter)));
+			}
+			if (opts.q) {
+				const pattern = `%${opts.q}%`;
+				conditions.push(
+					or(ilike(tasks.title, pattern), ilike(tasks.description, pattern))!,
+				);
 			}
 			if (opts.cursor) {
 				conditions.push(lte(tasks.createdAt, new Date(opts.cursor)));
