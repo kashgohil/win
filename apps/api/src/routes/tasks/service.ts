@@ -27,6 +27,7 @@ import {
 	getAiProvider,
 	scheduleRecurringTaskSync,
 	TASK_PARSE_SYSTEM_PROMPT,
+	WORK_SUMMARY_SYSTEM_PROMPT,
 } from "@wingmnn/queue";
 import {
 	getTaskProvider,
@@ -2246,7 +2247,190 @@ export const taskService = {
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
 			console.error("[tasks] getStats error:", message);
-			return { ok: false, error: message, status: 500 };
+			return { ok: false as const, error: message, status: 500 };
+		}
+	},
+
+	/* ── Work summary ── */
+	async getWorkSummary(
+		userId: string,
+		days = 7,
+		includeAi = false,
+	): Promise<
+		| {
+				ok: true;
+				data: {
+					period: { from: string; to: string };
+					completed: { id: string; title: string; completedAt: string }[];
+					created: number;
+					overdue: number;
+					byStatus: Record<string, number>;
+					topProjects: { name: string; completed: number }[];
+					streak: number;
+					aiSummary: string | null;
+					aiHighlights: string[] | null;
+				};
+		  }
+		| { ok: false; error: string; status: number }
+	> {
+		try {
+			const now = new Date();
+			const from = new Date(now.getTime() - days * 86400000);
+
+			// Completed tasks in period
+			const completedTasks = await db
+				.select({
+					id: tasks.id,
+					title: tasks.title,
+					completedAt: tasks.completedAt,
+					projectId: tasks.projectId,
+				})
+				.from(tasks)
+				.where(
+					and(
+						eq(tasks.userId, userId),
+						gte(tasks.completedAt, from),
+						lte(tasks.completedAt, now),
+					),
+				)
+				.orderBy(desc(tasks.completedAt));
+
+			// Created count in period
+			const [createdResult] = await db
+				.select({ count: count() })
+				.from(tasks)
+				.where(and(eq(tasks.userId, userId), gte(tasks.createdAt, from)));
+
+			// Current overdue
+			const [overdueResult] = await db
+				.select({ count: count() })
+				.from(tasks)
+				.where(
+					and(
+						eq(tasks.userId, userId),
+						lte(tasks.dueAt, now),
+						sql`${tasks.completedAt} IS NULL`,
+					),
+				);
+
+			// Status distribution
+			const statusRows = await db
+				.select({ statusKey: tasks.statusKey, count: count() })
+				.from(tasks)
+				.where(eq(tasks.userId, userId))
+				.groupBy(tasks.statusKey);
+
+			const byStatus: Record<string, number> = {};
+			for (const row of statusRows) {
+				byStatus[row.statusKey] = row.count;
+			}
+
+			// Top projects by completions
+			const projectCompletions = new Map<string, number>();
+			for (const t of completedTasks) {
+				if (t.projectId) {
+					projectCompletions.set(
+						t.projectId,
+						(projectCompletions.get(t.projectId) ?? 0) + 1,
+					);
+				}
+			}
+
+			const projectIds = [...projectCompletions.keys()];
+			let topProjects: { name: string; completed: number }[] = [];
+			if (projectIds.length > 0) {
+				const projects = await db.query.taskProjects.findMany({
+					where: inArray(taskProjects.id, projectIds),
+					columns: { id: true, name: true },
+				});
+				topProjects = projects
+					.map((p) => ({
+						name: p.name,
+						completed: projectCompletions.get(p.id) ?? 0,
+					}))
+					.sort((a, b) => b.completed - a.completed)
+					.slice(0, 5);
+			}
+
+			// Completion streak (consecutive days ending today with at least 1 completion)
+			let streak = 0;
+			const checkDate = new Date(now);
+			checkDate.setHours(0, 0, 0, 0);
+			for (let i = 0; i < 30; i++) {
+				const dayStart = new Date(checkDate);
+				const dayEnd = new Date(checkDate);
+				dayEnd.setHours(23, 59, 59, 999);
+
+				const hasCompletion = completedTasks.some((t) => {
+					if (!t.completedAt) return false;
+					const d = new Date(t.completedAt);
+					return d >= dayStart && d <= dayEnd;
+				});
+
+				if (hasCompletion) {
+					streak++;
+					checkDate.setDate(checkDate.getDate() - 1);
+				} else {
+					break;
+				}
+			}
+
+			// AI summarization (optional)
+			let aiSummary: string | null = null;
+			let aiHighlights: string[] | null = null;
+
+			if (includeAi && completedTasks.length > 0) {
+				try {
+					const provider = getAiProvider();
+					if (provider) {
+						const result = await provider.summarizeWork(
+							{
+								completedCount: completedTasks.length,
+								completedTitles: completedTasks.map((t) => t.title),
+								createdCount: createdResult?.count ?? 0,
+								overdueCount: overdueResult?.count ?? 0,
+								streak,
+								topProjects,
+								periodDays: days,
+							},
+							WORK_SUMMARY_SYSTEM_PROMPT,
+						);
+						aiSummary = result.summary;
+						aiHighlights = result.highlights;
+					}
+				} catch (aiErr) {
+					console.error(
+						"[tasks] AI summary failed:",
+						aiErr instanceof Error ? aiErr.message : "Unknown error",
+					);
+				}
+			}
+
+			return {
+				ok: true as const,
+				data: {
+					period: {
+						from: from.toISOString(),
+						to: now.toISOString(),
+					},
+					completed: completedTasks.map((t) => ({
+						id: t.id,
+						title: t.title,
+						completedAt: t.completedAt?.toISOString() ?? now.toISOString(),
+					})),
+					created: createdResult?.count ?? 0,
+					overdue: overdueResult?.count ?? 0,
+					byStatus,
+					topProjects,
+					streak,
+					aiSummary,
+					aiHighlights,
+				},
+			};
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] getWorkSummary error:", message);
+			return { ok: false as const, error: message, status: 500 };
 		}
 	},
 };

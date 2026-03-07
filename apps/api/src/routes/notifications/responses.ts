@@ -20,6 +20,7 @@ const notificationSchema = t.Object({
 		t.Literal("task_overdue"),
 		t.Literal("sync_failed"),
 		t.Literal("task_assigned"),
+		t.Literal("work_summary"),
 	]),
 	title: t.String(),
 	body: t.Nullable(t.String()),

@@ -292,3 +292,22 @@ export const parseTaskResponse = t.Object({
 	]),
 	projectName: t.Nullable(t.String()),
 });
+
+/* ── Work summary ── */
+
+export const workSummaryResponse = t.Object({
+	period: t.Object({
+		from: t.String(),
+		to: t.String(),
+	}),
+	completed: t.Array(
+		t.Object({ id: t.String(), title: t.String(), completedAt: t.String() }),
+	),
+	created: t.Number(),
+	overdue: t.Number(),
+	byStatus: t.Record(t.String(), t.Number()),
+	topProjects: t.Array(t.Object({ name: t.String(), completed: t.Number() })),
+	streak: t.Number(),
+	aiSummary: t.Optional(t.Nullable(t.String())),
+	aiHighlights: t.Optional(t.Nullable(t.Array(t.String()))),
+});

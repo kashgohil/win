@@ -5,7 +5,8 @@ type NotificationType =
 	| "task_due_soon"
 	| "task_overdue"
 	| "sync_failed"
-	| "task_assigned";
+	| "task_assigned"
+	| "work_summary";
 
 type ServiceResult<T> =
 	| { ok: true; data: T }

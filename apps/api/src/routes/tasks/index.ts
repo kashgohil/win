@@ -29,6 +29,7 @@ import {
 	updateProjectBody,
 	updateTaskBody,
 	updateTaskItemBody,
+	workSummaryResponse,
 } from "./responses";
 import { taskService } from "./service";
 
@@ -116,6 +117,29 @@ export const tasksRoutes = new Elysia({
 			auth: true,
 			response: { 200: taskStatsResponse, 500: errorResponse },
 			detail: { tags: ["Tasks"], summary: "Get task statistics" },
+		},
+	)
+
+	.get(
+		"/summary",
+		async ({ user, query, set }) => {
+			const days = query.days ? Number.parseInt(query.days, 10) : 7;
+			const includeAi = query.ai === "true";
+			const result = await taskService.getWorkSummary(user.id, days, includeAi);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			query: t.Object({
+				days: t.Optional(t.String()),
+				ai: t.Optional(t.String()),
+			}),
+			response: { 200: workSummaryResponse, 500: errorResponse },
+			detail: { tags: ["Tasks"], summary: "Get work summary" },
 		},
 	)
 
