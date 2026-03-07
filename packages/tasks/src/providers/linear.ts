@@ -44,7 +44,7 @@ async function gql<T>(
 		errors?: { message: string }[];
 	};
 	if (json.errors?.length) {
-		throw new Error(`Linear GraphQL: ${json.errors[0]!.message}`);
+		throw new Error(`Linear GraphQL: ${json.errors[0]?.message}`);
 	}
 	if (!json.data) {
 		throw new Error("Linear GraphQL: no data returned");
@@ -101,8 +101,6 @@ function mapStatusType(
 			return "cancelled";
 		case "started":
 			return "in_progress";
-		case "backlog":
-		case "unstarted":
 		default:
 			return "todo";
 	}
@@ -403,10 +401,76 @@ export const linearProvider: TaskProvider = {
 		};
 	},
 
-	verifyWebhook(headers: Record<string, string>, _body: string): boolean {
-		// Linear webhooks use a signature in the header
-		// For now, basic check that the header exists
-		return !!headers["linear-signature"];
+	verifyWebhook(
+		headers: Record<string, string>,
+		body: string,
+		secret?: string,
+	): boolean {
+		const signature = headers["linear-signature"];
+		if (!signature) return false;
+		if (!secret) return true; // no secret stored yet, accept if header present
+
+		// Linear signs with HMAC-SHA256
+		const hmac = new Bun.CryptoHasher("sha256", secret);
+		hmac.update(body);
+		const expected = hmac.digest("hex");
+		// Constant-time comparison
+		if (signature.length !== expected.length) return false;
+		let mismatch = 0;
+		for (let i = 0; i < signature.length; i++) {
+			mismatch |= signature.charCodeAt(i) ^ expected.charCodeAt(i);
+		}
+		return mismatch === 0;
+	},
+
+	async createWebhook(
+		accessToken: string,
+		url: string,
+		teamId?: string,
+	): Promise<{ webhookId: string; secret: string }> {
+		const secret = crypto.randomUUID();
+		const input: Record<string, unknown> = {
+			url,
+			secret,
+			resourceTypes: ["Issue"],
+			enabled: true,
+		};
+		if (teamId) input.teamId = teamId;
+
+		const data = await gql<{
+			webhookCreate: {
+				success: boolean;
+				webhook: { id: string; enabled: boolean };
+			};
+		}>(
+			accessToken,
+			`mutation($input: WebhookCreateInput!) {
+				webhookCreate(input: $input) {
+					success
+					webhook { id enabled }
+				}
+			}`,
+			{ input },
+		);
+
+		if (!data.webhookCreate.success) {
+			throw new Error("Failed to create Linear webhook");
+		}
+
+		return {
+			webhookId: data.webhookCreate.webhook.id,
+			secret,
+		};
+	},
+
+	async deleteWebhook(accessToken: string, webhookId: string): Promise<void> {
+		await gql<{ webhookDelete: { success: boolean } }>(
+			accessToken,
+			`mutation($id: String!) {
+				webhookDelete(id: $id) { success }
+			}`,
+			{ id: webhookId },
+		);
 	},
 
 	parseWebhookEvent(

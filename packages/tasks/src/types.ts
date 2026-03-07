@@ -105,9 +105,21 @@ export interface TaskProvider {
 	): Promise<TaskProviderTask>;
 
 	// webhooks
-	verifyWebhook(headers: Record<string, string>, body: string): boolean;
+	verifyWebhook(
+		headers: Record<string, string>,
+		body: string,
+		secret?: string,
+	): boolean;
 	parseWebhookEvent(
 		headers: Record<string, string>,
 		body: string,
 	): WebhookEvent | null;
+
+	// webhook management (optional)
+	createWebhook?(
+		accessToken: string,
+		url: string,
+		teamId?: string,
+	): Promise<{ webhookId: string; secret: string }>;
+	deleteWebhook?(accessToken: string, webhookId: string): Promise<void>;
 }
