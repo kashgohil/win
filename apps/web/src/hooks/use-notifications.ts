@@ -46,7 +46,7 @@ export function useUnreadCount() {
 	});
 }
 
-export function useNotifications() {
+export function useNotifications(opts?: { enabled?: boolean }) {
 	return useInfiniteQuery({
 		queryKey: notificationKeys.list(),
 		queryFn: async ({ pageParam }) => {
@@ -61,6 +61,7 @@ export function useNotifications() {
 		},
 		initialPageParam: undefined as string | undefined,
 		getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
+		enabled: opts?.enabled ?? true,
 	});
 }
 

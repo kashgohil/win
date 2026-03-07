@@ -147,7 +147,7 @@ function NotificationItem({
 export function NotificationPopover({ unreadCount }: { unreadCount: number }) {
 	const [open, setOpen] = useState(false);
 	const { data, hasNextPage, fetchNextPage, isFetchingNextPage } =
-		useNotifications();
+		useNotifications({ enabled: open });
 	const markAllRead = useMarkAllRead();
 	const navigate = useNavigate();
 
