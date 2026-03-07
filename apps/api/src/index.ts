@@ -13,6 +13,7 @@ import { betterAuthPlugin } from "./plugins/auth";
 import { health } from "./routes/health";
 import { mail } from "./routes/mail";
 import { me } from "./routes/me";
+import { notificationsRoutes } from "./routes/notifications";
 import { onboarding } from "./routes/onboarding";
 import { tasksRoutes } from "./routes/tasks";
 import { waitlist } from "./routes/waitlist";
@@ -46,6 +47,10 @@ const app = new Elysia({ name: "wingmnn-api" })
 						name: "Tasks",
 						description: "Tasks module — tasks, projects, integrations",
 					},
+					{
+						name: "Notifications",
+						description: "In-app notifications",
+					},
 					{ name: "Waitlist", description: "Waitlist signup" },
 					{ name: "Onboarding", description: "User onboarding flow" },
 				],
@@ -73,6 +78,7 @@ const app = new Elysia({ name: "wingmnn-api" })
 	.use(isDev ? (app) => app : lenientLimit())
 	.use(mail)
 	.use(tasksRoutes)
+	.use(notificationsRoutes)
 	.use(me)
 	.use(onboarding)
 	.use(waitlist)
