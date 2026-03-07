@@ -18,6 +18,7 @@ import {
 	useCreateTaskItem,
 	useDeleteTask,
 	useDeleteTaskItem,
+	useResolveConflict,
 	useRetrySync,
 	useSnoozeTask,
 	useTaskDetail,
@@ -74,6 +75,7 @@ export function TaskDetailDrawer({
 	const updateTask = useUpdateTask();
 	const deleteTask = useDeleteTask();
 	const retrySync = useRetrySync();
+	const resolveConflict = useResolveConflict();
 	const snoozeTask = useSnoozeTask();
 	const createItem = useCreateTaskItem();
 	const updateItem = useUpdateTaskItem();
@@ -268,6 +270,55 @@ export function TaskDetailDrawer({
 											Retry
 										</button>
 									</>
+								)}
+								{task.writeBackState === "conflict" && (
+									<div className="flex flex-col gap-1.5">
+										<span className="inline-flex items-center gap-1 font-mono text-[10px] text-amber-500">
+											<AlertTriangle className="size-3" />
+											Conflict — changed locally and externally
+										</span>
+										<div className="flex items-center gap-1.5">
+											<button
+												type="button"
+												onClick={() =>
+													resolveConflict.mutate(
+														{
+															taskId: task.id,
+															resolution: "keep_local",
+														},
+														{
+															onSuccess: () =>
+																toast.success("Local changes will be pushed"),
+														},
+													)
+												}
+												disabled={resolveConflict.isPending}
+												className="inline-flex items-center gap-1 font-mono text-[10px] text-blue-500 hover:text-blue-400 transition-colors cursor-pointer"
+											>
+												Keep mine
+											</button>
+											<span className="text-grey-3 text-[10px]">·</span>
+											<button
+												type="button"
+												onClick={() =>
+													resolveConflict.mutate(
+														{
+															taskId: task.id,
+															resolution: "use_external",
+														},
+														{
+															onSuccess: () =>
+																toast.success("External version accepted"),
+														},
+													)
+												}
+												disabled={resolveConflict.isPending}
+												className="inline-flex items-center gap-1 font-mono text-[10px] text-grey-2 hover:text-foreground transition-colors cursor-pointer"
+											>
+												Use external
+											</button>
+										</div>
+									</div>
 								)}
 								{task.writeBackState === "synced" && (
 									<span className="inline-flex items-center gap-1 font-mono text-[10px] text-emerald-500">

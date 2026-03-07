@@ -133,6 +133,11 @@ export function TaskIntegrations() {
 										)}
 									</span>
 								)}
+								{isConnected && connection.syncError && (
+									<span className="font-mono text-[10px] text-red-500 block truncate">
+										Sync error: {connection.syncError}
+									</span>
+								)}
 							</div>
 						</div>
 

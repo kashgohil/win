@@ -357,6 +357,29 @@ export function useRetrySync() {
 	});
 }
 
+export function useResolveConflict() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			taskId,
+			resolution,
+		}: {
+			taskId: string;
+			resolution: "keep_local" | "use_external";
+		}) => {
+			const { data, error } = await api
+				.tasks({ taskId })
+				["resolve-conflict"].post({ resolution });
+			if (error) throw new Error("Failed to resolve conflict");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.all });
+		},
+	});
+}
+
 export function useSnoozeTask() {
 	const queryClient = useQueryClient();
 
