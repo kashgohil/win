@@ -1,3 +1,4 @@
+import { ActivityLog } from "@/components/tasks/ActivityLog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -516,6 +517,14 @@ export function TaskDetailDrawer({
 									</div>
 								)}
 							</div>
+						</div>
+
+						{/* Activity log */}
+						<div>
+							<span className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 block mb-2">
+								Activity
+							</span>
+							<ActivityLog taskId={task.id} />
 						</div>
 
 						{/* Delete (native only) */}
