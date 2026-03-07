@@ -1,3 +1,4 @@
+import { ConfirmDialog } from "@/components/tasks/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import {
 	useConnections,
@@ -7,6 +8,7 @@ import {
 } from "@/hooks/use-tasks";
 import { cn } from "@/lib/utils";
 import { Check, Loader2, Plug, RefreshCw, Trash2, Unplug } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 const PROVIDERS = [
@@ -22,6 +24,7 @@ export function TaskIntegrations() {
 	const connectProvider = useConnectProvider();
 	const syncConnection = useSyncConnection();
 	const disconnectProvider = useDisconnectProvider();
+	const [disconnectId, setDisconnectId] = useState<string | null>(null);
 
 	const handleConnect = (provider: string) => {
 		connectProvider.mutate(provider, {
@@ -45,9 +48,13 @@ export function TaskIntegrations() {
 		});
 	};
 
-	const handleDisconnect = (connectionId: string) => {
-		disconnectProvider.mutate(connectionId, {
-			onSuccess: () => toast("Integration disconnected"),
+	const handleDisconnect = () => {
+		if (!disconnectId) return;
+		disconnectProvider.mutate(disconnectId, {
+			onSuccess: () => {
+				toast("Integration disconnected");
+				setDisconnectId(null);
+			},
 			onError: () => toast.error("Failed to disconnect"),
 		});
 	};
@@ -149,7 +156,7 @@ export function TaskIntegrations() {
 									<Button
 										variant="ghost"
 										size="sm"
-										onClick={() => handleDisconnect(connection.id)}
+										onClick={() => setDisconnectId(connection.id)}
 										disabled={disconnectProvider.isPending}
 										className="font-mono text-[11px] text-red-500 hover:text-red-600 hover:bg-red-500/10 gap-1.5"
 									>
@@ -176,6 +183,16 @@ export function TaskIntegrations() {
 					</div>
 				);
 			})}
+
+			<ConfirmDialog
+				open={!!disconnectId}
+				onOpenChange={(open) => !open && setDisconnectId(null)}
+				title="disconnect integration"
+				description="This will remove the connection and stop syncing tasks. Your imported tasks will remain but will no longer receive updates."
+				actionLabel="Disconnect"
+				destructive
+				onConfirm={handleDisconnect}
+			/>
 		</div>
 	);
 }
