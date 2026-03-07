@@ -1,3 +1,6 @@
+export { getAiProvider } from "./src/ai/factory";
+export { TASK_PARSE_SYSTEM_PROMPT } from "./src/ai/prompts";
+export type { TaskParseInput, TaskParseResult } from "./src/ai/types";
 export {
 	enqueueClassify,
 	enqueueDraftResponse,

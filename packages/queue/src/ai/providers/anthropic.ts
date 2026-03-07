@@ -5,7 +5,16 @@ import type {
 	ClassificationResult,
 	DraftInput,
 	EmailInput,
+	TaskParseInput,
+	TaskParseResult,
 } from "../types";
+
+const TaskParseSchema = z.object({
+	title: z.string(),
+	dueAt: z.string().nullable(),
+	priority: z.enum(["none", "low", "medium", "high", "urgent"]),
+	projectName: z.string().nullable(),
+});
 
 const ClassificationSchema = z.object({
 	category: z.enum([
@@ -118,6 +127,46 @@ export class AnthropicProvider implements AiProvider {
 			response.content[0]?.type === "text" ? response.content[0].text : "";
 
 		return text.trim();
+	}
+
+	async parseTaskInput(
+		input: TaskParseInput,
+		systemPrompt: string,
+	): Promise<TaskParseResult> {
+		const today = new Date().toISOString().split("T")[0];
+		const dayName = new Date().toLocaleDateString("en-US", {
+			weekday: "long",
+		});
+
+		const userMessage = [
+			`Today is ${dayName}, ${today}.`,
+			input.projectNames.length > 0
+				? `Known projects: ${input.projectNames.join(", ")}`
+				: "",
+			"",
+			`Input: ${input.input}`,
+		]
+			.filter(Boolean)
+			.join("\n");
+
+		const response = await this.client.messages.create({
+			model: this.model,
+			max_tokens: 256,
+			system: [
+				{
+					type: "text",
+					text: systemPrompt,
+					cache_control: { type: "ephemeral" },
+				},
+			],
+			messages: [{ role: "user", content: userMessage }],
+		});
+
+		const text =
+			response.content[0]?.type === "text" ? response.content[0].text : "";
+
+		const parsed = parseJsonResponse(text);
+		return TaskParseSchema.parse(parsed);
 	}
 }
 
