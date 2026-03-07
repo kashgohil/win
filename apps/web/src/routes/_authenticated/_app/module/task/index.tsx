@@ -2,7 +2,7 @@ import { KeyboardShortcutBar } from "@/components/mail/KeyboardShortcutBar";
 import ModulePage from "@/components/module/ModulePage";
 import { TaskIntegrations } from "@/components/tasks/TaskIntegrations";
 import { TaskSuggestions } from "@/components/tasks/TaskSuggestions";
-import { useProjects } from "@/hooks/use-tasks";
+import { useProjects, useTaskStats } from "@/hooks/use-tasks";
 import { MODULE_DATA } from "@/lib/module-data";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, FolderOpen, KanbanSquare, List } from "lucide-react";
@@ -101,6 +101,9 @@ function TaskModule() {
 						</Link>
 					</div>
 
+					{/* Stats */}
+					<TaskStatsBar />
+
 					{/* Needs attention */}
 					<div className="mt-8">
 						<h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 mb-3">
@@ -124,6 +127,45 @@ function TaskModule() {
 
 			<KeyboardShortcutBar shortcuts={TASK_HUB_SHORTCUTS} />
 		</>
+	);
+}
+
+function TaskStatsBar() {
+	const { data: stats, isLoading } = useTaskStats();
+
+	if (isLoading || !stats) return null;
+
+	const items = [
+		{ label: "Total", value: stats.total },
+		{ label: "To do", value: stats.byStatus?.todo ?? 0 },
+		{ label: "In progress", value: stats.byStatus?.in_progress ?? 0 },
+		{ label: "Done", value: stats.byStatus?.done ?? 0 },
+		{ label: "Overdue", value: stats.overdue, highlight: stats.overdue > 0 },
+		{ label: "Done (7d)", value: stats.completedLast7Days },
+	];
+
+	return (
+		<div className="mt-6">
+			<div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+				{items.map((item) => (
+					<div
+						key={item.label}
+						className="rounded-lg border border-border/40 px-3 py-2.5 text-center"
+					>
+						<div
+							className={`font-display text-[1.25rem] leading-none ${
+								item.highlight ? "text-red-500" : "text-foreground"
+							}`}
+						>
+							{item.value}
+						</div>
+						<div className="font-mono text-[10px] text-grey-3 mt-1">
+							{item.label}
+						</div>
+					</div>
+				))}
+			</div>
+		</div>
 	);
 }
 

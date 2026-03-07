@@ -135,6 +135,17 @@ export function useProjects() {
 	});
 }
 
+export function useTaskStats() {
+	return useQuery({
+		queryKey: [...taskKeys.all, "stats"],
+		queryFn: async () => {
+			const { data, error } = await api.tasks.stats.get();
+			if (error) throw new Error("Failed to load stats");
+			return data;
+		},
+	});
+}
+
 /* ── Mutations ── */
 
 export function useCreateTask() {
