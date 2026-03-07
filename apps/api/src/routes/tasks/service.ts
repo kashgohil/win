@@ -21,6 +21,7 @@ import {
 	TASK_PARSE_SYSTEM_PROMPT,
 	enqueueFullTaskSync,
 	enqueueTaskWebhookEvent,
+	enqueueTaskWriteBack,
 	getAiProvider,
 	scheduleRecurringTaskSync,
 } from "@wingmnn/queue";
@@ -618,6 +619,46 @@ export const taskService = {
 				action: "updated",
 				details: { fields: Object.keys(updates) },
 			});
+
+			// Enqueue write-back for external tasks
+			if (
+				existing.source === "external" &&
+				existing.connectionId &&
+				existing.externalId
+			) {
+				// Resolve status external ID if statusKey changed
+				let statusExternalId: string | undefined;
+				if (input.statusKey && existing.connectionId) {
+					const status = await db.query.taskStatuses.findFirst({
+						where: and(
+							eq(taskStatuses.connectionId, existing.connectionId),
+							eq(taskStatuses.statusKey, input.statusKey),
+						),
+					});
+					statusExternalId = status?.externalId ?? undefined;
+				}
+
+				await db
+					.update(tasks)
+					.set({ writeBackState: "pending" })
+					.where(eq(tasks.id, taskId));
+
+				await enqueueTaskWriteBack({
+					taskId,
+					connectionId: existing.connectionId,
+					userId,
+					externalId: existing.externalId,
+					updates: {
+						title: input.title,
+						description: input.description ?? undefined,
+						statusExternalId,
+						priority: input.priority,
+						dueAt: input.dueAt,
+					},
+				}).catch((err) => {
+					console.error("[tasks] Failed to enqueue write-back:", err);
+				});
+			}
 
 			return {
 				ok: true,
