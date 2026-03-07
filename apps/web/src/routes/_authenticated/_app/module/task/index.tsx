@@ -1,12 +1,21 @@
 import { KeyboardShortcutBar } from "@/components/mail/KeyboardShortcutBar";
 import ModulePage from "@/components/module/ModulePage";
+import { TaskIntegrations } from "@/components/tasks/TaskIntegrations";
 import { MODULE_DATA } from "@/lib/module-data";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, KanbanSquare, List } from "lucide-react";
 import { useEffect } from "react";
+import { toast } from "sonner";
+import { z } from "zod";
+
+const taskSearchSchema = z.object({
+	connected: z.string().optional(),
+	error: z.string().optional(),
+});
 
 export const Route = createFileRoute("/_authenticated/_app/module/task/")({
 	component: TaskModule,
+	validateSearch: (search) => taskSearchSchema.parse(search),
 });
 
 const TASK_HUB_SHORTCUTS = [
@@ -18,6 +27,19 @@ const TASK_HUB_SHORTCUTS = [
 
 function TaskModule() {
 	const navigate = useNavigate();
+	const { connected, error } = Route.useSearch();
+
+	useEffect(() => {
+		if (connected) {
+			toast.success(`${connected} connected`, {
+				description: "You can now sync your tasks",
+			});
+			navigate({ to: "/module/task", search: {}, replace: true });
+		} else if (error) {
+			toast.error("Connection failed", { description: error });
+			navigate({ to: "/module/task", search: {}, replace: true });
+		}
+	}, [connected, error, navigate]);
 
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
@@ -75,6 +97,14 @@ function TaskModule() {
 							</div>
 							<ArrowRight className="size-3.5 text-grey-3 group-hover:translate-x-0.5 transition-transform" />
 						</Link>
+					</div>
+
+					{/* Integrations */}
+					<div className="mt-8">
+						<h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 mb-3">
+							Integrations
+						</h3>
+						<TaskIntegrations />
 					</div>
 				</div>
 			</ModulePage>

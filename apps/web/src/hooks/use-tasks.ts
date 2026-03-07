@@ -327,6 +327,69 @@ export function useCreateTaskFromEmail() {
 	});
 }
 
+export function useConnections() {
+	return useQuery({
+		queryKey: taskKeys.integrations(),
+		queryFn: async () => {
+			const { data, error } = await api.tasks.integrations.get();
+			if (error) throw new Error("Failed to load integrations");
+			return data;
+		},
+	});
+}
+
+export function useConnectProvider() {
+	return useMutation({
+		mutationFn: async (provider: string) => {
+			const { data, error } = await api.tasks.integrations
+				.connect({
+					provider,
+				})
+				.post();
+			if (error) throw new Error("Failed to connect");
+			return data;
+		},
+	});
+}
+
+export function useSyncConnection() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (connectionId: string) => {
+			const { data, error } = await api.tasks
+				.integrations({
+					connectionId,
+				})
+				.sync.post();
+			if (error) throw new Error("Failed to sync");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.all });
+		},
+	});
+}
+
+export function useDisconnectProvider() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (connectionId: string) => {
+			const { data, error } = await api.tasks
+				.integrations({
+					connectionId,
+				})
+				.delete();
+			if (error) throw new Error("Failed to disconnect");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.integrations() });
+		},
+	});
+}
+
 export function useCreateProject() {
 	const queryClient = useQueryClient();
 
