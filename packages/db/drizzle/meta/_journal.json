@@ -71,6 +71,13 @@
       "when": 1772823191393,
       "tag": "0009_hot_jigsaw",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1772898819580,
+      "tag": "0010_blue_rogue",
+      "breakpoints": true
     }
   ]
 }
