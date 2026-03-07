@@ -218,6 +218,12 @@ export const tasks = pgTable(
 		reminderAt: timestamp("reminder_at", { withTimezone: true }),
 		snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
 
+		// ai categorization
+		suggestedProjectId: uuid("suggested_project_id").references(
+			() => taskProjects.id,
+			{ onDelete: "set null" },
+		),
+
 		// sync metadata
 		lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
 		syncHash: varchar("sync_hash", { length: 64 }),
