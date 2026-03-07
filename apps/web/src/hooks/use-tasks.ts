@@ -470,3 +470,87 @@ export function useCreateProject() {
 		},
 	});
 }
+
+export function useProjectDetail(projectId: string) {
+	return useQuery({
+		queryKey: [...taskKeys.projects(), projectId],
+		queryFn: async () => {
+			const { data, error } = await api.tasks
+				.projects({
+					projectId,
+				})
+				.get();
+			if (error) throw new Error("Failed to load project");
+			return data;
+		},
+		enabled: !!projectId,
+	});
+}
+
+export function useUpdateProject() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			id,
+			...input
+		}: {
+			id: string;
+			name?: string;
+			description?: string | null;
+			color?: string | null;
+			archived?: boolean;
+		}) => {
+			const { data, error } = await api.tasks
+				.projects({
+					projectId: id,
+				})
+				.patch(input);
+			if (error) throw new Error("Failed to update project");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.projects() });
+			queryClient.invalidateQueries({ queryKey: taskKeys.all });
+		},
+	});
+}
+
+export function useDeleteProject() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (id: string) => {
+			const { data, error } = await api.tasks
+				.projects({
+					projectId: id,
+				})
+				.delete();
+			if (error) throw new Error("Failed to delete project");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.projects() });
+			queryClient.invalidateQueries({ queryKey: taskKeys.all });
+		},
+	});
+}
+
+export function useActivityLog(opts?: { taskId?: string }) {
+	return useInfiniteQuery({
+		queryKey: [...taskKeys.all, "activity", opts?.taskId],
+		queryFn: async ({ pageParam }) => {
+			const { data, error } = await api.tasks.activity.get({
+				query: {
+					taskId: opts?.taskId,
+					cursor: pageParam,
+					limit: "50",
+				},
+			});
+			if (error) throw new Error("Failed to load activity log");
+			return data;
+		},
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
+	});
+}
