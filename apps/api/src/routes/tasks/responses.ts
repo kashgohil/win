@@ -157,10 +157,45 @@ export const projectListResponse = t.Array(projectSchema);
 
 export const projectDetailResponse = projectSchema;
 
+export const projectDetailWithCountResponse = t.Object({
+	id: t.String(),
+	name: t.String(),
+	description: t.Optional(t.Nullable(t.String())),
+	source: t.Union([t.Literal("native"), t.Literal("external")]),
+	externalId: t.Optional(t.Nullable(t.String())),
+	color: t.Optional(t.Nullable(t.String())),
+	archived: t.Boolean(),
+	createdAt: t.String(),
+	taskCount: t.Number(),
+});
+
 export const createProjectBody = t.Object({
 	name: t.String({ minLength: 1 }),
 	description: t.Optional(t.String()),
 	color: t.Optional(t.String()),
+});
+
+export const updateProjectBody = t.Object({
+	name: t.Optional(t.String({ minLength: 1 })),
+	description: t.Optional(t.Nullable(t.String())),
+	color: t.Optional(t.Nullable(t.String())),
+	archived: t.Optional(t.Boolean()),
+});
+
+/* ── Activity log ── */
+
+const activityEntrySchema = t.Object({
+	id: t.String(),
+	action: t.String(),
+	taskId: t.Nullable(t.String()),
+	details: t.Any(),
+	createdAt: t.String(),
+});
+
+export const activityLogResponse = t.Object({
+	entries: t.Array(activityEntrySchema),
+	hasMore: t.Boolean(),
+	nextCursor: t.Optional(t.String()),
 });
 
 /* ── Connections ── */

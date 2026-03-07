@@ -3,6 +3,7 @@ import { env } from "../../env";
 
 import { betterAuthPlugin } from "../../plugins/auth";
 import {
+	activityLogResponse,
 	bulkDeleteBody,
 	bulkDeleteResponse,
 	bulkUpdateBody,
@@ -17,12 +18,14 @@ import {
 	parseTaskBody,
 	parseTaskResponse,
 	projectDetailResponse,
+	projectDetailWithCountResponse,
 	projectListResponse,
 	suggestionsResponse,
 	syncResponse,
 	taskDetailResponse,
 	taskItemResponse,
 	taskListResponse,
+	updateProjectBody,
 	updateTaskBody,
 	updateTaskItemBody,
 } from "./responses";
@@ -436,6 +439,109 @@ export const tasksRoutes = new Elysia({
 				500: errorResponse,
 			},
 			detail: { tags: ["Tasks"], summary: "Create project" },
+		},
+	)
+
+	.get(
+		"/projects/:projectId",
+		async ({ params, user, set }) => {
+			const result = await taskService.getProject(user.id, params.projectId);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ projectId: t.String() }),
+			response: {
+				200: projectDetailWithCountResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Get project detail" },
+		},
+	)
+
+	.patch(
+		"/projects/:projectId",
+		async ({ params, body, user, set }) => {
+			const result = await taskService.updateProject(
+				user.id,
+				params.projectId,
+				body,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ projectId: t.String() }),
+			body: updateProjectBody,
+			response: {
+				200: projectDetailResponse,
+				400: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Update project" },
+		},
+	)
+
+	.delete(
+		"/projects/:projectId",
+		async ({ params, user, set }) => {
+			const result = await taskService.deleteProject(user.id, params.projectId);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ projectId: t.String() }),
+			response: {
+				200: messageResponse,
+				400: errorResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Delete project" },
+		},
+	)
+
+	/* ── Activity log ── */
+
+	.get(
+		"/activity",
+		async ({ query, user, set }) => {
+			const result = await taskService.getActivityLog(user.id, {
+				taskId: query.taskId,
+				limit: query.limit ? Number(query.limit) : undefined,
+				cursor: query.cursor,
+			});
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			query: t.Object({
+				taskId: t.Optional(t.String()),
+				limit: t.Optional(t.String()),
+				cursor: t.Optional(t.String()),
+			}),
+			response: {
+				200: activityLogResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Get activity log" },
 		},
 	)
 

@@ -1008,6 +1008,241 @@ export const taskService = {
 		}
 	},
 
+	/* ── Get project detail ── */
+	async getProject(
+		userId: string,
+		projectId: string,
+	): Promise<
+		| {
+				ok: true;
+				data: {
+					id: string;
+					name: string;
+					description: string | null;
+					source: "native" | "external";
+					externalId: string | null;
+					color: string | null;
+					archived: boolean;
+					createdAt: string;
+					taskCount: number;
+				};
+		  }
+		| { ok: false; error: string; status: 404 | 500 }
+	> {
+		try {
+			const project = await db.query.taskProjects.findFirst({
+				where: and(
+					eq(taskProjects.id, projectId),
+					eq(taskProjects.userId, userId),
+				),
+			});
+			if (!project) {
+				return { ok: false, error: "Project not found", status: 404 };
+			}
+
+			const [taskCountRow] = await db
+				.select({ count: count() })
+				.from(tasks)
+				.where(and(eq(tasks.projectId, projectId), eq(tasks.userId, userId)));
+
+			return {
+				ok: true,
+				data: {
+					id: project.id,
+					name: project.name,
+					description: project.description,
+					source: project.source,
+					externalId: project.externalId,
+					color: project.color,
+					archived: project.archived,
+					createdAt: project.createdAt.toISOString(),
+					taskCount: taskCountRow?.count ?? 0,
+				},
+			};
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] getProject error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
+	/* ── Update project ── */
+	async updateProject(
+		userId: string,
+		projectId: string,
+		input: {
+			name?: string;
+			description?: string | null;
+			color?: string | null;
+			archived?: boolean;
+		},
+	): Promise<ProjectCreateResult> {
+		try {
+			const existing = await db.query.taskProjects.findFirst({
+				where: and(
+					eq(taskProjects.id, projectId),
+					eq(taskProjects.userId, userId),
+				),
+			});
+			if (!existing) {
+				return { ok: false, error: "Project not found", status: 400 };
+			}
+			if (existing.source === "external") {
+				return {
+					ok: false,
+					error: "Cannot edit external projects",
+					status: 400,
+				};
+			}
+
+			const rows = await db
+				.update(taskProjects)
+				.set({
+					...(input.name !== undefined && { name: input.name }),
+					...(input.description !== undefined && {
+						description: input.description,
+					}),
+					...(input.color !== undefined && { color: input.color }),
+					...(input.archived !== undefined && { archived: input.archived }),
+					updatedAt: new Date(),
+				})
+				.where(
+					and(eq(taskProjects.id, projectId), eq(taskProjects.userId, userId)),
+				)
+				.returning();
+
+			const project = rows[0];
+			if (!project) {
+				return { ok: false, error: "Failed to update project", status: 500 };
+			}
+
+			return {
+				ok: true,
+				data: {
+					id: project.id,
+					name: project.name,
+					description: project.description,
+					source: project.source,
+					externalId: project.externalId,
+					color: project.color,
+					archived: project.archived,
+					createdAt: project.createdAt.toISOString(),
+				},
+			};
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] updateProject error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
+	/* ── Delete project ── */
+	async deleteProject(
+		userId: string,
+		projectId: string,
+	): Promise<TaskDeleteResult> {
+		try {
+			const existing = await db.query.taskProjects.findFirst({
+				where: and(
+					eq(taskProjects.id, projectId),
+					eq(taskProjects.userId, userId),
+				),
+			});
+			if (!existing) {
+				return { ok: false, error: "Project not found", status: 404 };
+			}
+			if (existing.source === "external") {
+				return {
+					ok: false,
+					error: "Cannot delete external projects",
+					status: 400,
+				};
+			}
+
+			// Unlink tasks from this project
+			await db
+				.update(tasks)
+				.set({ projectId: null })
+				.where(and(eq(tasks.projectId, projectId), eq(tasks.userId, userId)));
+
+			await db
+				.delete(taskProjects)
+				.where(
+					and(eq(taskProjects.id, projectId), eq(taskProjects.userId, userId)),
+				);
+
+			return { ok: true, data: { message: "Project deleted" } };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] deleteProject error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
+	/* ── Activity log ── */
+	async getActivityLog(
+		userId: string,
+		opts: { taskId?: string; limit?: number; cursor?: string },
+	): Promise<
+		| {
+				ok: true;
+				data: {
+					entries: {
+						id: string;
+						action: string;
+						taskId: string | null;
+						details: unknown;
+						createdAt: string;
+					}[];
+					hasMore: boolean;
+					nextCursor?: string;
+				};
+		  }
+		| { ok: false; error: string; status: 500 }
+	> {
+		try {
+			const pageSize = opts.limit ?? 50;
+			const conditions = [eq(taskActivityLog.userId, userId)];
+
+			if (opts.taskId) {
+				conditions.push(eq(taskActivityLog.taskId, opts.taskId));
+			}
+			if (opts.cursor) {
+				conditions.push(lte(taskActivityLog.createdAt, new Date(opts.cursor)));
+			}
+
+			const entries = await db.query.taskActivityLog.findMany({
+				where: and(...conditions),
+				orderBy: desc(taskActivityLog.createdAt),
+				limit: pageSize + 1,
+			});
+
+			const hasMore = entries.length > pageSize;
+			const page = hasMore ? entries.slice(0, pageSize) : entries;
+
+			return {
+				ok: true,
+				data: {
+					entries: page.map((e) => ({
+						id: e.id,
+						action: e.action,
+						taskId: e.taskId,
+						details: e.details,
+						createdAt: e.createdAt.toISOString(),
+					})),
+					hasMore,
+					nextCursor: hasMore
+						? page[page.length - 1]!.createdAt.toISOString()
+						: undefined,
+				},
+			};
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] getActivityLog error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
 	/* ── Snooze task ── */
 	async snoozeTask(
 		userId: string,
