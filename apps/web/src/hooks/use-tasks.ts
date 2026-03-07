@@ -175,26 +175,69 @@ export function useCreateTask() {
 export function useUpdateTask() {
 	const queryClient = useQueryClient();
 
+	type UpdateInput = {
+		id: string;
+		title?: string;
+		description?: string | null;
+		statusKey?: "todo" | "in_progress" | "done" | "blocked" | "cancelled";
+		priority?: "none" | "low" | "medium" | "high" | "urgent";
+		dueAt?: string | null;
+		projectId?: string | null;
+		reminderAt?: string | null;
+		snoozedUntil?: string | null;
+	};
+
 	return useMutation({
-		mutationFn: async ({
-			id,
-			...input
-		}: {
-			id: string;
-			title?: string;
-			description?: string | null;
-			statusKey?: "todo" | "in_progress" | "done" | "blocked" | "cancelled";
-			priority?: "none" | "low" | "medium" | "high" | "urgent";
-			dueAt?: string | null;
-			projectId?: string | null;
-			reminderAt?: string | null;
-			snoozedUntil?: string | null;
-		}) => {
+		mutationFn: async ({ id, ...input }: UpdateInput) => {
 			const { data, error } = await api.tasks({ taskId: id }).patch(input);
 			if (error) throw new Error("Failed to update task");
 			return data;
 		},
-		onSuccess: (_data, variables) => {
+		onMutate: async (variables) => {
+			await queryClient.cancelQueries({ queryKey: taskKeys.all });
+
+			const listQueries = queryClient.getQueriesData<{
+				pages: { tasks: Task[] }[];
+			}>({ queryKey: taskKeys.list() });
+
+			for (const [key, data] of listQueries) {
+				if (!data?.pages) continue;
+				queryClient.setQueryData(key, {
+					...data,
+					pages: data.pages.map((page) => ({
+						...page,
+						tasks: page.tasks.map((t: Task) =>
+							t.id === variables.id
+								? {
+										...t,
+										...Object.fromEntries(
+											Object.entries(variables).filter(
+												([k, v]) => k !== "id" && v !== undefined,
+											),
+										),
+										completedAt:
+											variables.statusKey === "done"
+												? new Date().toISOString()
+												: variables.statusKey
+													? null
+													: t.completedAt,
+									}
+								: t,
+						),
+					})),
+				});
+			}
+
+			return { listQueries };
+		},
+		onError: (_err, _variables, context) => {
+			if (context?.listQueries) {
+				for (const [key, data] of context.listQueries) {
+					queryClient.setQueryData(key, data);
+				}
+			}
+		},
+		onSettled: (_data, _error, variables) => {
 			queryClient.invalidateQueries({ queryKey: taskKeys.list() });
 			queryClient.invalidateQueries({
 				queryKey: taskKeys.detail(variables.id),
