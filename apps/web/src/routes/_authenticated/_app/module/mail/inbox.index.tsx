@@ -958,7 +958,6 @@ function MailInbox() {
 															},
 														});
 													}}
-													onClose={() => setExpandedThreadId(null)}
 												/>
 											) : undefined
 										}

@@ -14,7 +14,6 @@ interface ThreadPreviewProps {
 	thread: SerializedThread;
 	variant: "inline" | "sidepanel";
 	onOpenDetail: () => void;
-	onClose?: () => void;
 }
 
 export function ThreadPreview({
@@ -22,7 +21,6 @@ export function ThreadPreview({
 	thread,
 	variant,
 	onOpenDetail,
-	onClose,
 }: ThreadPreviewProps) {
 	const { data, isPending } = useMailThreadDetail(threadId);
 	const latestMessage = data?.messages?.[data.messages.length - 1];

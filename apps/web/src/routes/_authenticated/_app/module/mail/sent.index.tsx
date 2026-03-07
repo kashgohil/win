@@ -528,7 +528,6 @@ function SentPage() {
 														},
 													});
 												}}
-												onClose={() => setExpandedThreadId(null)}
 											/>
 										) : undefined
 									}
