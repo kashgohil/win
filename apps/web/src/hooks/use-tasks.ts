@@ -628,6 +628,20 @@ export function useDeleteProject() {
 	});
 }
 
+export function useWorkSummary(days = 7) {
+	return useQuery({
+		queryKey: [...taskKeys.all, "summary", days],
+		queryFn: async () => {
+			const { data, error } = await api.tasks.summary.get({
+				query: { days: String(days) },
+			});
+			if (error) throw new Error("Failed to load work summary");
+			return data;
+		},
+		staleTime: 5 * 60 * 1000,
+	});
+}
+
 export function useActivityLog(opts?: { taskId?: string }) {
 	return useInfiniteQuery({
 		queryKey: [...taskKeys.all, "activity", opts?.taskId],

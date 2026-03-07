@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import {
 	AlertTriangle,
+	BarChart3,
 	Bell,
 	Check,
 	CheckCheck,
@@ -38,6 +39,8 @@ function NotificationIcon({ type }: { type: Notification["type"] }) {
 			return <AlertTriangle className="size-3.5 text-red-500" />;
 		case "task_assigned":
 			return <Check className="size-3.5 text-emerald-500" />;
+		case "work_summary":
+			return <BarChart3 className="size-3.5 text-violet-500" />;
 		default:
 			return <Bell className="size-3.5 text-grey-3" />;
 	}

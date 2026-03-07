@@ -23,7 +23,8 @@ export type Notification = {
 		| "task_due_soon"
 		| "task_overdue"
 		| "sync_failed"
-		| "task_assigned";
+		| "task_assigned"
+		| "work_summary";
 	title: string;
 	body?: string | null;
 	link?: string | null;

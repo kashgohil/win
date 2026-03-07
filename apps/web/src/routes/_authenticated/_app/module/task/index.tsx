@@ -2,12 +2,14 @@ import { KeyboardShortcutBar } from "@/components/mail/KeyboardShortcutBar";
 import ModulePage from "@/components/module/ModulePage";
 import { TaskIntegrations } from "@/components/tasks/TaskIntegrations";
 import { TaskSuggestions } from "@/components/tasks/TaskSuggestions";
-import { useProjects, useTaskStats } from "@/hooks/use-tasks";
+import { useProjects, useTaskStats, useWorkSummary } from "@/hooks/use-tasks";
 import { MODULE_DATA } from "@/lib/module-data";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
 	ArrowRight,
 	Calendar,
+	CheckCircle2,
+	Flame,
 	FolderOpen,
 	KanbanSquare,
 	List,
@@ -124,6 +126,9 @@ function TaskModule() {
 						</Link>
 					</div>
 
+					{/* This week */}
+					<WeeklySummary />
+
 					{/* Stats */}
 					<TaskStatsBar />
 
@@ -187,6 +192,61 @@ function TaskStatsBar() {
 						</div>
 					</div>
 				))}
+			</div>
+		</div>
+	);
+}
+
+function WeeklySummary() {
+	const { data: summary, isLoading } = useWorkSummary(7);
+
+	if (isLoading || !summary) return null;
+
+	const completedCount = summary.completed?.length ?? 0;
+	if (completedCount === 0 && (summary.created ?? 0) === 0) return null;
+
+	return (
+		<div className="mt-6">
+			<h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 mb-3">
+				This week
+			</h3>
+			<div className="rounded-lg border border-border/40 px-4 py-3.5">
+				<div className="flex items-center gap-4">
+					<div className="flex items-center gap-2">
+						<CheckCircle2 className="size-4 text-emerald-500" />
+						<span className="font-body text-[14px] text-foreground">
+							{completedCount} completed
+						</span>
+					</div>
+					{(summary.overdue ?? 0) > 0 && (
+						<div className="flex items-center gap-2">
+							<span className="font-body text-[14px] text-red-500">
+								{summary.overdue} overdue
+							</span>
+						</div>
+					)}
+					{(summary.streak ?? 0) > 1 && (
+						<div className="flex items-center gap-2">
+							<Flame className="size-4 text-orange-500" />
+							<span className="font-body text-[14px] text-foreground">
+								{summary.streak} day streak
+							</span>
+						</div>
+					)}
+				</div>
+				{summary.topProjects && summary.topProjects.length > 0 && (
+					<div className="mt-2 flex items-center gap-2 flex-wrap">
+						{summary.topProjects.map((p) => (
+							<span
+								key={p.name}
+								className="inline-flex items-center gap-1 rounded-full bg-secondary/40 px-2 py-0.5 font-mono text-[10px] text-grey-3"
+							>
+								{p.name}
+								<span className="text-foreground">{p.completed}</span>
+							</span>
+						))}
+					</div>
+				)}
 			</div>
 		</div>
 	);
