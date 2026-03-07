@@ -18,6 +18,7 @@ type TaskSearch = {
 	status?: string;
 	view?: "list" | "board";
 	sort?: string;
+	q?: string;
 };
 
 export const Route = createFileRoute("/_authenticated/_app/module/task/list/")({
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/_app/module/task/list/")({
 		status: search.status as string | undefined,
 		view: (search.view as "list" | "board") ?? undefined,
 		sort: search.sort as string | undefined,
+		q: search.q as string | undefined,
 	}),
 });
 
@@ -34,6 +36,7 @@ export const Route = createFileRoute("/_authenticated/_app/module/task/list/")({
 const TASK_LIST_SHORTCUTS = [
 	[
 		{ keys: ["N"], label: "new task" },
+		{ keys: ["/"], label: "search" },
 		{ keys: ["\u23CE"], label: "open" },
 		{ keys: ["D"], label: "toggle done" },
 	],
@@ -64,8 +67,15 @@ function TaskListPage() {
 	const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 	const [focusIndex, setFocusIndex] = useState(0);
 	const focusRefs = useRef<Map<number, HTMLElement>>(new Map());
+	const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+	// Search state — debounced
+	const [searchInput, setSearchInput] = useState(search.q ?? "");
+	const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const [showSearch, setShowSearch] = useState(!!search.q);
 
 	const { data, isLoading, fetchNextPage, hasNextPage } = useTasksInfinite({
+		q: search.q,
 		statusKey,
 		sort: backendSort,
 	});
@@ -74,10 +84,30 @@ function TaskListPage() {
 	const allTasks: Task[] =
 		data?.pages.flatMap((page) => (page?.tasks as Task[]) ?? []) ?? [];
 
+	const handleSearchChange = useCallback(
+		(q: string) => {
+			setSearchInput(q);
+			if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+			searchTimerRef.current = setTimeout(() => {
+				navigate({ search: { ...search, q: q || undefined } });
+			}, 300);
+		},
+		[navigate, search],
+	);
+
 	// Keyboard navigation
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			const target = e.target as HTMLElement;
+
+			// Allow Escape from search input
+			if (target === searchInputRef.current && e.key === "Escape") {
+				e.preventDefault();
+				searchInputRef.current?.blur();
+				if (!searchInput) setShowSearch(false);
+				return;
+			}
+
 			if (
 				target.tagName === "INPUT" ||
 				target.tagName === "TEXTAREA" ||
@@ -123,6 +153,12 @@ function TaskListPage() {
 					captureInput?.focus();
 					break;
 				}
+				case "/": {
+					e.preventDefault();
+					setShowSearch(true);
+					setTimeout(() => searchInputRef.current?.focus(), 0);
+					break;
+				}
 				case "v": {
 					e.preventDefault();
 					navigate({
@@ -152,6 +188,7 @@ function TaskListPage() {
 		view,
 		navigate,
 		search,
+		searchInput,
 	]);
 
 	// Scroll focused item into view
@@ -245,6 +282,9 @@ function TaskListPage() {
 							onViewChange={handleViewChange}
 							sort={sort}
 							onSortChange={handleSortChange}
+							searchQuery={showSearch ? searchInput : undefined}
+							onSearchChange={handleSearchChange}
+							searchInputRef={searchInputRef}
 						/>
 					</motion.div>
 

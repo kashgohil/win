@@ -11,6 +11,7 @@ import {
 export const taskKeys = {
 	all: ["tasks"] as const,
 	list: (params?: {
+		q?: string;
 		statusKey?: string;
 		projectId?: string;
 		priority?: string;
@@ -65,6 +66,7 @@ export type Project = {
 /* ── Queries ── */
 
 export function useTasksInfinite(params?: {
+	q?: string;
 	statusKey?: string;
 	projectId?: string;
 	priority?: string;
@@ -78,6 +80,7 @@ export function useTasksInfinite(params?: {
 
 	return useInfiniteQuery({
 		queryKey: taskKeys.list({
+			q: params?.q,
 			statusKey: params?.statusKey,
 			projectId: params?.projectId,
 			priority: params?.priority,
