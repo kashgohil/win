@@ -18,6 +18,7 @@
 		"zod": "^4.0.0",
 		"@wingmnn/db": "workspace:*",
 		"@wingmnn/mail": "workspace:*",
-		"@wingmnn/redis": "workspace:*"
+		"@wingmnn/redis": "workspace:*",
+		"@wingmnn/tasks": "workspace:*"
 	}
 }

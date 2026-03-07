@@ -32,6 +32,13 @@ export {
 	type TaskReminderJobData,
 } from "./src/jobs/task-reminder";
 export {
+	enqueueFullSync as enqueueFullTaskSync,
+	enqueueIncrementalTaskSync,
+	enqueueWebhookEvent as enqueueTaskWebhookEvent,
+	scheduleRecurringTaskSync,
+	type TaskSyncJobData,
+} from "./src/jobs/task-sync";
+export {
 	mailAiQueue,
 	mailAutoHandleQueue,
 	mailFollowUpQueue,
@@ -39,4 +46,5 @@ export {
 	mailSnoozeQueue,
 	mailSyncQueue,
 	taskReminderQueue,
+	taskSyncQueue,
 } from "./src/queues";

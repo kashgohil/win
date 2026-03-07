@@ -5,6 +5,7 @@ import { createMailSendWorker } from "./mail-send.worker";
 import { createMailSnoozeWorker } from "./mail-snooze.worker";
 import { createMailSyncWorker } from "./mail-sync.worker";
 import { createTaskReminderWorker } from "./task-reminder.worker";
+import { createTaskSyncWorker } from "./task-sync.worker";
 
 console.log("[workers] Starting workers...");
 
@@ -15,6 +16,7 @@ const mailSnoozeWorker = createMailSnoozeWorker();
 const mailSendWorker = createMailSendWorker();
 const mailFollowUpWorker = createMailFollowUpWorker();
 const taskReminderWorker = createTaskReminderWorker();
+const taskSyncWorker = createTaskSyncWorker();
 
 console.log("[workers] All workers started");
 
@@ -28,6 +30,7 @@ async function shutdown() {
 		mailSendWorker.close(),
 		mailFollowUpWorker.close(),
 		taskReminderWorker.close(),
+		taskSyncWorker.close(),
 	]);
 	console.log("[workers] All workers stopped");
 	process.exit(0);
