@@ -1,6 +1,7 @@
 import { KeyboardShortcutBar } from "@/components/mail/KeyboardShortcutBar";
 import ModulePage from "@/components/module/ModulePage";
 import { TaskIntegrations } from "@/components/tasks/TaskIntegrations";
+import { TaskSuggestions } from "@/components/tasks/TaskSuggestions";
 import { MODULE_DATA } from "@/lib/module-data";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, KanbanSquare, List } from "lucide-react";
@@ -97,6 +98,14 @@ function TaskModule() {
 							</div>
 							<ArrowRight className="size-3.5 text-grey-3 group-hover:translate-x-0.5 transition-transform" />
 						</Link>
+					</div>
+
+					{/* Needs attention */}
+					<div className="mt-8">
+						<h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 mb-3">
+							Needs attention
+						</h3>
+						<TaskSuggestions />
 					</div>
 
 					{/* Integrations */}

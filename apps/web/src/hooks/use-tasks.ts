@@ -390,6 +390,18 @@ export function useDisconnectProvider() {
 	});
 }
 
+export function useTaskSuggestions() {
+	return useQuery({
+		queryKey: [...taskKeys.all, "suggestions"],
+		queryFn: async () => {
+			const { data, error } = await api.tasks.suggestions.get();
+			if (error) throw new Error("Failed to load suggestions");
+			return data;
+		},
+		refetchInterval: 5 * 60 * 1000,
+	});
+}
+
 export function useParseTaskInput() {
 	return useMutation({
 		mutationFn: async (input: string) => {
