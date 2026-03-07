@@ -202,6 +202,16 @@ export function TaskRow({
 									{task.provider}
 								</span>
 							)}
+							{task.writeBackState === "pending" && (
+								<span className="font-mono text-[9px] text-amber-500">
+									syncing…
+								</span>
+							)}
+							{task.writeBackState === "failed" && (
+								<span className="font-mono text-[9px] text-red-500">
+									sync failed
+								</span>
+							)}
 						</div>
 					</div>
 

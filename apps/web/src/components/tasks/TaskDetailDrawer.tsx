@@ -216,15 +216,35 @@ export function TaskDetailDrawer({
 
 						{/* External badge */}
 						{task.source === "external" && task.externalUrl && (
-							<a
-								href={task.externalUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-								className="inline-flex items-center gap-1.5 font-mono text-[11px] text-grey-2 hover:text-foreground transition-colors"
-							>
-								<ExternalLink className="size-3" />
-								Open in {task.provider}
-							</a>
+							<div className="flex items-center gap-3">
+								<a
+									href={task.externalUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="inline-flex items-center gap-1.5 font-mono text-[11px] text-grey-2 hover:text-foreground transition-colors"
+								>
+									<ExternalLink className="size-3" />
+									Open in {task.provider}
+								</a>
+								{task.writeBackState === "pending" && (
+									<span className="inline-flex items-center gap-1 font-mono text-[10px] text-amber-500">
+										<Loader2 className="size-3 animate-spin" />
+										Syncing…
+									</span>
+								)}
+								{task.writeBackState === "failed" && (
+									<span className="inline-flex items-center gap-1 font-mono text-[10px] text-red-500">
+										<AlertTriangle className="size-3" />
+										Sync failed
+									</span>
+								)}
+								{task.writeBackState === "synced" && (
+									<span className="inline-flex items-center gap-1 font-mono text-[10px] text-emerald-500">
+										<CheckCircle2 className="size-3" />
+										Synced
+									</span>
+								)}
+							</div>
 						)}
 
 						{/* Status */}
