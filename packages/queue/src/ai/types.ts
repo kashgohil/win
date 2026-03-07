@@ -51,6 +51,21 @@ export interface TaskParseResult {
 	projectName: string | null;
 }
 
+export interface WorkSummaryInput {
+	completedCount: number;
+	completedTitles: string[];
+	createdCount: number;
+	overdueCount: number;
+	streak: number;
+	topProjects: { name: string; completed: number }[];
+	periodDays: number;
+}
+
+export interface WorkSummaryResult {
+	summary: string;
+	highlights: string[];
+}
+
 export interface AiProvider {
 	classify(
 		email: EmailInput,
@@ -61,4 +76,8 @@ export interface AiProvider {
 		input: TaskParseInput,
 		systemPrompt: string,
 	): Promise<TaskParseResult>;
+	summarizeWork(
+		input: WorkSummaryInput,
+		systemPrompt: string,
+	): Promise<WorkSummaryResult>;
 }

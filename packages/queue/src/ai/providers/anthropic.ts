@@ -7,6 +7,8 @@ import type {
 	EmailInput,
 	TaskParseInput,
 	TaskParseResult,
+	WorkSummaryInput,
+	WorkSummaryResult,
 } from "../types";
 
 const TaskParseSchema = z.object({
@@ -168,7 +170,56 @@ export class AnthropicProvider implements AiProvider {
 		const parsed = parseJsonResponse(text);
 		return TaskParseSchema.parse(parsed);
 	}
+
+	async summarizeWork(
+		input: WorkSummaryInput,
+		systemPrompt: string,
+	): Promise<WorkSummaryResult> {
+		const lines = [
+			`Period: last ${input.periodDays} days`,
+			`Tasks completed: ${input.completedCount}`,
+			`Tasks created: ${input.createdCount}`,
+			`Currently overdue: ${input.overdueCount}`,
+			`Completion streak: ${input.streak} day${input.streak !== 1 ? "s" : ""}`,
+		];
+
+		if (input.topProjects.length > 0) {
+			lines.push(
+				`Top projects: ${input.topProjects.map((p) => `${p.name} (${p.completed} done)`).join(", ")}`,
+			);
+		}
+
+		if (input.completedTitles.length > 0) {
+			const titles = input.completedTitles.slice(0, 15);
+			lines.push("", "Completed tasks:", ...titles.map((t) => `- ${t}`));
+		}
+
+		const response = await this.client.messages.create({
+			model: this.model,
+			max_tokens: 512,
+			system: [
+				{
+					type: "text",
+					text: systemPrompt,
+					cache_control: { type: "ephemeral" },
+				},
+			],
+			messages: [{ role: "user", content: lines.join("\n") }],
+		});
+
+		const text =
+			response.content[0]?.type === "text" ? response.content[0].text : "";
+
+		const parsed = parseJsonResponse(text);
+		const result = WorkSummarySchema.parse(parsed);
+		return result;
+	}
 }
+
+const WorkSummarySchema = z.object({
+	summary: z.string(),
+	highlights: z.array(z.string()),
+});
 
 function parseJsonResponse(text: string): unknown {
 	// Try direct parse first
