@@ -1,4 +1,5 @@
 import { ActivityLog } from "@/components/tasks/ActivityLog";
+import { ConfirmDialog } from "@/components/tasks/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +12,7 @@ import {
 	useCreateTaskItem,
 	useDeleteTask,
 	useDeleteTaskItem,
+	useRetrySync,
 	useSnoozeTask,
 	useTaskDetail,
 	useUpdateTask,
@@ -27,6 +29,7 @@ import {
 	Flag,
 	Loader2,
 	Plus,
+	RefreshCw,
 	Trash2,
 	X,
 } from "lucide-react";
@@ -64,6 +67,7 @@ export function TaskDetailDrawer({
 	const { data: task, isLoading } = useTaskDetail(taskId);
 	const updateTask = useUpdateTask();
 	const deleteTask = useDeleteTask();
+	const retrySync = useRetrySync();
 	const snoozeTask = useSnoozeTask();
 	const createItem = useCreateTaskItem();
 	const updateItem = useUpdateTaskItem();
@@ -73,6 +77,7 @@ export function TaskDetailDrawer({
 	const [titleValue, setTitleValue] = useState("");
 	const [newItemTitle, setNewItemTitle] = useState("");
 	const [addingItem, setAddingItem] = useState(false);
+	const [confirmDelete, setConfirmDelete] = useState(false);
 	const titleRef = useRef<HTMLInputElement>(null);
 	const newItemRef = useRef<HTMLInputElement>(null);
 
@@ -234,10 +239,25 @@ export function TaskDetailDrawer({
 									</span>
 								)}
 								{task.writeBackState === "failed" && (
-									<span className="inline-flex items-center gap-1 font-mono text-[10px] text-red-500">
-										<AlertTriangle className="size-3" />
-										Sync failed
-									</span>
+									<>
+										<span className="inline-flex items-center gap-1 font-mono text-[10px] text-red-500">
+											<AlertTriangle className="size-3" />
+											Sync failed
+										</span>
+										<button
+											type="button"
+											onClick={() => retrySync.mutate(task.id)}
+											disabled={retrySync.isPending}
+											className="inline-flex items-center gap-1 font-mono text-[10px] text-grey-2 hover:text-foreground transition-colors cursor-pointer"
+										>
+											{retrySync.isPending ? (
+												<Loader2 className="size-3 animate-spin" />
+											) : (
+												<RefreshCw className="size-3" />
+											)}
+											Retry
+										</button>
+									</>
 								)}
 								{task.writeBackState === "synced" && (
 									<span className="inline-flex items-center gap-1 font-mono text-[10px] text-emerald-500">
@@ -533,7 +553,7 @@ export function TaskDetailDrawer({
 								<Button
 									variant="ghost"
 									size="sm"
-									onClick={handleDelete}
+									onClick={() => setConfirmDelete(true)}
 									className="text-red-500 hover:text-red-600 hover:bg-red-500/10 font-mono text-[11px]"
 								>
 									<Trash2 className="size-3 mr-1.5" />
@@ -544,6 +564,16 @@ export function TaskDetailDrawer({
 					</div>
 				)}
 			</SheetContent>
+
+			<ConfirmDialog
+				open={confirmDelete}
+				onOpenChange={setConfirmDelete}
+				title="delete task"
+				description="This will permanently delete this task and its subtasks. This action cannot be undone."
+				actionLabel="Delete"
+				destructive
+				onConfirm={handleDelete}
+			/>
 		</Sheet>
 	);
 }

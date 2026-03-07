@@ -299,6 +299,21 @@ export function useDeleteTaskItem() {
 	});
 }
 
+export function useRetrySync() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (taskId: string) => {
+			const { data, error } = await api.tasks({ taskId })["retry-sync"].post();
+			if (error) throw new Error("Failed to retry sync");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.all });
+		},
+	});
+}
+
 export function useSnoozeTask() {
 	const queryClient = useQueryClient();
 
