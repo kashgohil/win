@@ -1,7 +1,13 @@
 import { ActivityLog } from "@/components/tasks/ActivityLog";
 import { ConfirmDialog } from "@/components/tasks/ConfirmDialog";
 import { Button } from "@/components/ui/button";
+import { Calendar as DateCalendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import {
 	Sheet,
 	SheetContent,
@@ -75,6 +81,7 @@ export function TaskDetailDrawer({
 
 	const [editingTitle, setEditingTitle] = useState(false);
 	const [titleValue, setTitleValue] = useState("");
+	const [descriptionValue, setDescriptionValue] = useState("");
 	const [newItemTitle, setNewItemTitle] = useState("");
 	const [addingItem, setAddingItem] = useState(false);
 	const [confirmDelete, setConfirmDelete] = useState(false);
@@ -82,7 +89,10 @@ export function TaskDetailDrawer({
 	const newItemRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
-		if (task) setTitleValue(task.title);
+		if (task) {
+			setTitleValue(task.title);
+			setDescriptionValue(task.description ?? "");
+		}
 	}, [task]);
 
 	useEffect(() => {
@@ -331,30 +341,50 @@ export function TaskDetailDrawer({
 								Due date
 							</span>
 							<div className="flex items-center gap-2">
-								<Calendar className="size-3.5 text-grey-3" />
-								<input
-									type="date"
-									value={
-										task.dueAt
-											? new Date(task.dueAt).toISOString().split("T")[0]
-											: ""
-									}
-									onChange={(e) => {
-										const val = e.target.value;
-										updateTask.mutate({
-											id: task.id,
-											dueAt: val
-												? new Date(`${val}T23:59:59`).toISOString()
-												: null,
-										});
-									}}
-									className="font-mono text-[12px] text-foreground bg-transparent border border-border/40 rounded px-2 py-1"
-								/>
+								<Popover>
+									<PopoverTrigger asChild>
+										<button
+											type="button"
+											className={cn(
+												"inline-flex items-center gap-2 font-mono text-[12px] border border-border/40 rounded px-2 py-1 transition-colors cursor-pointer hover:border-foreground/30",
+												task.dueAt ? "text-foreground" : "text-grey-3",
+											)}
+										>
+											<Calendar className="size-3.5" />
+											{task.dueAt
+												? new Date(task.dueAt).toLocaleDateString("en-US", {
+														month: "short",
+														day: "numeric",
+														year: "numeric",
+													})
+												: "Set due date"}
+										</button>
+									</PopoverTrigger>
+									<PopoverContent className="w-auto p-0" align="start">
+										<DateCalendar
+											mode="single"
+											selected={task.dueAt ? new Date(task.dueAt) : undefined}
+											onSelect={(date) => {
+												if (date) {
+													const d = new Date(date);
+													d.setHours(23, 59, 59, 999);
+													updateTask.mutate({
+														id: task.id,
+														dueAt: d.toISOString(),
+													});
+												}
+											}}
+										/>
+									</PopoverContent>
+								</Popover>
 								{task.dueAt && (
 									<button
 										type="button"
 										onClick={() =>
-											updateTask.mutate({ id: task.id, dueAt: null })
+											updateTask.mutate({
+												id: task.id,
+												dueAt: null,
+											})
 										}
 										className="text-grey-3 hover:text-foreground transition-colors cursor-pointer"
 									>
@@ -439,16 +469,22 @@ export function TaskDetailDrawer({
 								Description
 							</span>
 							<textarea
-								value={task.description ?? ""}
-								onChange={(e) =>
-									updateTask.mutate({
-										id: task.id,
-										description: e.target.value || null,
-									})
-								}
+								value={descriptionValue}
+								onChange={(e) => {
+									setDescriptionValue(e.target.value);
+								}}
+								onBlur={() => {
+									const val = descriptionValue.trim() || null;
+									if (val !== (task.description ?? null)) {
+										updateTask.mutate({
+											id: task.id,
+											description: val,
+										});
+									}
+								}}
 								placeholder="Add a description..."
 								rows={3}
-								className="w-full font-body text-[13px] text-foreground bg-transparent border border-border/40 rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-foreground/20 placeholder:text-grey-3"
+								className="w-full font-body text-[13px] text-foreground bg-transparent border border-border/40 rounded-md px-3 py-2 resize-y focus:outline-none focus:ring-1 focus:ring-foreground/20 placeholder:text-grey-3"
 							/>
 						</div>
 
