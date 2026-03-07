@@ -1,6 +1,14 @@
 export { getAiProvider } from "./src/ai/factory";
-export { TASK_PARSE_SYSTEM_PROMPT } from "./src/ai/prompts";
-export type { TaskParseInput, TaskParseResult } from "./src/ai/types";
+export {
+	TASK_PARSE_SYSTEM_PROMPT,
+	WORK_SUMMARY_SYSTEM_PROMPT,
+} from "./src/ai/prompts";
+export type {
+	TaskParseInput,
+	TaskParseResult,
+	WorkSummaryInput,
+	WorkSummaryResult,
+} from "./src/ai/types";
 export {
 	enqueueClassify,
 	enqueueDraftResponse,
@@ -46,6 +54,10 @@ export {
 	type TaskWriteBackJobData,
 } from "./src/jobs/task-writeback";
 export {
+	scheduleWorkSummaryDigest,
+	type WorkSummaryJobData,
+} from "./src/jobs/work-summary";
+export {
 	mailAiQueue,
 	mailAutoHandleQueue,
 	mailFollowUpQueue,
@@ -55,4 +67,5 @@ export {
 	taskReminderQueue,
 	taskSyncQueue,
 	taskWriteBackQueue,
+	workSummaryQueue,
 } from "./src/queues";

@@ -9,6 +9,7 @@ import type { MailSyncJobData } from "./jobs/mail-sync";
 import type { TaskReminderJobData } from "./jobs/task-reminder";
 import type { TaskSyncJobData } from "./jobs/task-sync";
 import type { TaskWriteBackJobData } from "./jobs/task-writeback";
+import type { WorkSummaryJobData } from "./jobs/work-summary";
 
 export const mailSyncQueue = new Queue<MailSyncJobData>("mail-sync", {
 	connection,
@@ -110,3 +111,13 @@ export const taskWriteBackQueue = new Queue<TaskWriteBackJobData>(
 		},
 	},
 );
+
+export const workSummaryQueue = new Queue<WorkSummaryJobData>("work-summary", {
+	connection,
+	defaultJobOptions: {
+		attempts: 2,
+		backoff: { type: "exponential", delay: 10000 },
+		removeOnComplete: { count: 100 },
+		removeOnFail: { count: 500 },
+	},
+});
