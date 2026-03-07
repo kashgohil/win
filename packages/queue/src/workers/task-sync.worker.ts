@@ -2,6 +2,7 @@ import {
 	and,
 	db,
 	eq,
+	isNull,
 	taskActivityLog,
 	taskConnections,
 	taskProjects,
@@ -15,6 +16,8 @@ import {
 	registerProvider,
 } from "@wingmnn/tasks";
 import { Worker } from "bullmq";
+import { getAiProvider } from "../ai/factory";
+import { TASK_CATEGORIZE_SYSTEM_PROMPT } from "../ai/prompts";
 import { connection } from "../connection";
 import type { TaskSyncJobData } from "../jobs/task-sync";
 
@@ -226,6 +229,82 @@ async function processFullSync(connectionId: string, userId: string) {
 	console.log(
 		`[task-sync] Full sync complete for ${connectionId}: ${importedCount} tasks`,
 	);
+
+	// Auto-categorize tasks without a project
+	await categorizeTasks(userId);
+}
+
+async function categorizeTasks(userId: string) {
+	const provider = getAiProvider();
+	if (!provider) return;
+
+	// Get user's projects
+	const userProjects = await db
+		.select({ id: taskProjects.id, name: taskProjects.name })
+		.from(taskProjects)
+		.where(eq(taskProjects.userId, userId));
+
+	if (userProjects.length === 0) return;
+
+	// Get tasks without a project and without an existing suggestion
+	const uncategorized = await db
+		.select({
+			id: tasks.id,
+			title: tasks.title,
+			description: tasks.description,
+		})
+		.from(tasks)
+		.where(
+			and(
+				eq(tasks.userId, userId),
+				isNull(tasks.projectId),
+				isNull(tasks.suggestedProjectId),
+			),
+		)
+		.limit(20);
+
+	if (uncategorized.length === 0) return;
+
+	let categorized = 0;
+	for (const task of uncategorized) {
+		try {
+			const result = await provider.categorizeTask(
+				{
+					title: task.title,
+					description: task.description,
+					projects: userProjects,
+				},
+				TASK_CATEGORIZE_SYSTEM_PROMPT,
+			);
+
+			if (result.projectId && result.confidence >= 0.8) {
+				// High confidence — auto-assign
+				await db
+					.update(tasks)
+					.set({ projectId: result.projectId })
+					.where(eq(tasks.id, task.id));
+				categorized++;
+			} else if (result.projectId && result.confidence >= 0.5) {
+				// Medium confidence — suggest
+				await db
+					.update(tasks)
+					.set({ suggestedProjectId: result.projectId })
+					.where(eq(tasks.id, task.id));
+				categorized++;
+			}
+		} catch (err) {
+			console.error(
+				`[task-sync] Categorization failed for task ${task.id}:`,
+				err instanceof Error ? err.message : "Unknown error",
+			);
+		}
+	}
+
+	if (categorized > 0) {
+		console.log(
+			`[task-sync] Auto-categorized ${categorized}/${uncategorized.length} tasks for user ${userId}`,
+		);
+	}
 }
 
 async function processWebhookEvent(
