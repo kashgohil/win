@@ -34,6 +34,7 @@ import { Route as AuthenticatedAppModuleCalRouteImport } from './routes/_authent
 import { Route as AuthenticatedAppModuleTaskIndexRouteImport } from './routes/_authenticated/_app/module/task/index'
 import { Route as AuthenticatedAppModuleMailIndexRouteImport } from './routes/_authenticated/_app/module/mail/index'
 import { Route as AuthenticatedAppModuleTaskListIndexRouteImport } from './routes/_authenticated/_app/module/task/list.index'
+import { Route as AuthenticatedAppModuleTaskCalendarIndexRouteImport } from './routes/_authenticated/_app/module/task/calendar.index'
 import { Route as AuthenticatedAppModuleMailSentIndexRouteImport } from './routes/_authenticated/_app/module/mail/sent.index'
 import { Route as AuthenticatedAppModuleMailInboxIndexRouteImport } from './routes/_authenticated/_app/module/mail/inbox.index'
 import { Route as AuthenticatedAppModuleMailDraftsIndexRouteImport } from './routes/_authenticated/_app/module/mail/drafts.index'
@@ -183,6 +184,12 @@ const AuthenticatedAppModuleTaskListIndexRoute =
     path: '/list/',
     getParentRoute: () => AuthenticatedAppModuleTaskRoute,
   } as any)
+const AuthenticatedAppModuleTaskCalendarIndexRoute =
+  AuthenticatedAppModuleTaskCalendarIndexRouteImport.update({
+    id: '/calendar/',
+    path: '/calendar/',
+    getParentRoute: () => AuthenticatedAppModuleTaskRoute,
+  } as any)
 const AuthenticatedAppModuleMailSentIndexRoute =
   AuthenticatedAppModuleMailSentIndexRouteImport.update({
     id: '/sent/',
@@ -249,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/module/mail/drafts/': typeof AuthenticatedAppModuleMailDraftsIndexRoute
   '/module/mail/inbox/': typeof AuthenticatedAppModuleMailInboxIndexRoute
   '/module/mail/sent/': typeof AuthenticatedAppModuleMailSentIndexRoute
+  '/module/task/calendar/': typeof AuthenticatedAppModuleTaskCalendarIndexRoute
   '/module/task/list/': typeof AuthenticatedAppModuleTaskListIndexRoute
 }
 export interface FileRoutesByTo {
@@ -277,6 +285,7 @@ export interface FileRoutesByTo {
   '/module/mail/drafts': typeof AuthenticatedAppModuleMailDraftsIndexRoute
   '/module/mail/inbox': typeof AuthenticatedAppModuleMailInboxIndexRoute
   '/module/mail/sent': typeof AuthenticatedAppModuleMailSentIndexRoute
+  '/module/task/calendar': typeof AuthenticatedAppModuleTaskCalendarIndexRoute
   '/module/task/list': typeof AuthenticatedAppModuleTaskListIndexRoute
 }
 export interface FileRoutesById {
@@ -311,6 +320,7 @@ export interface FileRoutesById {
   '/_authenticated/_app/module/mail/drafts/': typeof AuthenticatedAppModuleMailDraftsIndexRoute
   '/_authenticated/_app/module/mail/inbox/': typeof AuthenticatedAppModuleMailInboxIndexRoute
   '/_authenticated/_app/module/mail/sent/': typeof AuthenticatedAppModuleMailSentIndexRoute
+  '/_authenticated/_app/module/task/calendar/': typeof AuthenticatedAppModuleTaskCalendarIndexRoute
   '/_authenticated/_app/module/task/list/': typeof AuthenticatedAppModuleTaskListIndexRoute
 }
 export interface FileRouteTypes {
@@ -344,6 +354,7 @@ export interface FileRouteTypes {
     | '/module/mail/drafts/'
     | '/module/mail/inbox/'
     | '/module/mail/sent/'
+    | '/module/task/calendar/'
     | '/module/task/list/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -372,6 +383,7 @@ export interface FileRouteTypes {
     | '/module/mail/drafts'
     | '/module/mail/inbox'
     | '/module/mail/sent'
+    | '/module/task/calendar'
     | '/module/task/list'
   id:
     | '__root__'
@@ -405,6 +417,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/module/mail/drafts/'
     | '/_authenticated/_app/module/mail/inbox/'
     | '/_authenticated/_app/module/mail/sent/'
+    | '/_authenticated/_app/module/task/calendar/'
     | '/_authenticated/_app/module/task/list/'
   fileRoutesById: FileRoutesById
 }
@@ -590,6 +603,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppModuleTaskListIndexRouteImport
       parentRoute: typeof AuthenticatedAppModuleTaskRoute
     }
+    '/_authenticated/_app/module/task/calendar/': {
+      id: '/_authenticated/_app/module/task/calendar/'
+      path: '/calendar'
+      fullPath: '/module/task/calendar/'
+      preLoaderRoute: typeof AuthenticatedAppModuleTaskCalendarIndexRouteImport
+      parentRoute: typeof AuthenticatedAppModuleTaskRoute
+    }
     '/_authenticated/_app/module/mail/sent/': {
       id: '/_authenticated/_app/module/mail/sent/'
       path: '/sent'
@@ -667,6 +687,7 @@ const AuthenticatedAppModuleMailRouteWithChildren =
 interface AuthenticatedAppModuleTaskRouteChildren {
   AuthenticatedAppModuleTaskIndexRoute: typeof AuthenticatedAppModuleTaskIndexRoute
   AuthenticatedAppModuleTaskProjectProjectIdRoute: typeof AuthenticatedAppModuleTaskProjectProjectIdRoute
+  AuthenticatedAppModuleTaskCalendarIndexRoute: typeof AuthenticatedAppModuleTaskCalendarIndexRoute
   AuthenticatedAppModuleTaskListIndexRoute: typeof AuthenticatedAppModuleTaskListIndexRoute
 }
 
@@ -675,6 +696,8 @@ const AuthenticatedAppModuleTaskRouteChildren: AuthenticatedAppModuleTaskRouteCh
     AuthenticatedAppModuleTaskIndexRoute: AuthenticatedAppModuleTaskIndexRoute,
     AuthenticatedAppModuleTaskProjectProjectIdRoute:
       AuthenticatedAppModuleTaskProjectProjectIdRoute,
+    AuthenticatedAppModuleTaskCalendarIndexRoute:
+      AuthenticatedAppModuleTaskCalendarIndexRoute,
     AuthenticatedAppModuleTaskListIndexRoute:
       AuthenticatedAppModuleTaskListIndexRoute,
   }
