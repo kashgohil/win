@@ -982,6 +982,13 @@ export const taskService = {
 				.filter(Boolean)
 				.join("");
 
+			const priorityScore = computePriorityScore({
+				priority: "none",
+				dueAt: null,
+				createdAt: new Date(),
+				sourceEmailId: emailId,
+			});
+
 			const rows = await db
 				.insert(tasks)
 				.values({
@@ -992,6 +999,7 @@ export const taskService = {
 					sourceEmailId: emailId,
 					statusKey: "todo",
 					priority: "none",
+					priorityScore,
 				})
 				.returning();
 
