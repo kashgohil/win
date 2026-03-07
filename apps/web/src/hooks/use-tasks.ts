@@ -390,6 +390,16 @@ export function useDisconnectProvider() {
 	});
 }
 
+export function useParseTaskInput() {
+	return useMutation({
+		mutationFn: async (input: string) => {
+			const { data, error } = await api.tasks.parse.post({ input });
+			if (error) throw new Error("Failed to parse task input");
+			return data;
+		},
+	});
+}
+
 export function useCreateProject() {
 	const queryClient = useQueryClient();
 
