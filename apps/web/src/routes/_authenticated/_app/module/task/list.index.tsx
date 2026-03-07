@@ -132,11 +132,7 @@ function TaskListPage() {
 	const projectMap = useMemo(() => {
 		const map = new Map<string, { name: string; color?: string | null }>();
 		if (projects) {
-			for (const p of projects as {
-				id: string;
-				name: string;
-				color?: string | null;
-			}[]) {
+			for (const p of projects) {
 				map.set(p.id, { name: p.name, color: p.color });
 			}
 		}

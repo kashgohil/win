@@ -86,11 +86,7 @@ export function TaskFilters({
 }) {
 	const currentSort = sort ?? "smart";
 	const { data: projects } = useProjects();
-	const activeProjects = (
-		projects as
-			| { id: string; name: string; color?: string | null; archived: boolean }[]
-			| undefined
-	)?.filter((p) => !p.archived);
+	const activeProjects = projects?.filter((p) => !p.archived);
 
 	const hasActiveFilters = !!projectId || !!priority || !!duePreset;
 

@@ -174,15 +174,7 @@ function ProjectsList() {
 
 	if (isLoading || !projects || projects.length === 0) return null;
 
-	const active = (
-		projects as {
-			id: string;
-			name: string;
-			color?: string | null;
-			archived: boolean;
-			source: string;
-		}[]
-	).filter((p) => !p.archived);
+	const active = projects.filter((p) => !p.archived);
 	if (active.length === 0) return null;
 
 	return (
