@@ -1,4 +1,5 @@
 import Logo from "@/components/Logo";
+import { NotificationPopover } from "@/components/notifications/NotificationPopover";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -7,6 +8,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useUnreadCount } from "@/hooks/use-notifications";
 import { useTheme } from "@/hooks/use-theme";
 import type { Module } from "@/lib/onboarding-data";
 import { cn } from "@/lib/utils";
@@ -38,6 +40,8 @@ export default function NavRail({
 	const { theme, toggle } = useTheme();
 	const matchRoute = useMatchRoute();
 	const isProfileActive = !!matchRoute({ to: "/profile" });
+	const { data: unreadData } = useUnreadCount();
+	const unreadCount = unreadData?.count ?? 0;
 
 	const activeModuleIndex = useMemo(() => {
 		const idx = modules.findIndex((mod) =>
@@ -168,6 +172,15 @@ export default function NavRail({
 					className="rail-item flex flex-col items-center gap-1 pt-3 pb-5"
 					style={{ "--rail-i": modules.length + 2 } as React.CSSProperties}
 				>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<span>
+								<NotificationPopover unreadCount={unreadCount} />
+							</span>
+						</TooltipTrigger>
+						<TooltipContent side="right">Notifications</TooltipContent>
+					</Tooltip>
+
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<Button
