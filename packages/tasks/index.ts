@@ -3,6 +3,7 @@ export {
 	getTaskProvider,
 	registerProvider,
 } from "./src/factory";
+export { linearProvider } from "./src/providers/linear";
 export type {
 	RefreshResult,
 	TaskProvider,
