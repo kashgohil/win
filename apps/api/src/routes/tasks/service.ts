@@ -31,6 +31,142 @@ import {
 // Register the Linear provider on import
 registerProvider(linearProvider);
 
+/* ── Priority scoring ── */
+
+function computePriorityScore(opts: {
+	priority: "none" | "low" | "medium" | "high" | "urgent";
+	dueAt: Date | null;
+	createdAt: Date;
+	sourceEmailId: string | null;
+}): number {
+	let score = 0;
+
+	// Priority level
+	switch (opts.priority) {
+		case "urgent":
+			score += 30;
+			break;
+		case "high":
+			score += 20;
+			break;
+		case "medium":
+			score += 10;
+			break;
+		case "low":
+			score += 5;
+			break;
+	}
+
+	// Due date proximity
+	if (opts.dueAt) {
+		const now = new Date();
+		const diffMs = opts.dueAt.getTime() - now.getTime();
+		const diffDays = diffMs / 86400000;
+
+		if (diffDays < 0)
+			score += 40; // overdue
+		else if (diffDays < 1)
+			score += 30; // due today
+		else if (diffDays < 7)
+			score += 20; // due this week
+		else score += 5; // due later
+	}
+
+	// Task age (1 point per day, max 10)
+	const ageDays = (Date.now() - opts.createdAt.getTime()) / 86400000;
+	score += Math.min(Math.floor(ageDays), 10);
+
+	// Cross-domain bonus
+	if (opts.sourceEmailId) score += 5;
+
+	return Math.min(score, 100);
+}
+
+/* ── NL stub parser (fallback when AI unavailable) ── */
+
+function parseTaskInputStub(input: string): {
+	title: string;
+	dueAt: string | null;
+	priority: "none" | "low" | "medium" | "high" | "urgent";
+	projectName: string | null;
+} {
+	let title = input;
+	let priority: "none" | "low" | "medium" | "high" | "urgent" = "none";
+	let projectName: string | null = null;
+	let dueAt: string | null = null;
+
+	// Extract #project
+	const projectMatch = title.match(/#(\w+)/);
+	if (projectMatch) {
+		projectName = projectMatch[1]!;
+		title = title.replace(/#\w+/, "").trim();
+	}
+
+	// Extract priority keywords
+	if (/\burgent\b/i.test(title)) {
+		priority = "urgent";
+		title = title.replace(/\burgent\b/gi, "").trim();
+	} else if (/\bhigh\s*priority\b/i.test(title)) {
+		priority = "high";
+		title = title.replace(/\bhigh\s*priority\b/gi, "").trim();
+	} else if (/\b(important)\b/i.test(title)) {
+		priority = "high";
+		title = title.replace(/\bimportant\b/gi, "").trim();
+	} else if (/\blow\s*priority\b/i.test(title)) {
+		priority = "low";
+		title = title.replace(/\blow\s*priority\b/gi, "").trim();
+	}
+
+	// Extract date keywords
+	const today = new Date();
+	if (/\b(today)\b/i.test(title)) {
+		const d = new Date(today);
+		d.setHours(23, 59, 59, 0);
+		dueAt = d.toISOString();
+		title = title.replace(/\btoday\b/gi, "").trim();
+	} else if (/\b(tomorrow)\b/i.test(title)) {
+		const d = new Date(today);
+		d.setDate(d.getDate() + 1);
+		d.setHours(23, 59, 59, 0);
+		dueAt = d.toISOString();
+		title = title.replace(/\btomorrow\b/gi, "").trim();
+	} else {
+		const byMatch = title.match(
+			/\bby\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
+		);
+		if (byMatch) {
+			const dayNames = [
+				"sunday",
+				"monday",
+				"tuesday",
+				"wednesday",
+				"thursday",
+				"friday",
+				"saturday",
+			];
+			const targetDay = dayNames.indexOf(byMatch[1]!.toLowerCase());
+			if (targetDay >= 0) {
+				const d = new Date(today);
+				const currentDay = d.getDay();
+				let diff = targetDay - currentDay;
+				if (diff <= 0) diff += 7;
+				d.setDate(d.getDate() + diff);
+				d.setHours(23, 59, 59, 0);
+				dueAt = d.toISOString();
+				title = title.replace(byMatch[0], "").trim();
+			}
+		}
+	}
+
+	// Clean up extra whitespace and trailing "by"
+	title = title
+		.replace(/\bby\s*$/i, "")
+		.replace(/\s+/g, " ")
+		.trim();
+
+	return { title: title || input, dueAt, priority, projectName };
+}
+
 /* ── Types ── */
 
 type SerializedTask = {
@@ -335,8 +471,9 @@ export const taskService = {
 					title: input.title,
 					description: input.description ?? null,
 					statusKey: input.statusKey ?? "todo",
-					priority: input.priority ?? "none",
-					dueAt: input.dueAt ? new Date(input.dueAt) : null,
+					priority,
+					priorityScore,
+					dueAt,
 					projectId: input.projectId ?? null,
 					sourceEmailId: input.sourceEmailId ?? null,
 					reminderAt: input.reminderAt ? new Date(input.reminderAt) : null,
@@ -422,6 +559,26 @@ export const taskService = {
 
 			if (Object.keys(updates).length === 0) {
 				return { ok: false, error: "No fields to update", status: 400 };
+			}
+
+			// Recompute priority score when relevant fields change
+			if (
+				input.priority !== undefined ||
+				input.dueAt !== undefined ||
+				input.statusKey !== undefined
+			) {
+				const priority =
+					(updates.priority as typeof existing.priority) ?? existing.priority;
+				const dueAt =
+					input.dueAt !== undefined
+						? (updates.dueAt as Date | null)
+						: existing.dueAt;
+				updates.priorityScore = computePriorityScore({
+					priority,
+					dueAt,
+					createdAt: existing.createdAt,
+					sourceEmailId: existing.sourceEmailId,
+				});
 			}
 
 			const updatedRows = await db
