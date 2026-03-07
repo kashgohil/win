@@ -208,21 +208,21 @@ export function TaskDetailDrawer({
 								}}
 								className="font-body text-lg border-none px-0 focus-visible:ring-0 shadow-none"
 							/>
+						) : task.source === "native" ? (
+							<button
+								type="button"
+								onClick={() => setEditingTitle(true)}
+								className={cn(
+									"font-body text-lg text-foreground leading-snug text-left w-full cursor-text hover:bg-secondary/30 rounded px-1 -mx-1 transition-colors",
+									task.statusKey === "done" && "line-through text-grey-3",
+								)}
+							>
+								{task.title}
+							</button>
 						) : (
 							<h2
-								role="button"
-								tabIndex={0}
-								onClick={() =>
-									task.source === "native" && setEditingTitle(true)
-								}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" && task.source === "native")
-										setEditingTitle(true);
-								}}
 								className={cn(
 									"font-body text-lg text-foreground leading-snug",
-									task.source === "native" &&
-										"cursor-text hover:bg-secondary/30 rounded px-1 -mx-1 transition-colors",
 									task.statusKey === "done" && "line-through text-grey-3",
 								)}
 							>

@@ -119,14 +119,10 @@ export function TaskRow({
 				isFocused && "bg-secondary/30 ring-1 ring-foreground/10 ring-inset",
 			)}
 		>
-			<div
-				role="button"
-				tabIndex={0}
+			<button
+				type="button"
 				onClick={onClick}
-				onKeyDown={(e) => {
-					if (e.key === "Enter") onClick?.();
-				}}
-				className="flex items-start gap-3 py-3 px-2 cursor-pointer"
+				className="flex items-start gap-3 py-3 px-2 cursor-pointer w-full text-left"
 			>
 				{/* Selection checkbox */}
 				{selectable && (
@@ -265,7 +261,7 @@ export function TaskRow({
 						</p>
 					)}
 				</div>
-			</div>
+			</button>
 		</motion.div>
 	);
 }
