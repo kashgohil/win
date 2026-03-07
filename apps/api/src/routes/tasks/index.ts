@@ -3,6 +3,10 @@ import { env } from "../../env";
 
 import { betterAuthPlugin } from "../../plugins/auth";
 import {
+	bulkDeleteBody,
+	bulkDeleteResponse,
+	bulkUpdateBody,
+	bulkUpdateResponse,
 	connectionListResponse,
 	connectResponse,
 	createProjectBody,
@@ -182,6 +186,55 @@ export const tasksRoutes = new Elysia({
 				500: errorResponse,
 			},
 			detail: { tags: ["Tasks"], summary: "Delete task" },
+		},
+	)
+
+	/* ── Bulk operations ── */
+
+	.post(
+		"/bulk-update",
+		async ({ body, user, set }) => {
+			const result = await taskService.bulkUpdateTasks(user.id, body.taskIds, {
+				statusKey: body.statusKey,
+				priority: body.priority,
+			});
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			body: bulkUpdateBody,
+			response: {
+				200: bulkUpdateResponse,
+				400: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Bulk update tasks" },
+		},
+	)
+
+	.post(
+		"/bulk-delete",
+		async ({ body, user, set }) => {
+			const result = await taskService.bulkDeleteTasks(user.id, body.taskIds);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			body: bulkDeleteBody,
+			response: {
+				200: bulkDeleteResponse,
+				400: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Bulk delete tasks" },
 		},
 	)
 

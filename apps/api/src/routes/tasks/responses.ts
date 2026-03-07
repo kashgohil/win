@@ -191,6 +191,37 @@ export const syncResponse = t.Object({
 	projects: t.Number(),
 });
 
+/* ── Bulk ops ── */
+
+export const bulkUpdateBody = t.Object({
+	taskIds: t.Array(t.String(), { minItems: 1 }),
+	statusKey: t.Optional(
+		t.Union([
+			t.Literal("todo"),
+			t.Literal("in_progress"),
+			t.Literal("done"),
+			t.Literal("blocked"),
+			t.Literal("cancelled"),
+		]),
+	),
+	priority: t.Optional(
+		t.Union([
+			t.Literal("none"),
+			t.Literal("low"),
+			t.Literal("medium"),
+			t.Literal("high"),
+			t.Literal("urgent"),
+		]),
+	),
+});
+
+export const bulkDeleteBody = t.Object({
+	taskIds: t.Array(t.String(), { minItems: 1 }),
+});
+
+export const bulkUpdateResponse = t.Object({ updated: t.Number() });
+export const bulkDeleteResponse = t.Object({ deleted: t.Number() });
+
 /* ── Task parse ── */
 
 export const suggestionsResponse = t.Object({

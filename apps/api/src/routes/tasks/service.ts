@@ -712,6 +712,91 @@ export const taskService = {
 		}
 	},
 
+	/* ── Bulk update tasks ── */
+	async bulkUpdateTasks(
+		userId: string,
+		taskIds: string[],
+		input: {
+			statusKey?: "todo" | "in_progress" | "done" | "blocked" | "cancelled";
+			priority?: "none" | "low" | "medium" | "high" | "urgent";
+		},
+	): Promise<
+		| { ok: true; data: { updated: number } }
+		| { ok: false; error: string; status: 400 | 500 }
+	> {
+		try {
+			if (taskIds.length === 0) {
+				return { ok: false, error: "No task IDs provided", status: 400 };
+			}
+			if (taskIds.length > 100) {
+				return { ok: false, error: "Max 100 tasks per batch", status: 400 };
+			}
+
+			const updates: Record<string, unknown> = {};
+			if (input.statusKey !== undefined) {
+				updates.statusKey = input.statusKey;
+				if (input.statusKey === "done") {
+					updates.completedAt = new Date();
+				} else {
+					updates.completedAt = null;
+				}
+			}
+			if (input.priority !== undefined) updates.priority = input.priority;
+
+			if (Object.keys(updates).length === 0) {
+				return { ok: false, error: "No fields to update", status: 400 };
+			}
+
+			const result = await db
+				.update(tasks)
+				.set(updates)
+				.where(and(eq(tasks.userId, userId), inArray(tasks.id, taskIds)))
+				.returning({ id: tasks.id });
+
+			return { ok: true, data: { updated: result.length } };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] bulkUpdateTasks error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
+	/* ── Bulk delete tasks ── */
+	async bulkDeleteTasks(
+		userId: string,
+		taskIds: string[],
+	): Promise<
+		| { ok: true; data: { deleted: number } }
+		| { ok: false; error: string; status: 400 | 500 }
+	> {
+		try {
+			if (taskIds.length === 0) {
+				return { ok: false, error: "No task IDs provided", status: 400 };
+			}
+			if (taskIds.length > 100) {
+				return { ok: false, error: "Max 100 tasks per batch", status: 400 };
+			}
+
+			// Only delete native tasks
+			const result = await db
+				.delete(tasks)
+				.where(
+					and(
+						eq(tasks.userId, userId),
+						inArray(tasks.id, taskIds),
+						eq(tasks.source, "native"),
+					),
+				)
+				.returning({ id: tasks.id });
+
+			return { ok: true, data: { deleted: result.length } };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] bulkDeleteTasks error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
 	/* ── Add subtask item ── */
 	async addTaskItem(
 		userId: string,
