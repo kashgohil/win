@@ -82,6 +82,8 @@ export const taskConnections = pgTable(
 		readWrite: boolean("read_write").default(false).notNull(),
 		lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
 		syncError: text("sync_error"),
+		webhookId: varchar("webhook_id", { length: 255 }),
+		webhookSecret: text("webhook_secret"),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
 			.notNull(),

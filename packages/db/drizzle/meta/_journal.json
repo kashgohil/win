@@ -78,6 +78,13 @@
       "when": 1772898819580,
       "tag": "0010_blue_rogue",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1772922158548,
+      "tag": "0011_bouncy_shotgun",
+      "breakpoints": true
     }
   ]
 }
