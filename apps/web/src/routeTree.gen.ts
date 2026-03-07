@@ -38,6 +38,7 @@ import { Route as AuthenticatedAppModuleMailSentIndexRouteImport } from './route
 import { Route as AuthenticatedAppModuleMailInboxIndexRouteImport } from './routes/_authenticated/_app/module/mail/inbox.index'
 import { Route as AuthenticatedAppModuleMailDraftsIndexRouteImport } from './routes/_authenticated/_app/module/mail/drafts.index'
 import { Route as AuthenticatedAppModuleMailAttachmentsIndexRouteImport } from './routes/_authenticated/_app/module/mail/attachments.index'
+import { Route as AuthenticatedAppModuleTaskProjectProjectIdRouteImport } from './routes/_authenticated/_app/module/task/project.$projectId'
 import { Route as AuthenticatedAppModuleMailInboxEmailIdRouteImport } from './routes/_authenticated/_app/module/mail/inbox.$emailId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -206,6 +207,12 @@ const AuthenticatedAppModuleMailAttachmentsIndexRoute =
     path: '/attachments/',
     getParentRoute: () => AuthenticatedAppModuleMailRoute,
   } as any)
+const AuthenticatedAppModuleTaskProjectProjectIdRoute =
+  AuthenticatedAppModuleTaskProjectProjectIdRouteImport.update({
+    id: '/project/$projectId',
+    path: '/project/$projectId',
+    getParentRoute: () => AuthenticatedAppModuleTaskRoute,
+  } as any)
 const AuthenticatedAppModuleMailInboxEmailIdRoute =
   AuthenticatedAppModuleMailInboxEmailIdRouteImport.update({
     id: '/inbox/$emailId',
@@ -237,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/module/mail/': typeof AuthenticatedAppModuleMailIndexRoute
   '/module/task/': typeof AuthenticatedAppModuleTaskIndexRoute
   '/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
+  '/module/task/project/$projectId': typeof AuthenticatedAppModuleTaskProjectProjectIdRoute
   '/module/mail/attachments/': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/module/mail/drafts/': typeof AuthenticatedAppModuleMailDraftsIndexRoute
   '/module/mail/inbox/': typeof AuthenticatedAppModuleMailInboxIndexRoute
@@ -264,6 +272,7 @@ export interface FileRoutesByTo {
   '/module/mail': typeof AuthenticatedAppModuleMailIndexRoute
   '/module/task': typeof AuthenticatedAppModuleTaskIndexRoute
   '/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
+  '/module/task/project/$projectId': typeof AuthenticatedAppModuleTaskProjectProjectIdRoute
   '/module/mail/attachments': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/module/mail/drafts': typeof AuthenticatedAppModuleMailDraftsIndexRoute
   '/module/mail/inbox': typeof AuthenticatedAppModuleMailInboxIndexRoute
@@ -297,6 +306,7 @@ export interface FileRoutesById {
   '/_authenticated/_app/module/mail/': typeof AuthenticatedAppModuleMailIndexRoute
   '/_authenticated/_app/module/task/': typeof AuthenticatedAppModuleTaskIndexRoute
   '/_authenticated/_app/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
+  '/_authenticated/_app/module/task/project/$projectId': typeof AuthenticatedAppModuleTaskProjectProjectIdRoute
   '/_authenticated/_app/module/mail/attachments/': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/_authenticated/_app/module/mail/drafts/': typeof AuthenticatedAppModuleMailDraftsIndexRoute
   '/_authenticated/_app/module/mail/inbox/': typeof AuthenticatedAppModuleMailInboxIndexRoute
@@ -329,6 +339,7 @@ export interface FileRouteTypes {
     | '/module/mail/'
     | '/module/task/'
     | '/module/mail/inbox/$emailId'
+    | '/module/task/project/$projectId'
     | '/module/mail/attachments/'
     | '/module/mail/drafts/'
     | '/module/mail/inbox/'
@@ -356,6 +367,7 @@ export interface FileRouteTypes {
     | '/module/mail'
     | '/module/task'
     | '/module/mail/inbox/$emailId'
+    | '/module/task/project/$projectId'
     | '/module/mail/attachments'
     | '/module/mail/drafts'
     | '/module/mail/inbox'
@@ -388,6 +400,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/module/mail/'
     | '/_authenticated/_app/module/task/'
     | '/_authenticated/_app/module/mail/inbox/$emailId'
+    | '/_authenticated/_app/module/task/project/$projectId'
     | '/_authenticated/_app/module/mail/attachments/'
     | '/_authenticated/_app/module/mail/drafts/'
     | '/_authenticated/_app/module/mail/inbox/'
@@ -605,6 +618,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppModuleMailAttachmentsIndexRouteImport
       parentRoute: typeof AuthenticatedAppModuleMailRoute
     }
+    '/_authenticated/_app/module/task/project/$projectId': {
+      id: '/_authenticated/_app/module/task/project/$projectId'
+      path: '/project/$projectId'
+      fullPath: '/module/task/project/$projectId'
+      preLoaderRoute: typeof AuthenticatedAppModuleTaskProjectProjectIdRouteImport
+      parentRoute: typeof AuthenticatedAppModuleTaskRoute
+    }
     '/_authenticated/_app/module/mail/inbox/$emailId': {
       id: '/_authenticated/_app/module/mail/inbox/$emailId'
       path: '/inbox/$emailId'
@@ -646,12 +666,15 @@ const AuthenticatedAppModuleMailRouteWithChildren =
 
 interface AuthenticatedAppModuleTaskRouteChildren {
   AuthenticatedAppModuleTaskIndexRoute: typeof AuthenticatedAppModuleTaskIndexRoute
+  AuthenticatedAppModuleTaskProjectProjectIdRoute: typeof AuthenticatedAppModuleTaskProjectProjectIdRoute
   AuthenticatedAppModuleTaskListIndexRoute: typeof AuthenticatedAppModuleTaskListIndexRoute
 }
 
 const AuthenticatedAppModuleTaskRouteChildren: AuthenticatedAppModuleTaskRouteChildren =
   {
     AuthenticatedAppModuleTaskIndexRoute: AuthenticatedAppModuleTaskIndexRoute,
+    AuthenticatedAppModuleTaskProjectProjectIdRoute:
+      AuthenticatedAppModuleTaskProjectProjectIdRoute,
     AuthenticatedAppModuleTaskListIndexRoute:
       AuthenticatedAppModuleTaskListIndexRoute,
   }

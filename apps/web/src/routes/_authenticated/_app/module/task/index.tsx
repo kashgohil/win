@@ -2,9 +2,10 @@ import { KeyboardShortcutBar } from "@/components/mail/KeyboardShortcutBar";
 import ModulePage from "@/components/module/ModulePage";
 import { TaskIntegrations } from "@/components/tasks/TaskIntegrations";
 import { TaskSuggestions } from "@/components/tasks/TaskSuggestions";
+import { useProjects } from "@/hooks/use-tasks";
 import { MODULE_DATA } from "@/lib/module-data";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, KanbanSquare, List } from "lucide-react";
+import { ArrowRight, FolderOpen, KanbanSquare, List } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -108,6 +109,9 @@ function TaskModule() {
 						<TaskSuggestions />
 					</div>
 
+					{/* Projects */}
+					<ProjectsList />
+
 					{/* Integrations */}
 					<div className="mt-8">
 						<h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 mb-3">
@@ -120,5 +124,53 @@ function TaskModule() {
 
 			<KeyboardShortcutBar shortcuts={TASK_HUB_SHORTCUTS} />
 		</>
+	);
+}
+
+function ProjectsList() {
+	const { data: projects, isLoading } = useProjects();
+
+	if (isLoading || !projects || projects.length === 0) return null;
+
+	const active = (
+		projects as {
+			id: string;
+			name: string;
+			color?: string | null;
+			archived: boolean;
+			source: string;
+		}[]
+	).filter((p) => !p.archived);
+	if (active.length === 0) return null;
+
+	return (
+		<div className="mt-8">
+			<h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 mb-3">
+				Projects
+			</h3>
+			<div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+				{active.map((project) => (
+					<Link
+						key={project.id}
+						to="/module/task/project/$projectId"
+						params={{ projectId: project.id }}
+						className="group flex items-center gap-2.5 rounded-lg border border-border/40 hover:border-border/70 transition-colors px-3 py-2.5"
+					>
+						{project.color ? (
+							<span
+								className="size-2.5 rounded-full shrink-0"
+								style={{ backgroundColor: project.color }}
+							/>
+						) : (
+							<FolderOpen className="size-3.5 text-grey-3" />
+						)}
+						<span className="font-body text-[13px] text-foreground tracking-[0.01em] truncate">
+							{project.name}
+						</span>
+						<ArrowRight className="size-3 text-grey-3 group-hover:translate-x-0.5 transition-transform ml-auto shrink-0" />
+					</Link>
+				))}
+			</div>
+		</div>
 	);
 }
