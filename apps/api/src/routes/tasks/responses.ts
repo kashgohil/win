@@ -257,6 +257,15 @@ export const bulkDeleteBody = t.Object({
 export const bulkUpdateResponse = t.Object({ updated: t.Number() });
 export const bulkDeleteResponse = t.Object({ deleted: t.Number() });
 
+/* ── Stats ── */
+
+export const taskStatsResponse = t.Object({
+	total: t.Number(),
+	byStatus: t.Record(t.String(), t.Number()),
+	overdue: t.Number(),
+	completedLast7Days: t.Number(),
+});
+
 /* ── Task parse ── */
 
 export const suggestionsResponse = t.Object({

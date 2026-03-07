@@ -1954,4 +1954,130 @@ export const taskService = {
 			return { ok: false, error: message, status: 500 };
 		}
 	},
+
+	async retryWriteBack(
+		userId: string,
+		taskId: string,
+	): Promise<
+		| { ok: true; data: { message: string } }
+		| { ok: false; error: string; status: number }
+	> {
+		try {
+			const task = await db.query.tasks.findFirst({
+				where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
+			});
+
+			if (!task) {
+				return { ok: false, error: "Task not found", status: 404 };
+			}
+
+			if (
+				task.source !== "external" ||
+				!task.connectionId ||
+				!task.externalId
+			) {
+				return { ok: false, error: "Not an external task", status: 400 };
+			}
+
+			if (task.writeBackState !== "failed") {
+				return {
+					ok: false,
+					error: "Task is not in a failed state",
+					status: 400,
+				};
+			}
+
+			// Reset state and re-enqueue
+			await db
+				.update(tasks)
+				.set({ writeBackState: "pending" })
+				.where(eq(tasks.id, taskId));
+
+			await enqueueTaskWriteBack({
+				taskId,
+				connectionId: task.connectionId,
+				userId,
+				externalId: task.externalId,
+				updates: {
+					title: task.title,
+					description: task.description ?? undefined,
+					priority: task.priority,
+					dueAt: task.dueAt?.toISOString() ?? undefined,
+				},
+			});
+
+			return { ok: true, data: { message: "Write-back re-queued" } };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] retryWriteBack error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
+	async getStats(
+		userId: string,
+	): Promise<
+		| {
+				ok: true;
+				data: {
+					total: number;
+					byStatus: Record<string, number>;
+					overdue: number;
+					completedLast7Days: number;
+				};
+		  }
+		| { ok: false; error: string; status: number }
+	> {
+		try {
+			const statusRows = await db
+				.select({
+					statusKey: tasks.statusKey,
+					count: count(),
+				})
+				.from(tasks)
+				.where(eq(tasks.userId, userId))
+				.groupBy(tasks.statusKey);
+
+			const byStatus: Record<string, number> = {};
+			let total = 0;
+			for (const row of statusRows) {
+				byStatus[row.statusKey] = row.count;
+				total += row.count;
+			}
+
+			const now = new Date();
+			const [overdueResult] = await db
+				.select({ count: count() })
+				.from(tasks)
+				.where(
+					and(
+						eq(tasks.userId, userId),
+						lte(tasks.dueAt, now),
+						sql`${tasks.completedAt} IS NULL`,
+					),
+				);
+
+			const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000);
+			const [completedResult] = await db
+				.select({ count: count() })
+				.from(tasks)
+				.where(
+					and(eq(tasks.userId, userId), gte(tasks.completedAt, sevenDaysAgo)),
+				);
+
+			return {
+				ok: true,
+				data: {
+					total,
+					byStatus,
+					overdue: overdueResult?.count ?? 0,
+					completedLast7Days: completedResult?.count ?? 0,
+				},
+			};
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] getStats error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
 };

@@ -25,6 +25,7 @@ import {
 	taskDetailResponse,
 	taskItemResponse,
 	taskListResponse,
+	taskStatsResponse,
 	updateProjectBody,
 	updateTaskBody,
 	updateTaskItemBody,
@@ -98,6 +99,23 @@ export const tasksRoutes = new Elysia({
 			auth: true,
 			response: { 200: suggestionsResponse, 500: errorResponse },
 			detail: { tags: ["Tasks"], summary: "Get smart task suggestions" },
+		},
+	)
+
+	.get(
+		"/stats",
+		async ({ user, set }) => {
+			const result = await taskService.getStats(user.id);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			response: { 200: taskStatsResponse, 500: errorResponse },
+			detail: { tags: ["Tasks"], summary: "Get task statistics" },
 		},
 	)
 
@@ -322,6 +340,31 @@ export const tasksRoutes = new Elysia({
 				500: errorResponse,
 			},
 			detail: { tags: ["Tasks"], summary: "Delete subtask item" },
+		},
+	)
+
+	/* ── Retry write-back ── */
+
+	.post(
+		"/:taskId/retry-sync",
+		async ({ params, user, set }) => {
+			const result = await taskService.retryWriteBack(user.id, params.taskId);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ taskId: t.String() }),
+			response: {
+				200: messageResponse,
+				400: errorResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Retry failed write-back sync" },
 		},
 	)
 
