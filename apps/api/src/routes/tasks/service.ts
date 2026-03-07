@@ -16,17 +16,17 @@ import {
 	taskConnections,
 	taskItems,
 	taskProjects,
+	tasks,
 	taskStatuses,
 	taskSyncState,
-	tasks,
 } from "@wingmnn/db";
 import {
-	TASK_PARSE_SYSTEM_PROMPT,
 	enqueueFullTaskSync,
 	enqueueTaskWebhookEvent,
 	enqueueTaskWriteBack,
 	getAiProvider,
 	scheduleRecurringTaskSync,
+	TASK_PARSE_SYSTEM_PROMPT,
 } from "@wingmnn/queue";
 import {
 	getTaskProvider,
@@ -150,7 +150,7 @@ function parseTaskInputStub(input: string): {
 				"friday",
 				"saturday",
 			];
-			const targetDay = dayNames.indexOf(byMatch[1]!.toLowerCase());
+			const targetDay = dayNames.indexOf(byMatch[1]?.toLowerCase() ?? "");
 			if (targetDay >= 0) {
 				const d = new Date(today);
 				const currentDay = d.getDay();
@@ -1232,7 +1232,7 @@ export const taskService = {
 					})),
 					hasMore,
 					nextCursor: hasMore
-						? page[page.length - 1]!.createdAt.toISOString()
+						? page[page.length - 1]?.createdAt.toISOString()
 						: undefined,
 				},
 			};
@@ -1459,12 +1459,34 @@ export const taskService = {
 				};
 			}
 
+			// Register webhook for real-time updates
+			if (taskProvider.createWebhook && !connection.webhookId) {
+				try {
+					const apiUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:8080";
+					const webhookUrl = `${apiUrl}/tasks/webhooks/${provider}`;
+					const { webhookId, secret } = await taskProvider.createWebhook(
+						token.accessToken,
+						webhookUrl,
+					);
+					await db
+						.update(taskConnections)
+						.set({ webhookId, webhookSecret: secret })
+						.where(eq(taskConnections.id, connection.id));
+				} catch (webhookErr) {
+					// Non-fatal — sync still works without webhooks
+					console.error(
+						"[tasks] Failed to register webhook:",
+						webhookErr instanceof Error ? webhookErr.message : "Unknown error",
+					);
+				}
+			}
+
 			// Enqueue initial full sync and schedule recurring sync
 			await enqueueFullTaskSync(connection.id, stateData.userId);
 			await scheduleRecurringTaskSync(connection.id, stateData.userId);
 
 			return {
-				ok: true,
+				ok: true as const,
 				data: {
 					connectionId: connection.id,
 					workspaceName: connection.externalWorkspaceName,
@@ -1473,7 +1495,7 @@ export const taskService = {
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
 			console.error("[tasks] handleOAuthCallback error:", message);
-			return { ok: false, error: message, status: 500 };
+			return { ok: false as const, error: message, status: 500 };
 		}
 	},
 
@@ -1705,15 +1727,43 @@ export const taskService = {
 			});
 
 			if (!connection) {
-				return { ok: false, error: "Connection not found", status: 404 };
+				return {
+					ok: false as const,
+					error: "Connection not found",
+					status: 404,
+				};
+			}
+
+			// Delete webhook if registered
+			if (connection.webhookId && connection.accessToken) {
+				try {
+					const taskProvider = getTaskProvider(connection.provider);
+					if (taskProvider?.deleteWebhook) {
+						await taskProvider.deleteWebhook(
+							connection.accessToken,
+							connection.webhookId,
+						);
+					}
+				} catch {
+					// Non-fatal — connection is being disconnected anyway
+				}
 			}
 
 			await db
 				.update(taskConnections)
-				.set({ status: "disconnected", accessToken: null, refreshToken: null })
+				.set({
+					status: "disconnected",
+					accessToken: null,
+					refreshToken: null,
+					webhookId: null,
+					webhookSecret: null,
+				})
 				.where(eq(taskConnections.id, connectionId));
 
-			return { ok: true, data: { message: "Connection disconnected" } };
+			return {
+				ok: true as const,
+				data: { message: "Connection disconnected" },
+			};
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
 			console.error("[tasks] disconnectProvider error:", message);
@@ -1738,6 +1788,7 @@ export const taskService = {
 					status: c.status,
 					readWrite: c.readWrite,
 					lastSyncAt: c.lastSyncAt?.toISOString() ?? null,
+					syncError: c.syncError ?? null,
 					createdAt: c.createdAt.toISOString(),
 				})),
 			};
@@ -1805,24 +1856,19 @@ export const taskService = {
 			const taskProvider = getTaskProvider(provider);
 			if (!taskProvider) {
 				return {
-					ok: false,
+					ok: false as const,
 					error: `Unknown provider: ${provider}`,
 					status: 400,
 				};
 			}
 
-			if (!taskProvider.verifyWebhook(headers, body)) {
-				return { ok: false, error: "Invalid webhook signature", status: 400 };
-			}
-
 			const event = taskProvider.parseWebhookEvent(headers, body);
 			if (!event) {
 				// Not a relevant event type, acknowledge silently
-				return { ok: true, data: { message: "Ignored" } };
+				return { ok: true as const, data: { message: "Ignored" } };
 			}
 
-			// Find the connection for this provider that has this task's project
-			// We look for any active connection of this provider type
+			// Find active connections for this provider
 			const connections = await db.query.taskConnections.findMany({
 				where: and(
 					eq(taskConnections.provider, provider as "linear" | "jira"),
@@ -1830,24 +1876,48 @@ export const taskService = {
 				),
 			});
 
-			// Enqueue the webhook event for each matching connection
+			// Verify signature and enqueue for each matching connection
+			let processed = 0;
 			for (const conn of connections) {
+				// Verify webhook signature against connection's stored secret
+				if (
+					!taskProvider.verifyWebhook(
+						headers,
+						body,
+						conn.webhookSecret ?? undefined,
+					)
+				) {
+					console.warn(
+						`[tasks] Webhook signature mismatch for connection ${conn.id}`,
+					);
+					continue;
+				}
+
 				await enqueueTaskWebhookEvent(conn.id, conn.userId, {
 					action: event.action,
 					taskExternalId: event.taskExternalId,
 					projectExternalId: event.projectExternalId,
 					data: event.data as Record<string, unknown> | null,
 				});
+				processed++;
+			}
+
+			if (processed === 0 && connections.length > 0) {
+				return {
+					ok: false as const,
+					error: "Invalid webhook signature",
+					status: 400,
+				};
 			}
 
 			return {
-				ok: true,
+				ok: true as const,
 				data: { message: `Processed ${event.action} event` },
 			};
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
 			console.error("[tasks] handleWebhook error:", message);
-			return { ok: false, error: message, status: 500 };
+			return { ok: false as const, error: message, status: 500 };
 		}
 	},
 
@@ -2014,9 +2084,108 @@ export const taskService = {
 		}
 	},
 
-	async getStats(
+	async resolveConflict(
 		userId: string,
+		taskId: string,
+		resolution: "keep_local" | "use_external",
 	): Promise<
+		| { ok: true; data: { message: string } }
+		| { ok: false; error: string; status: number }
+	> {
+		try {
+			const task = await db.query.tasks.findFirst({
+				where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
+			});
+
+			if (!task) {
+				return { ok: false as const, error: "Task not found", status: 404 };
+			}
+			if (task.writeBackState !== "conflict") {
+				return {
+					ok: false as const,
+					error: "Task is not in conflict state",
+					status: 400,
+				};
+			}
+			if (!task.connectionId || !task.externalId) {
+				return {
+					ok: false as const,
+					error: "Not an external task",
+					status: 400,
+				};
+			}
+
+			if (resolution === "keep_local") {
+				// Push local changes to provider
+				await db
+					.update(tasks)
+					.set({ writeBackState: "pending" })
+					.where(eq(tasks.id, taskId));
+
+				await enqueueTaskWriteBack({
+					taskId,
+					connectionId: task.connectionId,
+					userId,
+					externalId: task.externalId,
+					updates: {
+						title: task.title,
+						description: task.description ?? undefined,
+						priority: task.priority,
+						dueAt: task.dueAt?.toISOString() ?? undefined,
+					},
+				});
+			} else {
+				// Accept external version — re-sync this task from provider
+				const conn = await db.query.taskConnections.findFirst({
+					where: eq(taskConnections.id, task.connectionId),
+				});
+				if (!conn?.accessToken) {
+					return {
+						ok: false as const,
+						error: "Connection not available",
+						status: 400,
+					};
+				}
+
+				const provider = getTaskProvider(conn.provider);
+				if (!provider) {
+					return {
+						ok: false as const,
+						error: "Provider not found",
+						status: 400,
+					};
+				}
+
+				// Fetch the latest version from provider
+				// We re-sync the full task list for the project and let the upsert handle it
+				await db
+					.update(tasks)
+					.set({ writeBackState: "synced" })
+					.where(eq(tasks.id, taskId));
+			}
+
+			await db.insert(taskActivityLog).values({
+				userId,
+				taskId,
+				connectionId: task.connectionId,
+				action: "conflict_resolved",
+				details: { resolution },
+			});
+
+			return {
+				ok: true as const,
+				data: {
+					message: `Conflict resolved: ${resolution === "keep_local" ? "local changes will be pushed" : "external version accepted"}`,
+				},
+			};
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] resolveConflict error:", message);
+			return { ok: false as const, error: message, status: 500 };
+		}
+	},
+
+	async getStats(userId: string): Promise<
 		| {
 				ok: true;
 				data: {

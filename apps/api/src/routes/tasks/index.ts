@@ -368,6 +368,41 @@ export const tasksRoutes = new Elysia({
 		},
 	)
 
+	/* ── Resolve conflict ── */
+
+	.post(
+		"/:taskId/resolve-conflict",
+		async ({ params, body, user, set }) => {
+			const result = await taskService.resolveConflict(
+				user.id,
+				params.taskId,
+				body.resolution,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ taskId: t.String() }),
+			body: t.Object({
+				resolution: t.Union([
+					t.Literal("keep_local"),
+					t.Literal("use_external"),
+				]),
+			}),
+			response: {
+				200: messageResponse,
+				400: errorResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Resolve sync conflict" },
+		},
+	)
+
 	/* ── Snooze ── */
 
 	.post(

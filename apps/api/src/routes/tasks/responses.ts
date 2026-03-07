@@ -207,6 +207,7 @@ const connectionSchema = t.Object({
 	status: t.String(),
 	readWrite: t.Boolean(),
 	lastSyncAt: t.Optional(t.Nullable(t.String())),
+	syncError: t.Optional(t.Nullable(t.String())),
 	createdAt: t.String(),
 });
 
