@@ -42,6 +42,10 @@ export {
 	type TaskSyncJobData,
 } from "./src/jobs/task-sync";
 export {
+	enqueueTaskWriteBack,
+	type TaskWriteBackJobData,
+} from "./src/jobs/task-writeback";
+export {
 	mailAiQueue,
 	mailAutoHandleQueue,
 	mailFollowUpQueue,
@@ -50,4 +54,5 @@ export {
 	mailSyncQueue,
 	taskReminderQueue,
 	taskSyncQueue,
+	taskWriteBackQueue,
 } from "./src/queues";
