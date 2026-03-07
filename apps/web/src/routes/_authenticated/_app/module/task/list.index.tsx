@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 type TaskSearch = {
 	status?: string;
 	view?: "list" | "board";
+	sort?: string;
 };
 
 export const Route = createFileRoute("/_authenticated/_app/module/task/list/")({
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/_authenticated/_app/module/task/list/")({
 	validateSearch: (search: Record<string, unknown>): TaskSearch => ({
 		status: search.status as string | undefined,
 		view: (search.view as "list" | "board") ?? undefined,
+		sort: search.sort as string | undefined,
 	}),
 });
 
@@ -49,6 +51,15 @@ function TaskListPage() {
 	const navigate = Route.useNavigate();
 	const statusKey = search.status;
 	const view = search.view ?? "list";
+	const sort = search.sort ?? "smart";
+
+	// Map frontend sort keys to backend sort params
+	const backendSort =
+		sort === "smart" || sort === "priority"
+			? "priority"
+			: sort === "due_at"
+				? "due_at"
+				: undefined;
 
 	const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 	const [focusIndex, setFocusIndex] = useState(0);
@@ -56,6 +67,7 @@ function TaskListPage() {
 
 	const { data, isLoading, fetchNextPage, hasNextPage } = useTasksInfinite({
 		statusKey,
+		sort: backendSort,
 	});
 	const updateTask = useUpdateTask();
 
@@ -165,6 +177,13 @@ function TaskListPage() {
 		[navigate, search],
 	);
 
+	const handleSortChange = useCallback(
+		(s: string) => {
+			navigate({ search: { ...search, sort: s } });
+		},
+		[navigate, search],
+	);
+
 	const handleToggleStatus = useCallback(
 		(task: Task) => {
 			updateTask.mutate({
@@ -224,6 +243,8 @@ function TaskListPage() {
 							onStatusChange={handleStatusChange}
 							view={view}
 							onViewChange={handleViewChange}
+							sort={sort}
+							onSortChange={handleSortChange}
 						/>
 					</motion.div>
 
