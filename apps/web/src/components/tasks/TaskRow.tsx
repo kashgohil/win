@@ -87,6 +87,8 @@ export function TaskRow({
 	selectable,
 	selected,
 	onSelect,
+	projectName,
+	projectColor,
 }: {
 	task: Task;
 	isFocused?: boolean;
@@ -96,6 +98,8 @@ export function TaskRow({
 	selectable?: boolean;
 	selected?: boolean;
 	onSelect?: (id: string) => void;
+	projectName?: string | null;
+	projectColor?: string | null;
 }) {
 	const priority = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.none;
 	const due = task.dueAt ? formatDueDate(task.dueAt) : null;
@@ -223,6 +227,17 @@ export function TaskRow({
 								<span className="inline-flex items-center gap-1 font-mono text-[10px] text-amber-500">
 									<AlarmClock className="size-3" />
 									Snoozed
+								</span>
+							)}
+							{projectName && (
+								<span className="inline-flex items-center gap-1 font-mono text-[10px] text-grey-3">
+									{projectColor && (
+										<span
+											className="size-1.5 rounded-full shrink-0"
+											style={{ backgroundColor: projectColor }}
+										/>
+									)}
+									{projectName}
 								</span>
 							)}
 							{task.source === "external" && (

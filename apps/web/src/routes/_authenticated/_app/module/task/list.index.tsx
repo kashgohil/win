@@ -1,6 +1,7 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
 import { KeyboardShortcutBar } from "@/components/mail/KeyboardShortcutBar";
 import { BoardView } from "@/components/tasks/BoardView";
+import { ConfirmDialog } from "@/components/tasks/ConfirmDialog";
 import { QuickCapture } from "@/components/tasks/QuickCapture";
 import { TaskDetailDrawer } from "@/components/tasks/TaskDetailDrawer";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
@@ -10,13 +11,14 @@ import {
 	type Task,
 	useBulkDeleteTasks,
 	useBulkUpdateTasks,
+	useProjects,
 	useTasksInfinite,
 	useUpdateTask,
 } from "@/hooks/use-tasks";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /* ── Route ── */
 
@@ -25,6 +27,9 @@ type TaskSearch = {
 	view?: "list" | "board";
 	sort?: string;
 	q?: string;
+	projectId?: string;
+	priority?: string;
+	due?: string;
 };
 
 export const Route = createFileRoute("/_authenticated/_app/module/task/list/")({
@@ -34,6 +39,9 @@ export const Route = createFileRoute("/_authenticated/_app/module/task/list/")({
 		view: (search.view as "list" | "board") ?? undefined,
 		sort: search.sort as string | undefined,
 		q: search.q as string | undefined,
+		projectId: search.projectId as string | undefined,
+		priority: search.priority as string | undefined,
+		due: search.due as string | undefined,
 	}),
 });
 
@@ -70,6 +78,29 @@ function TaskListPage() {
 				? "due_at"
 				: undefined;
 
+	// Convert due preset to date range params
+	const { dueBefore, dueAfter } = useMemo(() => {
+		const due = search.due;
+		if (!due) return {};
+		const now = new Date();
+		if (due === "overdue") {
+			return { dueBefore: now.toISOString() };
+		}
+		if (due === "today") {
+			const start = new Date(now);
+			start.setHours(0, 0, 0, 0);
+			const end = new Date(now);
+			end.setHours(23, 59, 59, 999);
+			return { dueAfter: start.toISOString(), dueBefore: end.toISOString() };
+		}
+		if (due === "week") {
+			const end = new Date(now);
+			end.setDate(end.getDate() + 7);
+			return { dueBefore: end.toISOString() };
+		}
+		return {};
+	}, [search.due]);
+
 	const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 	const [focusIndex, setFocusIndex] = useState(0);
 	const focusRefs = useRef<Map<number, HTMLElement>>(new Map());
@@ -82,15 +113,35 @@ function TaskListPage() {
 
 	// Selection state
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
 	const { data, isLoading, fetchNextPage, hasNextPage } = useTasksInfinite({
 		q: search.q,
 		statusKey,
 		sort: backendSort,
+		projectId: search.projectId,
+		priority: search.priority,
+		dueBefore,
+		dueAfter,
 	});
 	const updateTask = useUpdateTask();
 	const bulkUpdate = useBulkUpdateTasks();
 	const bulkDelete = useBulkDeleteTasks();
+	const { data: projects } = useProjects();
+
+	const projectMap = useMemo(() => {
+		const map = new Map<string, { name: string; color?: string | null }>();
+		if (projects) {
+			for (const p of projects as {
+				id: string;
+				name: string;
+				color?: string | null;
+			}[]) {
+				map.set(p.id, { name: p.name, color: p.color });
+			}
+		}
+		return map;
+	}, [projects]);
 
 	const allTasks: Task[] =
 		data?.pages.flatMap((page) => (page?.tasks as Task[]) ?? []) ?? [];
@@ -256,6 +307,30 @@ function TaskListPage() {
 		[navigate, search],
 	);
 
+	const handleProjectChange = useCallback(
+		(id?: string) => {
+			navigate({ search: { ...search, projectId: id } });
+			setFocusIndex(0);
+		},
+		[navigate, search],
+	);
+
+	const handlePriorityChange = useCallback(
+		(p?: string) => {
+			navigate({ search: { ...search, priority: p } });
+			setFocusIndex(0);
+		},
+		[navigate, search],
+	);
+
+	const handleDuePresetChange = useCallback(
+		(d?: string) => {
+			navigate({ search: { ...search, due: d } });
+			setFocusIndex(0);
+		},
+		[navigate, search],
+	);
+
 	const handleToggleStatus = useCallback(
 		(task: Task) => {
 			updateTask.mutate({
@@ -320,6 +395,12 @@ function TaskListPage() {
 							searchQuery={showSearch ? searchInput : undefined}
 							onSearchChange={handleSearchChange}
 							searchInputRef={searchInputRef}
+							projectId={search.projectId}
+							onProjectChange={handleProjectChange}
+							priority={search.priority}
+							onPriorityChange={handlePriorityChange}
+							duePreset={search.due}
+							onDuePresetChange={handleDuePresetChange}
 						/>
 					</motion.div>
 
@@ -387,6 +468,16 @@ function TaskListPage() {
 										selectable={selectedIds.size > 0}
 										selected={selectedIds.has(task.id)}
 										onSelect={toggleSelect}
+										projectName={
+											task.projectId
+												? projectMap.get(task.projectId)?.name
+												: undefined
+										}
+										projectColor={
+											task.projectId
+												? projectMap.get(task.projectId)?.color
+												: undefined
+										}
 									/>
 								))}
 								{hasNextPage && (
@@ -452,11 +543,7 @@ function TaskListPage() {
 					</button>
 					<button
 						type="button"
-						onClick={() => {
-							bulkDelete.mutate([...selectedIds], {
-								onSuccess: clearSelection,
-							});
-						}}
+						onClick={() => setConfirmBulkDelete(true)}
 						className="font-mono text-[11px] px-2 py-1 rounded hover:bg-red-500/80 transition-colors cursor-pointer inline-flex items-center gap-1"
 					>
 						<Trash2 className="size-3" />
@@ -472,6 +559,20 @@ function TaskListPage() {
 					</button>
 				</div>
 			)}
+
+			<ConfirmDialog
+				open={confirmBulkDelete}
+				onOpenChange={setConfirmBulkDelete}
+				title="delete tasks"
+				description={`This will permanently delete ${selectedIds.size} selected task${selectedIds.size === 1 ? "" : "s"}. This action cannot be undone.`}
+				actionLabel="Delete"
+				destructive
+				onConfirm={() => {
+					bulkDelete.mutate([...selectedIds], {
+						onSuccess: clearSelection,
+					});
+				}}
+			/>
 
 			{/* Keyboard shortcut bar */}
 			<KeyboardShortcutBar shortcuts={TASK_LIST_SHORTCUTS} />
