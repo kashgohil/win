@@ -1,8 +1,10 @@
-import { Elysia, t } from "elysia";
+import { Elysia, redirect, t } from "elysia";
+import { env } from "../../env";
 
 import { betterAuthPlugin } from "../../plugins/auth";
 import {
 	connectionListResponse,
+	connectResponse,
 	createProjectBody,
 	createTaskBody,
 	createTaskItemBody,
@@ -10,6 +12,7 @@ import {
 	messageResponse,
 	projectDetailResponse,
 	projectListResponse,
+	syncResponse,
 	taskDetailResponse,
 	taskItemResponse,
 	taskListResponse,
@@ -354,5 +357,155 @@ export const tasksRoutes = new Elysia({
 			auth: true,
 			response: { 200: connectionListResponse, 500: errorResponse },
 			detail: { tags: ["Tasks"], summary: "List task integrations" },
+		},
+	)
+
+	.post(
+		"/integrations/connect/:provider",
+		async ({ params, user, set }) => {
+			const result = await taskService.connectProvider(
+				user.id,
+				params.provider,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ provider: t.String() }),
+			response: {
+				200: connectResponse,
+				400: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Get OAuth URL for provider" },
+		},
+	)
+
+	.get(
+		"/integrations/callback/:provider",
+		async ({ params, query }) => {
+			const clientUrl = `${env.CLIENT_URL}/module/task`;
+
+			if (query.error) {
+				return redirect(
+					`${clientUrl}?error=${encodeURIComponent(query.error)}`,
+				);
+			}
+
+			if (!query.code || !query.state) {
+				return redirect(`${clientUrl}?error=missing_params`);
+			}
+
+			const result = await taskService.handleOAuthCallback(
+				params.provider,
+				query.code,
+				query.state,
+			);
+
+			if (!result.ok) {
+				return redirect(
+					`${clientUrl}?error=${encodeURIComponent(result.error)}`,
+				);
+			}
+
+			return redirect(`${clientUrl}?connected=${params.provider}`);
+		},
+		{
+			params: t.Object({ provider: t.String() }),
+			query: t.Object({
+				code: t.Optional(t.String()),
+				state: t.Optional(t.String()),
+				error: t.Optional(t.String()),
+			}),
+			detail: { tags: ["Tasks"], summary: "OAuth callback" },
+		},
+	)
+
+	.post(
+		"/integrations/:connectionId/sync",
+		async ({ params, user, set }) => {
+			const result = await taskService.syncConnection(
+				user.id,
+				params.connectionId,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ connectionId: t.String() }),
+			response: {
+				200: syncResponse,
+				400: errorResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Sync connection" },
+		},
+	)
+
+	.delete(
+		"/integrations/:connectionId",
+		async ({ params, user, set }) => {
+			const result = await taskService.disconnectProvider(
+				user.id,
+				params.connectionId,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ connectionId: t.String() }),
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Disconnect integration" },
+		},
+	)
+
+	/* ── Webhooks ── */
+
+	.post(
+		"/webhooks/:provider",
+		async ({ params, body: rawBody, request, set }) => {
+			const bodyStr =
+				typeof rawBody === "string" ? rawBody : JSON.stringify(rawBody);
+			const headers: Record<string, string> = {};
+			request.headers.forEach((value, key) => {
+				headers[key] = value;
+			});
+
+			const result = await taskService.handleWebhook(
+				params.provider,
+				headers,
+				bodyStr,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			params: t.Object({ provider: t.String() }),
+			response: {
+				200: messageResponse,
+				400: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Provider webhook" },
 		},
 	);

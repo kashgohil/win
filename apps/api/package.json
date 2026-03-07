@@ -23,6 +23,7 @@
 		"@sinclair/typebox": "^0.34.48",
 		"@wingmnn/db": "workspace:*",
 		"@wingmnn/mail": "workspace:*",
+		"@wingmnn/tasks": "workspace:*",
 		"@wingmnn/queue": "workspace:*",
 		"@wingmnn/redis": "workspace:*",
 		"better-auth": "^1.4.18",

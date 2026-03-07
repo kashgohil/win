@@ -16,6 +16,9 @@ const envSchema = Type.Object({
 	GMAIL_REDIRECT_URI: Type.Optional(Type.String()),
 	MICROSOFT_CLIENT_ID: Type.Optional(Type.String()),
 	MICROSOFT_CLIENT_SECRET: Type.Optional(Type.String()),
+	LINEAR_CLIENT_ID: Type.Optional(Type.String()),
+	LINEAR_CLIENT_SECRET: Type.Optional(Type.String()),
+	LINEAR_REDIRECT_URI: Type.Optional(Type.String()),
 });
 
 const envWithDefaults = {

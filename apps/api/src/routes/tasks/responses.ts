@@ -180,3 +180,13 @@ export const connectionListResponse = t.Array(connectionSchema);
 export const connectResponse = t.Object({
 	url: t.String(),
 });
+
+export const callbackResponse = t.Object({
+	connectionId: t.String(),
+	workspaceName: t.Optional(t.Nullable(t.String())),
+});
+
+export const syncResponse = t.Object({
+	imported: t.Number(),
+	projects: t.Number(),
+});

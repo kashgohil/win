@@ -13,8 +13,23 @@ import {
 	taskConnections,
 	taskItems,
 	taskProjects,
+	taskStatuses,
+	taskSyncState,
 	tasks,
 } from "@wingmnn/db";
+import {
+	enqueueFullTaskSync,
+	enqueueTaskWebhookEvent,
+	scheduleRecurringTaskSync,
+} from "@wingmnn/queue";
+import {
+	getTaskProvider,
+	linearProvider,
+	registerProvider,
+} from "@wingmnn/tasks";
+
+// Register the Linear provider on import
+registerProvider(linearProvider);
 
 /* ── Types ── */
 
@@ -795,6 +810,370 @@ export const taskService = {
 		}
 	},
 
+	/* ── Connect provider (get auth URL) ── */
+	async connectProvider(
+		userId: string,
+		provider: string,
+	): Promise<
+		| { ok: true; data: { url: string } }
+		| { ok: false; error: string; status: 400 | 500 }
+	> {
+		try {
+			const taskProvider = getTaskProvider(provider);
+			if (!taskProvider) {
+				return {
+					ok: false,
+					error: `Unknown provider: ${provider}`,
+					status: 400,
+				};
+			}
+			const state = Buffer.from(JSON.stringify({ userId, provider })).toString(
+				"base64url",
+			);
+			const url = taskProvider.getAuthUrl(state);
+			return { ok: true, data: { url } };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] connectProvider error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
+	/* ── OAuth callback ── */
+	async handleOAuthCallback(
+		provider: string,
+		code: string,
+		state: string,
+	): Promise<
+		| { ok: true; data: { connectionId: string; workspaceName: string | null } }
+		| { ok: false; error: string; status: 400 | 500 }
+	> {
+		try {
+			const taskProvider = getTaskProvider(provider);
+			if (!taskProvider) {
+				return {
+					ok: false,
+					error: `Unknown provider: ${provider}`,
+					status: 400,
+				};
+			}
+
+			let stateData: { userId: string; provider: string };
+			try {
+				stateData = JSON.parse(Buffer.from(state, "base64url").toString());
+			} catch {
+				return { ok: false, error: "Invalid state parameter", status: 400 };
+			}
+
+			if (stateData.provider !== provider) {
+				return { ok: false, error: "Provider mismatch", status: 400 };
+			}
+
+			const token = await taskProvider.exchangeCode(code);
+
+			// Upsert connection
+			const rows = await db
+				.insert(taskConnections)
+				.values({
+					userId: stateData.userId,
+					provider: provider as "linear" | "jira",
+					accessToken: token.accessToken,
+					refreshToken: token.refreshToken,
+					tokenExpiresAt: token.expiresAt,
+					scopes: token.scopes,
+					externalWorkspaceId: token.workspaceId,
+					externalWorkspaceName: token.workspaceName,
+					status: "active",
+				})
+				.onConflictDoUpdate({
+					target: [
+						taskConnections.userId,
+						taskConnections.provider,
+						taskConnections.externalWorkspaceId,
+					],
+					set: {
+						accessToken: token.accessToken,
+						refreshToken: token.refreshToken,
+						tokenExpiresAt: token.expiresAt,
+						scopes: token.scopes,
+						externalWorkspaceName: token.workspaceName,
+						status: "active",
+						syncError: null,
+					},
+				})
+				.returning();
+
+			const connection = rows[0];
+			if (!connection) {
+				return {
+					ok: false,
+					error: "Failed to save connection",
+					status: 500 as const,
+				};
+			}
+
+			// Enqueue initial full sync and schedule recurring sync
+			await enqueueFullTaskSync(connection.id, stateData.userId);
+			await scheduleRecurringTaskSync(connection.id, stateData.userId);
+
+			return {
+				ok: true,
+				data: {
+					connectionId: connection.id,
+					workspaceName: connection.externalWorkspaceName,
+				},
+			};
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] handleOAuthCallback error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
+	/* ── Sync connection (full import) ── */
+	async syncConnection(
+		userId: string,
+		connectionId: string,
+	): Promise<
+		| { ok: true; data: { imported: number; projects: number } }
+		| { ok: false; error: string; status: 400 | 404 | 500 }
+	> {
+		try {
+			const connection = await db.query.taskConnections.findFirst({
+				where: and(
+					eq(taskConnections.id, connectionId),
+					eq(taskConnections.userId, userId),
+				),
+			});
+
+			if (!connection) {
+				return { ok: false, error: "Connection not found", status: 404 };
+			}
+
+			if (!connection.accessToken) {
+				return { ok: false, error: "No access token", status: 400 };
+			}
+
+			const taskProvider = getTaskProvider(connection.provider);
+			if (!taskProvider) {
+				return {
+					ok: false,
+					error: `Unknown provider: ${connection.provider}`,
+					status: 400,
+				};
+			}
+
+			const accessToken = connection.accessToken;
+
+			// 1. Sync projects (teams in Linear)
+			const providerProjects = await taskProvider.listProjects(accessToken);
+			let projectCount = 0;
+			for (const pp of providerProjects) {
+				await db
+					.insert(taskProjects)
+					.values({
+						userId,
+						connectionId,
+						name: pp.name,
+						description: pp.description,
+						source: "external",
+						externalId: pp.externalId,
+						externalUrl: pp.url,
+						color: pp.color,
+					})
+					.onConflictDoUpdate({
+						target: [taskProjects.connectionId, taskProjects.externalId],
+						set: {
+							name: pp.name,
+							description: pp.description,
+							color: pp.color,
+						},
+					});
+				projectCount++;
+
+				// 2. Sync statuses for each project
+				const providerStatuses = await taskProvider.listStatuses(
+					accessToken,
+					pp.externalId,
+				);
+				for (const ps of providerStatuses) {
+					await db
+						.insert(taskStatuses)
+						.values({
+							connectionId,
+							name: ps.name,
+							statusKey: ps.statusKey,
+							externalId: ps.externalId,
+							position: ps.position,
+						})
+						.onConflictDoUpdate({
+							target: [taskStatuses.connectionId, taskStatuses.externalId],
+							set: {
+								name: ps.name,
+								statusKey: ps.statusKey,
+								position: ps.position,
+							},
+						});
+				}
+			}
+
+			// 3. Sync tasks for each project
+			let importedCount = 0;
+
+			// Get local project lookup
+			const localProjects = await db.query.taskProjects.findMany({
+				where: eq(taskProjects.connectionId, connectionId),
+			});
+			const projectMap = new Map(
+				localProjects.map((p) => [p.externalId, p.id]),
+			);
+
+			for (const pp of providerProjects) {
+				let cursor: string | undefined;
+				let hasMore = true;
+
+				while (hasMore) {
+					const result = await taskProvider.listTasks(
+						accessToken,
+						pp.externalId,
+						cursor,
+					);
+
+					for (const task of result.tasks) {
+						const localProjectId = projectMap.get(task.projectExternalId ?? "");
+
+						await db
+							.insert(tasks)
+							.values({
+								userId,
+								connectionId,
+								projectId: localProjectId ?? null,
+								source: "external",
+								externalId: task.externalId,
+								externalUrl: task.url,
+								title: task.title,
+								description: task.description,
+								statusKey: task.statusKey,
+								priority: task.priority,
+								dueAt: task.dueAt,
+								externalAssigneeRef: task.assigneeExternalId,
+								externalAssigneeName: task.assigneeName,
+								completedAt: task.completedAt,
+								lastSyncedAt: new Date(),
+								lastProviderUpdatedAt: task.updatedAt,
+							})
+							.onConflictDoUpdate({
+								target: [tasks.connectionId, tasks.externalId],
+								set: {
+									title: task.title,
+									description: task.description,
+									statusKey: task.statusKey,
+									priority: task.priority,
+									dueAt: task.dueAt,
+									externalUrl: task.url,
+									externalAssigneeRef: task.assigneeExternalId,
+									externalAssigneeName: task.assigneeName,
+									completedAt: task.completedAt,
+									lastSyncedAt: new Date(),
+									lastProviderUpdatedAt: task.updatedAt,
+									projectId: localProjectId ?? null,
+								},
+							});
+
+						importedCount++;
+					}
+
+					hasMore = result.hasMore;
+					cursor = result.cursor ?? undefined;
+				}
+
+				// Update sync state cursor
+				await db
+					.insert(taskSyncState)
+					.values({
+						connectionId,
+						projectExternalId: pp.externalId,
+						cursor: cursor ?? null,
+						lastSyncedAt: new Date(),
+					})
+					.onConflictDoUpdate({
+						target: [
+							taskSyncState.connectionId,
+							taskSyncState.projectExternalId,
+						],
+						set: {
+							cursor: cursor ?? null,
+							lastSyncedAt: new Date(),
+						},
+					});
+			}
+
+			// Update connection lastSyncAt
+			await db
+				.update(taskConnections)
+				.set({ lastSyncAt: new Date(), syncError: null })
+				.where(eq(taskConnections.id, connectionId));
+
+			// Log the sync
+			await db.insert(taskActivityLog).values({
+				userId,
+				connectionId,
+				action: "synced",
+				details: { imported: importedCount, projects: projectCount },
+			});
+
+			return {
+				ok: true,
+				data: { imported: importedCount, projects: projectCount },
+			};
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] syncConnection error:", message);
+
+			// Record sync error
+			await db
+				.update(taskConnections)
+				.set({ syncError: message })
+				.where(eq(taskConnections.id, connectionId))
+				.catch(() => {});
+
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
+	/* ── Disconnect provider ── */
+	async disconnectProvider(
+		userId: string,
+		connectionId: string,
+	): Promise<
+		| { ok: true; data: { message: string } }
+		| { ok: false; error: string; status: 404 | 500 }
+	> {
+		try {
+			const connection = await db.query.taskConnections.findFirst({
+				where: and(
+					eq(taskConnections.id, connectionId),
+					eq(taskConnections.userId, userId),
+				),
+			});
+
+			if (!connection) {
+				return { ok: false, error: "Connection not found", status: 404 };
+			}
+
+			await db
+				.update(taskConnections)
+				.set({ status: "disconnected", accessToken: null, refreshToken: null })
+				.where(eq(taskConnections.id, connectionId));
+
+			return { ok: true, data: { message: "Connection disconnected" } };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] disconnectProvider error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
 	/* ── List connections ── */
 	async listConnections(userId: string): Promise<ConnectionListResult> {
 		try {
@@ -818,6 +1197,65 @@ export const taskService = {
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Unknown error";
 			console.error("[tasks] listConnections error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
+
+	/* ── Handle webhook ── */
+	async handleWebhook(
+		provider: string,
+		headers: Record<string, string>,
+		body: string,
+	): Promise<
+		| { ok: true; data: { message: string } }
+		| { ok: false; error: string; status: 400 | 500 }
+	> {
+		try {
+			const taskProvider = getTaskProvider(provider);
+			if (!taskProvider) {
+				return {
+					ok: false,
+					error: `Unknown provider: ${provider}`,
+					status: 400,
+				};
+			}
+
+			if (!taskProvider.verifyWebhook(headers, body)) {
+				return { ok: false, error: "Invalid webhook signature", status: 400 };
+			}
+
+			const event = taskProvider.parseWebhookEvent(headers, body);
+			if (!event) {
+				// Not a relevant event type, acknowledge silently
+				return { ok: true, data: { message: "Ignored" } };
+			}
+
+			// Find the connection for this provider that has this task's project
+			// We look for any active connection of this provider type
+			const connections = await db.query.taskConnections.findMany({
+				where: and(
+					eq(taskConnections.provider, provider as "linear" | "jira"),
+					eq(taskConnections.status, "active"),
+				),
+			});
+
+			// Enqueue the webhook event for each matching connection
+			for (const conn of connections) {
+				await enqueueTaskWebhookEvent(conn.id, conn.userId, {
+					action: event.action,
+					taskExternalId: event.taskExternalId,
+					projectExternalId: event.projectExternalId,
+					data: event.data as Record<string, unknown> | null,
+				});
+			}
+
+			return {
+				ok: true,
+				data: { message: `Processed ${event.action} event` },
+			};
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] handleWebhook error:", message);
 			return { ok: false, error: message, status: 500 };
 		}
 	},
