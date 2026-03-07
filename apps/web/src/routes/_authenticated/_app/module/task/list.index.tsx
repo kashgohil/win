@@ -286,7 +286,16 @@ function TaskListPage() {
 								</p>
 							</div>
 						) : view === "board" ? (
-							<BoardView tasks={allTasks} onTaskClick={setSelectedTaskId} />
+							<BoardView
+								tasks={allTasks}
+								onTaskClick={setSelectedTaskId}
+								onStatusChange={(taskId, newStatus) => {
+									updateTask.mutate({
+										id: taskId,
+										statusKey: newStatus as Task["statusKey"],
+									});
+								}}
+							/>
 						) : (
 							<div>
 								{allTasks.map((task, i) => (
