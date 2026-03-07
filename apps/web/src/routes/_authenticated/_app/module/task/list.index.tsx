@@ -432,9 +432,14 @@ function TaskListPage() {
 									<Check className="size-4 text-foreground/40" />
 								</div>
 								<p className="font-serif text-[15px] text-grey-2 italic text-center">
-									{statusKey
-										? "No tasks match this filter."
-										: "No tasks yet — add one above."}
+									{search.q
+										? "No tasks match your search."
+										: statusKey ||
+											  search.projectId ||
+											  search.priority ||
+											  search.due
+											? "No tasks match these filters."
+											: "No tasks yet — add one above."}
 								</p>
 							</div>
 						) : view === "board" ? (
@@ -503,6 +508,21 @@ function TaskListPage() {
 			{/* Bulk action bar */}
 			{selectedIds.size > 0 && (
 				<div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-foreground text-background rounded-lg px-4 py-2 shadow-lg">
+					<button
+						type="button"
+						onClick={() => {
+							if (selectedIds.size === allTasks.length) {
+								clearSelection();
+							} else {
+								setSelectedIds(new Set(allTasks.map((t) => t.id)));
+							}
+						}}
+						className="font-mono text-[11px] px-2 py-1 rounded hover:bg-background/20 transition-colors cursor-pointer"
+					>
+						{selectedIds.size === allTasks.length
+							? "Deselect all"
+							: "Select all"}
+					</button>
 					<span className="font-mono text-[11px]">
 						{selectedIds.size} selected
 					</span>
