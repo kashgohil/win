@@ -130,7 +130,7 @@ export function useProjects() {
 		queryFn: async () => {
 			const { data, error } = await api.tasks.projects.get();
 			if (error) throw new Error("Failed to load projects");
-			return data;
+			return data as Project[];
 		},
 	});
 }
