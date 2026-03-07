@@ -112,6 +112,44 @@ async function processFullSync(connectionId: string, userId: string) {
 			for (const task of result.tasks) {
 				const localProjectId = projectMap.get(task.projectExternalId ?? "");
 
+				// Check for conflict: if task exists locally with pending write-back
+				const existing = await db.query.tasks.findFirst({
+					where: and(
+						eq(tasks.connectionId, connectionId),
+						eq(tasks.externalId, task.externalId),
+					),
+					columns: {
+						id: true,
+						writeBackState: true,
+						updatedAt: true,
+					},
+				});
+
+				if (existing?.writeBackState === "pending") {
+					// Conflict: local changes pending, provider also changed
+					await db
+						.update(tasks)
+						.set({
+							writeBackState: "conflict",
+							lastSyncedAt: new Date(),
+							lastProviderUpdatedAt: task.updatedAt,
+						})
+						.where(eq(tasks.id, existing.id));
+
+					await db.insert(taskActivityLog).values({
+						userId,
+						taskId: existing.id,
+						connectionId,
+						action: "conflict_detected",
+						details: {
+							providerUpdatedAt: task.updatedAt.toISOString(),
+							localUpdatedAt: existing.updatedAt.toISOString(),
+						},
+					});
+					importedCount++;
+					continue;
+				}
+
 				await db
 					.insert(tasks)
 					.values({
@@ -247,6 +285,46 @@ async function processWebhookEvent(
 			),
 		});
 		localProjectId = project?.id ?? null;
+	}
+
+	// Check for conflict on update: if task has pending local changes
+	if (event.action === "updated") {
+		const existing = await db.query.tasks.findFirst({
+			where: and(
+				eq(tasks.connectionId, connectionId),
+				eq(tasks.externalId, event.taskExternalId),
+			),
+			columns: { id: true, writeBackState: true },
+		});
+
+		if (existing?.writeBackState === "pending") {
+			await db
+				.update(tasks)
+				.set({
+					writeBackState: "conflict",
+					lastSyncedAt: new Date(),
+					lastProviderUpdatedAt: data.updatedAt
+						? new Date(data.updatedAt)
+						: new Date(),
+				})
+				.where(eq(tasks.id, existing.id));
+
+			await db.insert(taskActivityLog).values({
+				userId,
+				taskId: existing.id,
+				connectionId,
+				action: "conflict_detected",
+				details: {
+					source: "webhook",
+					providerUpdatedAt: data.updatedAt,
+				},
+			});
+
+			console.log(
+				`[task-sync] Conflict detected for task ${event.taskExternalId}`,
+			);
+			return;
+		}
 	}
 
 	await db
