@@ -14,6 +14,7 @@ import {
 	parseTaskResponse,
 	projectDetailResponse,
 	projectListResponse,
+	suggestionsResponse,
 	syncResponse,
 	taskDetailResponse,
 	taskItemResponse,
@@ -71,6 +72,23 @@ export const tasksRoutes = new Elysia({
 				500: errorResponse,
 			},
 			detail: { tags: ["Tasks"], summary: "List tasks" },
+		},
+	)
+
+	.get(
+		"/suggestions",
+		async ({ user, set }) => {
+			const result = await taskService.getSuggestions(user.id);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			response: { 200: suggestionsResponse, 500: errorResponse },
+			detail: { tags: ["Tasks"], summary: "Get smart task suggestions" },
 		},
 	)
 

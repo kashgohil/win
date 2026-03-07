@@ -1512,4 +1512,108 @@ export const taskService = {
 			return { ok: false, error: message, status: 500 };
 		}
 	},
+
+	/* ── Smart suggestions ── */
+	async getSuggestions(userId: string): Promise<
+		| {
+				ok: true;
+				data: {
+					overdue: SerializedTask[];
+					dueToday: SerializedTask[];
+					highPriority: SerializedTask[];
+					recentlyUnsnoozed: SerializedTask[];
+				};
+		  }
+		| { ok: false; error: string; status: 500 }
+	> {
+		try {
+			const now = new Date();
+			const todayStart = new Date(
+				now.getFullYear(),
+				now.getMonth(),
+				now.getDate(),
+			);
+			const todayEnd = new Date(todayStart);
+			todayEnd.setDate(todayEnd.getDate() + 1);
+
+			const activeTasks = and(
+				eq(tasks.userId, userId),
+				sql`${tasks.statusKey} NOT IN ('done', 'cancelled')`,
+			);
+
+			const [overdueRows, dueTodayRows, highPriorityRows, unsnoozedRows] =
+				await Promise.all([
+					// Overdue
+					db.query.tasks.findMany({
+						where: and(activeTasks, lte(tasks.dueAt, now)),
+						orderBy: asc(tasks.dueAt),
+						limit: 5,
+						with: {
+							items: { orderBy: asc(taskItems.position) },
+							connection: true,
+						},
+					}),
+					// Due today
+					db.query.tasks.findMany({
+						where: and(
+							activeTasks,
+							gte(tasks.dueAt, todayStart),
+							lte(tasks.dueAt, todayEnd),
+						),
+						orderBy: desc(tasks.priorityScore),
+						limit: 5,
+						with: {
+							items: { orderBy: asc(taskItems.position) },
+							connection: true,
+						},
+					}),
+					// High priority (no due date, but high/urgent)
+					db.query.tasks.findMany({
+						where: and(
+							activeTasks,
+							sql`${tasks.priority} IN ('high', 'urgent')`,
+							sql`${tasks.dueAt} IS NULL`,
+						),
+						orderBy: desc(tasks.priorityScore),
+						limit: 5,
+						with: {
+							items: { orderBy: asc(taskItems.position) },
+							connection: true,
+						},
+					}),
+					// Recently unsnoozed (snoozed until past)
+					db.query.tasks.findMany({
+						where: and(activeTasks, lte(tasks.snoozedUntil, now)),
+						orderBy: desc(tasks.snoozedUntil),
+						limit: 5,
+						with: {
+							items: { orderBy: asc(taskItems.position) },
+							connection: true,
+						},
+					}),
+				]);
+
+			return {
+				ok: true,
+				data: {
+					overdue: overdueRows.map((r) =>
+						serializeTask(r, r.items, r.connection),
+					),
+					dueToday: dueTodayRows.map((r) =>
+						serializeTask(r, r.items, r.connection),
+					),
+					highPriority: highPriorityRows.map((r) =>
+						serializeTask(r, r.items, r.connection),
+					),
+					recentlyUnsnoozed: unsnoozedRows.map((r) =>
+						serializeTask(r, r.items, r.connection),
+					),
+				},
+			};
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] getSuggestions error:", message);
+			return { ok: false, error: message, status: 500 };
+		}
+	},
 };

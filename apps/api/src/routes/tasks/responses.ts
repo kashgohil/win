@@ -193,6 +193,13 @@ export const syncResponse = t.Object({
 
 /* ── Task parse ── */
 
+export const suggestionsResponse = t.Object({
+	overdue: t.Array(taskSchema),
+	dueToday: t.Array(taskSchema),
+	highPriority: t.Array(taskSchema),
+	recentlyUnsnoozed: t.Array(taskSchema),
+});
+
 export const parseTaskBody = t.Object({
 	input: t.String({ minLength: 1 }),
 });
