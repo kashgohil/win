@@ -2,10 +2,15 @@ import { KeyboardShortcutBar } from "@/components/mail/KeyboardShortcutBar";
 import ModulePage from "@/components/module/ModulePage";
 import { Button } from "@/components/ui/button";
 import {
+	useApplyTagSuggestion,
 	useContactModuleData,
+	useContactSuggestions,
 	useContactTags,
 	useDiscoverContacts,
+	useDismissMergeSuggestion,
 	useFollowUps,
+	useMergeContacts,
+	useTagSuggestions,
 } from "@/hooks/use-contacts";
 import type { BriefingStat, ModuleData, TriageItem } from "@/lib/module-data";
 import { MODULE_DATA } from "@/lib/module-data";
@@ -13,13 +18,17 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
 	ArrowRight,
 	Bell,
+	Check,
+	GitMerge,
+	Mail,
 	Search,
 	Star,
 	Tags,
 	UserPlus,
 	Users,
+	X,
 } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/_app/module/crm/")({
@@ -198,6 +207,12 @@ function CrmModule() {
 					{/* Stats bar */}
 					{moduleData && <StatsBar data={moduleData} />}
 
+					{/* Merge suggestions */}
+					<MergeSuggestions />
+
+					{/* Tag suggestions */}
+					<TagSuggestions />
+
 					{/* Tags overview */}
 					<TagsOverview />
 				</div>
@@ -306,6 +321,87 @@ function TagsOverview() {
 	);
 }
 
+/* ── Tag suggestions ── */
+
+function TagSuggestions() {
+	const { data: suggestions, isLoading } = useTagSuggestions();
+	const applyTag = useApplyTagSuggestion();
+	const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+
+	if (isLoading || !suggestions || suggestions.length === 0) return null;
+
+	const visible = suggestions.filter((s) => !dismissed.has(s.name));
+	if (visible.length === 0) return null;
+
+	return (
+		<div className="mt-6">
+			<h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 mb-3">
+				Suggested tags
+			</h3>
+			<div className="space-y-2">
+				{visible.map((suggestion) => (
+					<div
+						key={suggestion.name}
+						className="flex items-center justify-between rounded-lg border border-border/40 px-4 py-3"
+					>
+						<div className="flex-1 min-w-0">
+							<div className="flex items-center gap-2">
+								<Tags className="size-3.5 text-grey-3 shrink-0" />
+								<span className="font-body text-[14px] text-foreground">
+									{suggestion.name}
+								</span>
+								<span className="font-mono text-[10px] text-grey-3">
+									{suggestion.contactIds.length} contacts
+								</span>
+							</div>
+							<p className="mt-1 font-mono text-[11px] text-grey-3 truncate">
+								{suggestion.contacts.map((c) => c.name || c.email).join(", ")}
+							</p>
+						</div>
+						<div className="flex items-center gap-1.5 ml-3 shrink-0">
+							<Button
+								variant="ghost"
+								size="sm"
+								className="h-7 px-2 text-[12px]"
+								onClick={() =>
+									setDismissed((prev) => new Set(prev).add(suggestion.name))
+								}
+							>
+								<X className="size-3" />
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								className="h-7 px-3 text-[12px] gap-1.5"
+								disabled={applyTag.isPending}
+								onClick={() =>
+									applyTag.mutate(
+										{
+											name: suggestion.name,
+											contactIds: suggestion.contactIds,
+										},
+										{
+											onSuccess: () => {
+												toast.success(`Tag "${suggestion.name}" created`);
+												setDismissed((prev) =>
+													new Set(prev).add(suggestion.name),
+												);
+											},
+										},
+									)
+								}
+							>
+								<Check className="size-3" />
+								Apply
+							</Button>
+						</div>
+					</div>
+				))}
+			</div>
+		</div>
+	);
+}
+
 /* ── Header actions ── */
 
 function CrmHeaderActions() {
@@ -340,6 +436,236 @@ function CrmHeaderActions() {
 				<UserPlus className="size-3 mr-1" />
 				Discover
 			</Button>
+		</div>
+	);
+}
+
+/* ── Merge Suggestions ── */
+
+type MergeSuggestionContact = {
+	id: string;
+	name: string | null;
+	email: string;
+	company: string | null;
+	interactionCount: number;
+};
+
+function MergeSuggestions() {
+	const { data } = useContactSuggestions();
+	const mergeContacts = useMergeContacts();
+	const dismissSuggestion = useDismissMergeSuggestion();
+	const [confirmingMerge, setConfirmingMerge] = useState<{
+		a: MergeSuggestionContact;
+		b: MergeSuggestionContact;
+	} | null>(null);
+
+	const suggestions = data?.mergeSuggestions ?? [];
+
+	if (suggestions.length === 0) return null;
+
+	const handleMerge = (
+		primary: MergeSuggestionContact,
+		secondary: MergeSuggestionContact,
+	) => {
+		mergeContacts.mutate(
+			{
+				primaryContactId: primary.id,
+				mergeWithContactId: secondary.id,
+			},
+			{
+				onSuccess: () => {
+					toast.success("Contacts merged", {
+						description: `Merged into ${primary.name ?? primary.email}`,
+					});
+					setConfirmingMerge(null);
+				},
+				onError: () => toast.error("Failed to merge contacts"),
+			},
+		);
+	};
+
+	const handleDismiss = (
+		a: MergeSuggestionContact,
+		b: MergeSuggestionContact,
+	) => {
+		dismissSuggestion.mutate(
+			{ contactIdA: a.id, contactIdB: b.id },
+			{
+				onError: () => toast.error("Failed to dismiss suggestion"),
+			},
+		);
+	};
+
+	return (
+		<div className="mt-8">
+			<h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 mb-3">
+				Possible duplicates
+			</h3>
+			<div className="space-y-2">
+				{suggestions.map((s) => {
+					const isConfirming =
+						confirmingMerge &&
+						((confirmingMerge.a.id === s.contactA.id &&
+							confirmingMerge.b.id === s.contactB.id) ||
+							(confirmingMerge.a.id === s.contactB.id &&
+								confirmingMerge.b.id === s.contactA.id));
+
+					return (
+						<div
+							key={`${s.contactA.id}-${s.contactB.id}`}
+							className="rounded-lg border border-border/40 px-4 py-3.5"
+						>
+							{isConfirming ? (
+								<MergeConfirmation
+									primary={confirmingMerge.a}
+									secondary={confirmingMerge.b}
+									onConfirm={() =>
+										handleMerge(confirmingMerge.a, confirmingMerge.b)
+									}
+									onCancel={() => setConfirmingMerge(null)}
+									isPending={mergeContacts.isPending}
+								/>
+							) : (
+								<>
+									<div className="flex items-center gap-2 mb-2">
+										<GitMerge className="size-3.5 text-grey-3" />
+										<span className="font-mono text-[10px] text-grey-3 uppercase tracking-[0.08em]">
+											{s.reason}
+										</span>
+									</div>
+									<div className="grid grid-cols-2 gap-3">
+										<ContactMiniCard contact={s.contactA} />
+										<ContactMiniCard contact={s.contactB} />
+									</div>
+									<div className="flex items-center gap-2 mt-3">
+										<Button
+											size="sm"
+											className="font-mono text-[11px] tracking-[0.02em] h-7 px-3 bg-foreground text-background hover:bg-foreground/90"
+											onClick={() =>
+												setConfirmingMerge({
+													a:
+														s.contactA.interactionCount >=
+														s.contactB.interactionCount
+															? s.contactA
+															: s.contactB,
+													b:
+														s.contactA.interactionCount >=
+														s.contactB.interactionCount
+															? s.contactB
+															: s.contactA,
+												})
+											}
+										>
+											<GitMerge className="size-3 mr-1" />
+											Merge
+										</Button>
+										<Button
+											variant="ghost"
+											size="sm"
+											className="font-mono text-[11px] tracking-[0.02em] h-7 px-3 text-grey-3"
+											onClick={() => handleDismiss(s.contactA, s.contactB)}
+											disabled={dismissSuggestion.isPending}
+										>
+											<X className="size-3 mr-1" />
+											Not a match
+										</Button>
+									</div>
+								</>
+							)}
+						</div>
+					);
+				})}
+			</div>
+		</div>
+	);
+}
+
+function ContactMiniCard({ contact }: { contact: MergeSuggestionContact }) {
+	return (
+		<div className="rounded-md border border-border/20 bg-secondary/5 px-3 py-2.5">
+			<div className="font-body text-[13px] text-foreground tracking-[0.01em] truncate">
+				{contact.name ?? "Unknown"}
+			</div>
+			<div className="flex items-center gap-1 mt-0.5">
+				<Mail className="size-3 text-grey-3 shrink-0" />
+				<span className="font-mono text-[11px] text-grey-2 truncate">
+					{contact.email}
+				</span>
+			</div>
+			{contact.company && (
+				<div className="font-mono text-[10px] text-grey-3 mt-0.5 truncate">
+					{contact.company}
+				</div>
+			)}
+			<div className="font-mono text-[10px] text-grey-3 mt-1">
+				{contact.interactionCount} interaction
+				{contact.interactionCount !== 1 ? "s" : ""}
+			</div>
+		</div>
+	);
+}
+
+function MergeConfirmation({
+	primary,
+	secondary,
+	onConfirm,
+	onCancel,
+	isPending,
+}: {
+	primary: MergeSuggestionContact;
+	secondary: MergeSuggestionContact;
+	onConfirm: () => void;
+	onCancel: () => void;
+	isPending: boolean;
+}) {
+	return (
+		<div>
+			<p className="font-body text-[13px] text-foreground mb-3">
+				Merge{" "}
+				<span className="font-medium">{secondary.name ?? secondary.email}</span>{" "}
+				into{" "}
+				<span className="font-medium">{primary.name ?? primary.email}</span>?
+			</p>
+			<div className="rounded-md border border-border/20 bg-secondary/5 px-3 py-2.5 mb-3">
+				<div className="font-mono text-[10px] text-grey-3 uppercase tracking-[0.08em] mb-1.5">
+					Result
+				</div>
+				<div className="font-body text-[13px] text-foreground">
+					{primary.name ?? secondary.name ?? "Unknown"}
+				</div>
+				<div className="font-mono text-[11px] text-grey-2 mt-0.5">
+					{primary.email}
+					{secondary.email !== primary.email && `, ${secondary.email}`}
+				</div>
+				{(primary.company || secondary.company) && (
+					<div className="font-mono text-[10px] text-grey-3 mt-0.5">
+						{primary.company ?? secondary.company}
+					</div>
+				)}
+				<div className="font-mono text-[10px] text-grey-3 mt-1">
+					{primary.interactionCount + secondary.interactionCount} total
+					interactions
+				</div>
+			</div>
+			<div className="flex items-center gap-2">
+				<Button
+					size="sm"
+					className="font-mono text-[11px] tracking-[0.02em] h-7 px-3 bg-foreground text-background hover:bg-foreground/90"
+					onClick={onConfirm}
+					disabled={isPending}
+				>
+					{isPending ? "Merging..." : "Confirm merge"}
+				</Button>
+				<Button
+					variant="ghost"
+					size="sm"
+					className="font-mono text-[11px] tracking-[0.02em] h-7 px-3 text-grey-3"
+					onClick={onCancel}
+					disabled={isPending}
+				>
+					Cancel
+				</Button>
+			</div>
 		</div>
 	);
 }
