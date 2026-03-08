@@ -1,5 +1,6 @@
 import {
 	and,
+	calendarEvents,
 	contactInteractions,
 	contacts,
 	db,
@@ -295,7 +296,74 @@ async function processFullScan(userId: string) {
 	}
 
 	console.log(
-		`[contact-discovery] Full scan complete for user ${userId}: ${totalContacts} candidates processed`,
+		`[contact-discovery] Email scan complete: ${totalContacts} candidates`,
+	);
+
+	// Process calendar events in batches
+	let eventOffset = 0;
+	let totalEventContacts = 0;
+
+	while (true) {
+		const batch = await db
+			.select({
+				id: calendarEvents.id,
+				title: calendarEvents.title,
+				organizer: calendarEvents.organizer,
+				attendees: calendarEvents.attendees,
+				startTime: calendarEvents.startTime,
+				status: calendarEvents.status,
+			})
+			.from(calendarEvents)
+			.where(eq(calendarEvents.userId, userId))
+			.orderBy(calendarEvents.startTime)
+			.limit(BATCH_SIZE)
+			.offset(eventOffset);
+
+		if (batch.length === 0) break;
+
+		const candidates: ContactCandidate[] = [];
+
+		for (const event of batch) {
+			if (event.status === "cancelled") continue;
+			const occurredAt = event.startTime;
+			const title = event.title ?? "(no title)";
+
+			if (event.organizer?.email) {
+				candidates.push({
+					email: event.organizer.email,
+					name: event.organizer.displayName ?? null,
+					interactionType: "meeting",
+					interactionTitle: `Meeting: ${title}`,
+					occurredAt,
+					referenceId: event.id,
+				});
+			}
+
+			for (const attendee of event.attendees ?? []) {
+				if (!attendee.email) continue;
+				if (attendee.responseStatus === "declined") continue;
+				candidates.push({
+					email: attendee.email,
+					name: attendee.displayName ?? null,
+					interactionType: "meeting",
+					interactionTitle: `Meeting: ${title}`,
+					occurredAt,
+					referenceId: event.id,
+				});
+			}
+		}
+
+		await upsertContacts(userId, candidates);
+		totalEventContacts += candidates.length;
+		eventOffset += BATCH_SIZE;
+
+		console.log(
+			`[contact-discovery] Processed ${eventOffset} events (${totalEventContacts} contact candidates)`,
+		);
+	}
+
+	console.log(
+		`[contact-discovery] Full scan complete for user ${userId}: ${totalContacts} email + ${totalEventContacts} event candidates`,
 	);
 }
 
@@ -368,6 +436,70 @@ async function processExtractFromEmails(userId: string, emailIds: string[]) {
 	}
 }
 
+/* ── Extract from specific calendar event IDs ── */
+
+async function processExtractFromEvents(userId: string, eventIds: string[]) {
+	if (eventIds.length === 0) return;
+
+	const batch = await db
+		.select({
+			id: calendarEvents.id,
+			title: calendarEvents.title,
+			organizer: calendarEvents.organizer,
+			attendees: calendarEvents.attendees,
+			startTime: calendarEvents.startTime,
+			status: calendarEvents.status,
+		})
+		.from(calendarEvents)
+		.where(
+			and(
+				eq(calendarEvents.userId, userId),
+				inArray(calendarEvents.id, eventIds),
+			),
+		);
+
+	const candidates: ContactCandidate[] = [];
+
+	for (const event of batch) {
+		if (event.status === "cancelled") continue;
+		const occurredAt = event.startTime;
+		const title = event.title ?? "(no title)";
+
+		// Organizer
+		if (event.organizer?.email) {
+			candidates.push({
+				email: event.organizer.email,
+				name: event.organizer.displayName ?? null,
+				interactionType: "meeting",
+				interactionTitle: `Meeting: ${title}`,
+				occurredAt,
+				referenceId: event.id,
+			});
+		}
+
+		// Attendees
+		for (const attendee of event.attendees ?? []) {
+			if (!attendee.email) continue;
+			if (attendee.responseStatus === "declined") continue;
+			candidates.push({
+				email: attendee.email,
+				name: attendee.displayName ?? null,
+				interactionType: "meeting",
+				interactionTitle: `Meeting: ${title}`,
+				occurredAt,
+				referenceId: event.id,
+			});
+		}
+	}
+
+	if (candidates.length > 0) {
+		await upsertContacts(userId, candidates);
+		console.log(
+			`[contact-discovery] Extracted ${candidates.length} contact candidates from ${eventIds.length} events`,
+		);
+	}
+}
+
 /* ── Worker ── */
 
 export function createContactDiscoveryWorker() {
@@ -382,10 +514,7 @@ export function createContactDiscoveryWorker() {
 					await processExtractFromEmails(job.data.userId, job.data.emailIds);
 					break;
 				case "extract-from-events":
-					// Implemented in slice 3
-					console.log(
-						"[contact-discovery] extract-from-events not yet implemented",
-					);
+					await processExtractFromEvents(job.data.userId, job.data.eventIds);
 					break;
 			}
 		},
