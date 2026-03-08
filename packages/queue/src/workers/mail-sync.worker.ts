@@ -11,6 +11,7 @@ import type { SyncedEmail } from "@wingmnn/mail";
 import { getProvider, getValidAccessToken } from "@wingmnn/mail";
 import { Worker } from "bullmq";
 import { connection } from "../connection";
+import { enqueueContactExtractFromEmails } from "../jobs/contact-discovery";
 import { enqueueClassify } from "../jobs/mail-ai";
 import type { MailSyncJobData } from "../jobs/mail-sync";
 
@@ -185,6 +186,7 @@ async function processMailSync(data: MailSyncJobData): Promise<void> {
 
 				if (insertedIds.length > 0) {
 					await enqueueClassify(insertedIds, data.userId);
+					await enqueueContactExtractFromEmails(data.userId, insertedIds);
 				}
 				break;
 			}
@@ -233,6 +235,7 @@ async function processMailSync(data: MailSyncJobData): Promise<void> {
 
 				if (insertedIds.length > 0) {
 					await enqueueClassify(insertedIds, data.userId);
+					await enqueueContactExtractFromEmails(data.userId, insertedIds);
 				}
 				break;
 			}
@@ -268,6 +271,7 @@ async function processMailSync(data: MailSyncJobData): Promise<void> {
 
 				if (insertedIds.length > 0) {
 					await enqueueClassify(insertedIds, data.userId);
+					await enqueueContactExtractFromEmails(data.userId, insertedIds);
 				}
 				break;
 			}
