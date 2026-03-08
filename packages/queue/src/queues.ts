@@ -2,6 +2,7 @@ import { Queue } from "bullmq";
 import { connection } from "./connection";
 import type { CalendarSyncJobData } from "./jobs/calendar-sync";
 import type { ContactDiscoveryJobData } from "./jobs/contact-discovery";
+import type { ContactMeetingPrepJobData } from "./jobs/contact-meeting-prep";
 import type { ContactScoreJobData } from "./jobs/contact-score";
 import type { MailAiJobData } from "./jobs/mail-ai";
 import type { MailAutoHandleJobData } from "./jobs/mail-autohandle";
@@ -137,6 +138,19 @@ export const contactDiscoveryQueue = new Queue<ContactDiscoveryJobData>(
 			backoff: { type: "exponential", delay: 5000 },
 			removeOnComplete: { count: 1000 },
 			removeOnFail: { count: 5000 },
+		},
+	},
+);
+
+export const contactMeetingPrepQueue = new Queue<ContactMeetingPrepJobData>(
+	"contact-meeting-prep",
+	{
+		connection,
+		defaultJobOptions: {
+			attempts: 2,
+			backoff: { type: "exponential", delay: 5000 },
+			removeOnComplete: { count: 100 },
+			removeOnFail: { count: 500 },
 		},
 	},
 );
