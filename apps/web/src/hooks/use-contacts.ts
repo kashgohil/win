@@ -584,6 +584,96 @@ export function useSnoozeFollowUp() {
 	});
 }
 
+/* ── Merge ── */
+
+export function useMergeContacts() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			primaryContactId,
+			mergeWithContactId,
+		}: {
+			primaryContactId: string;
+			mergeWithContactId: string;
+		}) => {
+			const { data, error } = await api
+				.contacts({ contactId: primaryContactId })
+				.merge.post({ mergeWithContactId });
+			if (error) throw new Error("Failed to merge contacts");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: contactKeys.all });
+		},
+	});
+}
+
+export function useDismissMergeSuggestion() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			contactIdA,
+			contactIdB,
+		}: {
+			contactIdA: string;
+			contactIdB: string;
+		}) => {
+			const { data, error } = await api.contacts.suggestions.dismiss.post({
+				contactIdA,
+				contactIdB,
+			});
+			if (error) throw new Error("Failed to dismiss suggestion");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: contactKeys.suggestions(),
+			});
+		},
+	});
+}
+
+/* ── Tag suggestions ── */
+
+export function useTagSuggestions() {
+	return useQuery({
+		queryKey: [...contactKeys.all, "tag-suggestions"] as const,
+		queryFn: async () => {
+			const { data, error } = await api.contacts["tag-suggestions"].get();
+			if (error) throw new Error("Failed to load tag suggestions");
+			return data;
+		},
+		staleTime: 5 * 60_000,
+	});
+}
+
+export function useApplyTagSuggestion() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (body: {
+			name: string;
+			contactIds: string[];
+			color?: string;
+		}) => {
+			const { data, error } =
+				await api.contacts["tag-suggestions"].apply.post(body);
+			if (error) throw new Error("Failed to apply tag suggestion");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: [...contactKeys.all, "tag-suggestions"],
+			});
+			queryClient.invalidateQueries({
+				queryKey: contactKeys.tags(),
+			});
+		},
+	});
+}
+
 /* ── Discovery ── */
 
 export function useDiscoverContacts() {
