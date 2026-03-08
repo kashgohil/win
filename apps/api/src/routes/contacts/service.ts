@@ -3,6 +3,7 @@ import {
 	calendarEvents,
 	contactFollowUps,
 	contactInteractions,
+	contactMergeDismissals,
 	contacts,
 	contactTagAssignments,
 	contactTags,
@@ -1072,6 +1073,7 @@ async function listFollowUps(
 			type: string;
 			title: string;
 			context: string | null;
+			sourceEmailId: string | null;
 			dueAt: string | null;
 			status: string;
 			snoozedUntil: string | null;
@@ -1108,6 +1110,7 @@ async function listFollowUps(
 					type: contactFollowUps.type,
 					title: contactFollowUps.title,
 					context: contactFollowUps.context,
+					sourceEmailId: contactFollowUps.sourceEmailId,
 					dueAt: contactFollowUps.dueAt,
 					status: contactFollowUps.status,
 					snoozedUntil: contactFollowUps.snoozedUntil,
@@ -1138,6 +1141,7 @@ async function listFollowUps(
 					type: f.type,
 					title: f.title,
 					context: f.context,
+					sourceEmailId: f.sourceEmailId ?? null,
 					dueAt: f.dueAt?.toISOString() ?? null,
 					status: f.status,
 					snoozedUntil: f.snoozedUntil?.toISOString() ?? null,
@@ -1359,8 +1363,20 @@ async function getModuleData(userId: string): Promise<
 async function getSuggestions(userId: string): Promise<
 	ServiceResult<{
 		mergeSuggestions: {
-			contactA: { id: string; name: string | null; email: string };
-			contactB: { id: string; name: string | null; email: string };
+			contactA: {
+				id: string;
+				name: string | null;
+				email: string;
+				company: string | null;
+				interactionCount: number;
+			};
+			contactB: {
+				id: string;
+				name: string | null;
+				email: string;
+				company: string | null;
+				interactionCount: number;
+			};
 			reason: string;
 		}[];
 		newContactsThisWeek: number;
@@ -1369,33 +1385,154 @@ async function getSuggestions(userId: string): Promise<
 	try {
 		const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-		// Find potential duplicates: same name, different email
-		const dupesByName = await db.execute<{
+		// Get dismissed pairs to exclude
+		const dismissed = await db
+			.select({
+				a: contactMergeDismissals.contactIdA,
+				b: contactMergeDismissals.contactIdB,
+			})
+			.from(contactMergeDismissals)
+			.where(eq(contactMergeDismissals.userId, userId));
+
+		const dismissedPairs = new Set(
+			dismissed.flatMap((d) => [`${d.a}:${d.b}`, `${d.b}:${d.a}`]),
+		);
+
+		type MergeSuggestion = {
+			contactA: {
+				id: string;
+				name: string | null;
+				email: string;
+				company: string | null;
+				interactionCount: number;
+			};
+			contactB: {
+				id: string;
+				name: string | null;
+				email: string;
+				company: string | null;
+				interactionCount: number;
+			};
+			reason: string;
+		};
+
+		const suggestions: MergeSuggestion[] = [];
+		const seenPairs = new Set<string>();
+
+		const addSuggestion = (
+			r: {
+				id1: string;
+				name1: string | null;
+				email1: string;
+				company1: string | null;
+				count1: number;
+				id2: string;
+				name2: string | null;
+				email2: string;
+				company2: string | null;
+				count2: number;
+			},
+			reason: string,
+		) => {
+			const key = r.id1 < r.id2 ? `${r.id1}:${r.id2}` : `${r.id2}:${r.id1}`;
+			if (seenPairs.has(key) || dismissedPairs.has(key)) return;
+			seenPairs.add(key);
+			suggestions.push({
+				contactA: {
+					id: r.id1,
+					name: r.name1,
+					email: r.email1,
+					company: r.company1,
+					interactionCount: r.count1,
+				},
+				contactB: {
+					id: r.id2,
+					name: r.name2,
+					email: r.email2,
+					company: r.company2,
+					interactionCount: r.count2,
+				},
+				reason,
+			});
+		};
+
+		type DupeRow = {
 			id1: string;
-			name1: string;
+			name1: string | null;
 			email1: string;
+			company1: string | null;
+			count1: number;
 			id2: string;
-			name2: string;
+			name2: string | null;
 			email2: string;
-		}>(sql`
+			company2: string | null;
+			count2: number;
+		};
+
+		// 1. Same name, different email
+		const dupesByName = (await db.execute(sql`
 			SELECT a.id AS id1, a.name AS name1, a.primary_email AS email1,
-			       b.id AS id2, b.name AS name2, b.primary_email AS email2
+			       a.company AS company1, a.interaction_count AS count1,
+			       b.id AS id2, b.name AS name2, b.primary_email AS email2,
+			       b.company AS company2, b.interaction_count AS count2
 			FROM contacts a
 			JOIN contacts b ON a.user_id = b.user_id
-			  AND lower(a.name) = lower(b.name)
+			  AND lower(trim(a.name)) = lower(trim(b.name))
 			  AND a.id < b.id
-			  AND a.name IS NOT NULL
-			  AND length(a.name) > 2
+			  AND a.name IS NOT NULL AND b.name IS NOT NULL
+			  AND length(trim(a.name)) > 2
 			WHERE a.user_id = ${userId}
 			  AND a.archived = false AND b.archived = false
 			LIMIT 10
-		`);
+		`)) as unknown as DupeRow[];
 
-		const mergeSuggestions = (dupesByName ?? []).map((r) => ({
-			contactA: { id: r.id1, name: r.name1, email: r.email1 },
-			contactB: { id: r.id2, name: r.name2, email: r.email2 },
-			reason: "Same name, different email address",
-		}));
+		for (const r of dupesByName ?? []) {
+			addSuggestion(r, "Same name, different email address");
+		}
+
+		// 2. Same email domain + similar name (fuzzy match)
+		const dupesByDomain = (await db.execute(sql`
+			SELECT a.id AS id1, a.name AS name1, a.primary_email AS email1,
+			       a.company AS company1, a.interaction_count AS count1,
+			       b.id AS id2, b.name AS name2, b.primary_email AS email2,
+			       b.company AS company2, b.interaction_count AS count2
+			FROM contacts a
+			JOIN contacts b ON a.user_id = b.user_id
+			  AND a.id < b.id
+			  AND split_part(a.primary_email, '@', 2) = split_part(b.primary_email, '@', 2)
+			  AND a.primary_email != b.primary_email
+			  AND a.name IS NOT NULL AND b.name IS NOT NULL
+			  AND similarity(lower(a.name), lower(b.name)) > 0.4
+			WHERE a.user_id = ${userId}
+			  AND a.archived = false AND b.archived = false
+			LIMIT 10
+		`)) as unknown as DupeRow[];
+
+		for (const r of dupesByDomain ?? []) {
+			addSuggestion(r, "Same domain with similar name");
+		}
+
+		// 3. One contact's email appears in the other's additionalEmails
+		const dupesByAdditional = (await db.execute(sql`
+			SELECT a.id AS id1, a.name AS name1, a.primary_email AS email1,
+			       a.company AS company1, a.interaction_count AS count1,
+			       b.id AS id2, b.name AS name2, b.primary_email AS email2,
+			       b.company AS company2, b.interaction_count AS count2
+			FROM contacts a
+			JOIN contacts b ON a.user_id = b.user_id
+			  AND a.id < b.id
+			  AND (
+			    a.primary_email = ANY(b.additional_emails)
+			    OR b.primary_email = ANY(a.additional_emails)
+			  )
+			WHERE a.user_id = ${userId}
+			  AND a.archived = false AND b.archived = false
+			LIMIT 10
+		`)) as unknown as DupeRow[];
+
+		for (const r of dupesByAdditional ?? []) {
+			addSuggestion(r, "Shared email address");
+		}
 
 		// New contacts this week
 		const newResult = await db
@@ -1408,7 +1545,7 @@ async function getSuggestions(userId: string): Promise<
 		return {
 			ok: true,
 			data: {
-				mergeSuggestions,
+				mergeSuggestions: suggestions.slice(0, 10),
 				newContactsThisWeek: newResult[0]?.count ?? 0,
 			},
 		};
@@ -1416,6 +1553,186 @@ async function getSuggestions(userId: string): Promise<
 		const message =
 			err instanceof Error ? err.message : "Failed to get suggestions";
 		console.error("[contacts] getSuggestions error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Merge Contacts ── */
+
+async function mergeContacts(
+	userId: string,
+	primaryContactId: string,
+	mergeWithContactId: string,
+): Promise<ServiceResult<{ message: string }>> {
+	try {
+		if (primaryContactId === mergeWithContactId) {
+			return {
+				ok: false,
+				error: "Cannot merge a contact with itself",
+				status: 400,
+			};
+		}
+
+		// Verify both contacts belong to the user
+		const [primary, secondary] = await Promise.all([
+			db.query.contacts.findFirst({
+				where: and(
+					eq(contacts.id, primaryContactId),
+					eq(contacts.userId, userId),
+				),
+			}),
+			db.query.contacts.findFirst({
+				where: and(
+					eq(contacts.id, mergeWithContactId),
+					eq(contacts.userId, userId),
+				),
+			}),
+		]);
+
+		if (!primary || !secondary) {
+			return {
+				ok: false,
+				error: "One or both contacts not found",
+				status: 404,
+			};
+		}
+
+		// Merge into primary contact:
+		// - Collect all unique emails
+		const allEmails = new Set([
+			primary.primaryEmail,
+			...primary.additionalEmails,
+			secondary.primaryEmail,
+			...secondary.additionalEmails,
+		]);
+		allEmails.delete(primary.primaryEmail); // remove primary from additional
+		const additionalEmails = Array.from(allEmails);
+
+		// - Pick best values (prefer primary, fall back to secondary)
+		const mergedName = primary.name || secondary.name;
+		const mergedCompany = primary.company || secondary.company;
+		const mergedJobTitle = primary.jobTitle || secondary.jobTitle;
+		const mergedPhone = primary.phone || secondary.phone;
+		const mergedAvatarUrl = primary.avatarUrl || secondary.avatarUrl;
+		const mergedNotes = [primary.notes, secondary.notes]
+			.filter(Boolean)
+			.join("\n\n");
+		const mergedStarred = primary.starred || secondary.starred;
+		const mergedInteractionCount =
+			primary.interactionCount + secondary.interactionCount;
+		const mergedScore = Math.max(
+			primary.relationshipScore,
+			secondary.relationshipScore,
+		);
+		const mergedLastInteraction =
+			primary.lastInteractionAt && secondary.lastInteractionAt
+				? primary.lastInteractionAt > secondary.lastInteractionAt
+					? primary.lastInteractionAt
+					: secondary.lastInteractionAt
+				: primary.lastInteractionAt || secondary.lastInteractionAt;
+
+		// Update primary contact with merged data
+		await db
+			.update(contacts)
+			.set({
+				additionalEmails,
+				name: mergedName,
+				company: mergedCompany,
+				jobTitle: mergedJobTitle,
+				phone: mergedPhone,
+				avatarUrl: mergedAvatarUrl,
+				notes: mergedNotes || null,
+				starred: mergedStarred,
+				interactionCount: mergedInteractionCount,
+				relationshipScore: mergedScore,
+				lastInteractionAt: mergedLastInteraction,
+			})
+			.where(eq(contacts.id, primaryContactId));
+
+		// Reassign interactions from secondary to primary
+		await db
+			.update(contactInteractions)
+			.set({ contactId: primaryContactId })
+			.where(eq(contactInteractions.contactId, mergeWithContactId));
+
+		// Reassign follow-ups from secondary to primary
+		await db
+			.update(contactFollowUps)
+			.set({ contactId: primaryContactId })
+			.where(eq(contactFollowUps.contactId, mergeWithContactId));
+
+		// Merge tags: get secondary's tags and assign to primary (skip duplicates)
+		const primaryTags = await db
+			.select({ tagId: contactTagAssignments.tagId })
+			.from(contactTagAssignments)
+			.where(eq(contactTagAssignments.contactId, primaryContactId));
+		const primaryTagIds = new Set(primaryTags.map((t) => t.tagId));
+
+		const secondaryTags = await db
+			.select({ tagId: contactTagAssignments.tagId })
+			.from(contactTagAssignments)
+			.where(eq(contactTagAssignments.contactId, mergeWithContactId));
+
+		const newTags = secondaryTags.filter((t) => !primaryTagIds.has(t.tagId));
+		if (newTags.length > 0) {
+			await db.insert(contactTagAssignments).values(
+				newTags.map((t) => ({
+					contactId: primaryContactId,
+					tagId: t.tagId,
+				})),
+			);
+		}
+
+		// Delete secondary contact (cascades interactions, tags, follow-ups remaining)
+		await db.delete(contacts).where(eq(contacts.id, mergeWithContactId));
+
+		// Clean up any dismissals referencing the deleted contact
+		await db
+			.delete(contactMergeDismissals)
+			.where(
+				or(
+					eq(contactMergeDismissals.contactIdA, mergeWithContactId),
+					eq(contactMergeDismissals.contactIdB, mergeWithContactId),
+				),
+			);
+
+		console.log(
+			`[contacts] Merged contact ${mergeWithContactId} into ${primaryContactId} for user ${userId}`,
+		);
+
+		return { ok: true, data: { message: "Contacts merged successfully" } };
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to merge contacts";
+		console.error("[contacts] mergeContacts error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Dismiss Merge Suggestion ── */
+
+async function dismissMergeSuggestion(
+	userId: string,
+	contactIdA: string,
+	contactIdB: string,
+): Promise<ServiceResult<{ message: string }>> {
+	try {
+		// Always store with smaller ID first for consistency
+		const [idA, idB] =
+			contactIdA < contactIdB
+				? [contactIdA, contactIdB]
+				: [contactIdB, contactIdA];
+
+		await db
+			.insert(contactMergeDismissals)
+			.values({ userId, contactIdA: idA, contactIdB: idB })
+			.onConflictDoNothing();
+
+		return { ok: true, data: { message: "Suggestion dismissed" } };
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to dismiss suggestion";
+		console.error("[contacts] dismissMergeSuggestion error:", message);
 		return { ok: false, error: message, status: 500 };
 	}
 }
@@ -1602,6 +1919,8 @@ export const contactService = {
 	snoozeFollowUp,
 	getModuleData,
 	getSuggestions,
+	mergeContacts,
+	dismissMergeSuggestion,
 	triggerDiscover,
 	getMeetingPrep,
 };

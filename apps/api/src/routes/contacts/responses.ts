@@ -165,6 +165,7 @@ const followUpSchema = t.Object({
 	type: t.String(),
 	title: t.String(),
 	context: t.Nullable(t.String()),
+	sourceEmailId: t.Nullable(t.String()),
 	dueAt: t.Nullable(t.String()),
 	status: t.String(),
 	snoozedUntil: t.Nullable(t.String()),
@@ -194,23 +195,34 @@ export const moduleDataResponse = t.Object({
 
 /* ── Suggestions ── */
 
+const mergeSuggestionContactSchema = t.Object({
+	id: t.String(),
+	name: t.Nullable(t.String()),
+	email: t.String(),
+	company: t.Nullable(t.String()),
+	interactionCount: t.Number(),
+});
+
 export const suggestionsResponse = t.Object({
 	mergeSuggestions: t.Array(
 		t.Object({
-			contactA: t.Object({
-				id: t.String(),
-				name: t.Nullable(t.String()),
-				email: t.String(),
-			}),
-			contactB: t.Object({
-				id: t.String(),
-				name: t.Nullable(t.String()),
-				email: t.String(),
-			}),
+			contactA: mergeSuggestionContactSchema,
+			contactB: mergeSuggestionContactSchema,
 			reason: t.String(),
 		}),
 	),
 	newContactsThisWeek: t.Number(),
+});
+
+/* ── Merge ── */
+
+export const mergeContactBody = t.Object({
+	mergeWithContactId: t.String(),
+});
+
+export const dismissMergeBody = t.Object({
+	contactIdA: t.String(),
+	contactIdB: t.String(),
 });
 
 /* ── Meeting Prep ── */

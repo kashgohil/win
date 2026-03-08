@@ -9,10 +9,12 @@ import {
 	contactResponse,
 	createContactBody,
 	createTagBody,
+	dismissMergeBody,
 	errorResponse,
 	followUpListResponse,
 	interactionListResponse,
 	meetingPrepResponse,
+	mergeContactBody,
 	messageResponse,
 	moduleDataResponse,
 	snoozeBody,
@@ -357,6 +359,34 @@ export const contactsRoutes = new Elysia({
 		},
 	)
 
+	/* ── Dismiss Merge Suggestion ── */
+
+	.post(
+		"/suggestions/dismiss",
+		async ({ body, user, set }) => {
+			const result = await contactService.dismissMergeSuggestion(
+				user.id,
+				body.contactIdA,
+				body.contactIdB,
+			);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			body: dismissMergeBody,
+			response: {
+				200: messageResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Contacts"], summary: "Dismiss merge suggestion" },
+		},
+	)
+
 	/* ── Discover ── */
 
 	.post(
@@ -542,6 +572,37 @@ export const contactsRoutes = new Elysia({
 				500: errorResponse,
 			},
 			detail: { tags: ["Contacts"], summary: "Toggle contact archive" },
+		},
+	)
+
+	/* ── Merge ── */
+
+	.post(
+		"/:contactId/merge",
+		async ({ params, body, user, set }) => {
+			const result = await contactService.mergeContacts(
+				user.id,
+				params.contactId,
+				body.mergeWithContactId,
+			);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ contactId: t.String() }),
+			body: mergeContactBody,
+			response: {
+				200: messageResponse,
+				400: errorResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Contacts"], summary: "Merge two contacts" },
 		},
 	)
 
