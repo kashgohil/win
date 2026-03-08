@@ -468,6 +468,376 @@ export const calendarService = {
 		}
 	},
 
+	async getValidToken(
+		accountId: string,
+	): Promise<
+		{ ok: true; token: string } | { ok: false; error: string; status: number }
+	> {
+		const account = await db.query.calendarAccounts.findFirst({
+			where: eq(calendarAccounts.id, accountId),
+		});
+
+		if (!account || !account.active || !account.accessToken) {
+			return {
+				ok: false,
+				error: "Calendar account not found or inactive",
+				status: 404,
+			};
+		}
+
+		const TOKEN_BUFFER_MS = 5 * 60 * 1000;
+		if (
+			account.tokenExpiresAt &&
+			account.tokenExpiresAt.getTime() > Date.now() + TOKEN_BUFFER_MS
+		) {
+			return { ok: true, token: account.accessToken };
+		}
+
+		if (!account.refreshToken) {
+			return { ok: false, error: "No refresh token available", status: 401 };
+		}
+
+		try {
+			const res = await fetch(GOOGLE_TOKEN_URL, {
+				method: "POST",
+				headers: { "Content-Type": "application/x-www-form-urlencoded" },
+				body: new URLSearchParams({
+					client_id: env.GOOGLE_CLIENT_ID!,
+					client_secret: env.GOOGLE_CLIENT_SECRET!,
+					refresh_token: account.refreshToken,
+					grant_type: "refresh_token",
+				}),
+			});
+
+			if (!res.ok) {
+				return { ok: false, error: "Token refresh failed", status: 401 };
+			}
+
+			const data = (await res.json()) as {
+				access_token: string;
+				expires_in: number;
+			};
+
+			const expiresAt = new Date(Date.now() + data.expires_in * 1000);
+			await db
+				.update(calendarAccounts)
+				.set({ accessToken: data.access_token, tokenExpiresAt: expiresAt })
+				.where(eq(calendarAccounts.id, accountId));
+
+			return { ok: true, token: data.access_token };
+		} catch (err) {
+			console.error("[calendar] token refresh failed:", err);
+			return { ok: false, error: "Token refresh failed", status: 500 };
+		}
+	},
+
+	async createEvent(
+		userId: string,
+		input: {
+			accountId: string;
+			title: string;
+			startTime: string;
+			endTime: string;
+			isAllDay?: boolean;
+			description?: string;
+			location?: string;
+		},
+	) {
+		try {
+			// Verify account ownership
+			const account = await db.query.calendarAccounts.findFirst({
+				where: and(
+					eq(calendarAccounts.id, input.accountId),
+					eq(calendarAccounts.userId, userId),
+				),
+			});
+			if (!account) {
+				return {
+					ok: false as const,
+					error: "Calendar account not found",
+					status: 404,
+				};
+			}
+
+			const tokenResult = await this.getValidToken(input.accountId);
+			if (!tokenResult.ok) {
+				return {
+					ok: false as const,
+					error: tokenResult.error,
+					status: tokenResult.status,
+				};
+			}
+
+			// Build Google Calendar event body
+			const isAllDay = input.isAllDay ?? false;
+			const googleEvent: Record<string, unknown> = {
+				summary: input.title,
+				...(input.description && { description: input.description }),
+				...(input.location && { location: input.location }),
+			};
+
+			if (isAllDay) {
+				googleEvent.start = { date: input.startTime.slice(0, 10) };
+				googleEvent.end = { date: input.endTime.slice(0, 10) };
+			} else {
+				googleEvent.start = { dateTime: input.startTime };
+				googleEvent.end = { dateTime: input.endTime };
+			}
+
+			const res = await fetch(
+				"https://www.googleapis.com/calendar/v3/calendars/primary/events",
+				{
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${tokenResult.token}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(googleEvent),
+				},
+			);
+
+			if (!res.ok) {
+				const body = await res.text();
+				console.error("[calendar] createEvent Google API failed:", body);
+				return {
+					ok: false as const,
+					error: "Failed to create event in Google Calendar",
+					status: 502,
+				};
+			}
+
+			const created = (await res.json()) as {
+				id: string;
+				htmlLink?: string;
+				hangoutLink?: string;
+			};
+
+			// Insert into local DB
+			const [dbEvent] = await db
+				.insert(calendarEvents)
+				.values({
+					userId,
+					calendarAccountId: input.accountId,
+					externalId: created.id,
+					title: input.title,
+					description: input.description ?? null,
+					location: input.location ?? null,
+					startTime: new Date(input.startTime),
+					endTime: new Date(input.endTime),
+					isAllDay,
+					status: "confirmed",
+					organizer: null,
+					attendees: [],
+					htmlLink: created.htmlLink ?? null,
+					meetingLink: created.hangoutLink ?? null,
+					source: "google",
+				})
+				.returning();
+
+			if (!dbEvent) {
+				return {
+					ok: false as const,
+					error: "Failed to store event",
+					status: 500,
+				};
+			}
+
+			return { ok: true as const, data: serializeEvent(dbEvent) };
+		} catch (err) {
+			console.error("[calendar] createEvent failed:", err);
+			return {
+				ok: false as const,
+				error: "Failed to create event",
+				status: 500,
+			};
+		}
+	},
+
+	async updateEvent(
+		userId: string,
+		eventId: string,
+		input: {
+			title?: string;
+			startTime?: string;
+			endTime?: string;
+			isAllDay?: boolean;
+			description?: string;
+			location?: string;
+		},
+	) {
+		try {
+			const event = await db.query.calendarEvents.findFirst({
+				where: and(
+					eq(calendarEvents.id, eventId),
+					eq(calendarEvents.userId, userId),
+				),
+			});
+
+			if (!event) {
+				return { ok: false as const, error: "Event not found", status: 404 };
+			}
+
+			const tokenResult = await this.getValidToken(event.calendarAccountId);
+			if (!tokenResult.ok) {
+				return {
+					ok: false as const,
+					error: tokenResult.error,
+					status: tokenResult.status,
+				};
+			}
+
+			// Build patch body for Google
+			const isAllDay = input.isAllDay ?? event.isAllDay;
+			const googlePatch: Record<string, unknown> = {};
+			if (input.title !== undefined) googlePatch.summary = input.title;
+			if (input.description !== undefined)
+				googlePatch.description = input.description;
+			if (input.location !== undefined) googlePatch.location = input.location;
+
+			if (input.startTime !== undefined || input.isAllDay !== undefined) {
+				const startTime = input.startTime ?? event.startTime.toISOString();
+				if (isAllDay) {
+					googlePatch.start = { date: startTime.slice(0, 10) };
+				} else {
+					googlePatch.start = { dateTime: startTime };
+				}
+			}
+			if (input.endTime !== undefined || input.isAllDay !== undefined) {
+				const endTime = input.endTime ?? event.endTime.toISOString();
+				if (isAllDay) {
+					googlePatch.end = { date: endTime.slice(0, 10) };
+				} else {
+					googlePatch.end = { dateTime: endTime };
+				}
+			}
+
+			const res = await fetch(
+				`https://www.googleapis.com/calendar/v3/calendars/primary/events/${event.externalId}`,
+				{
+					method: "PATCH",
+					headers: {
+						Authorization: `Bearer ${tokenResult.token}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(googlePatch),
+				},
+			);
+
+			if (!res.ok) {
+				const body = await res.text();
+				console.error("[calendar] updateEvent Google API failed:", body);
+				return {
+					ok: false as const,
+					error: "Failed to update event in Google Calendar",
+					status: 502,
+				};
+			}
+
+			// Update local DB
+			const dbUpdate: Record<string, unknown> = {};
+			if (input.title !== undefined) dbUpdate.title = input.title;
+			if (input.description !== undefined)
+				dbUpdate.description = input.description;
+			if (input.location !== undefined) dbUpdate.location = input.location;
+			if (input.startTime !== undefined)
+				dbUpdate.startTime = new Date(input.startTime);
+			if (input.endTime !== undefined)
+				dbUpdate.endTime = new Date(input.endTime);
+			if (input.isAllDay !== undefined) dbUpdate.isAllDay = input.isAllDay;
+
+			const [updated] = await db
+				.update(calendarEvents)
+				.set(dbUpdate)
+				.where(
+					and(
+						eq(calendarEvents.id, eventId),
+						eq(calendarEvents.userId, userId),
+					),
+				)
+				.returning();
+
+			if (!updated) {
+				return {
+					ok: false as const,
+					error: "Failed to update event",
+					status: 500,
+				};
+			}
+
+			return { ok: true as const, data: serializeEvent(updated) };
+		} catch (err) {
+			console.error("[calendar] updateEvent failed:", err);
+			return {
+				ok: false as const,
+				error: "Failed to update event",
+				status: 500,
+			};
+		}
+	},
+
+	async deleteEvent(userId: string, eventId: string) {
+		try {
+			const event = await db.query.calendarEvents.findFirst({
+				where: and(
+					eq(calendarEvents.id, eventId),
+					eq(calendarEvents.userId, userId),
+				),
+			});
+
+			if (!event) {
+				return { ok: false as const, error: "Event not found", status: 404 };
+			}
+
+			const tokenResult = await this.getValidToken(event.calendarAccountId);
+			if (!tokenResult.ok) {
+				return {
+					ok: false as const,
+					error: tokenResult.error,
+					status: tokenResult.status,
+				};
+			}
+
+			const res = await fetch(
+				`https://www.googleapis.com/calendar/v3/calendars/primary/events/${event.externalId}`,
+				{
+					method: "DELETE",
+					headers: {
+						Authorization: `Bearer ${tokenResult.token}`,
+					},
+				},
+			);
+
+			// 204 = deleted, 410 = already gone — both are fine
+			if (!res.ok && res.status !== 410) {
+				const body = await res.text();
+				console.error("[calendar] deleteEvent Google API failed:", body);
+				return {
+					ok: false as const,
+					error: "Failed to delete event from Google Calendar",
+					status: 502,
+				};
+			}
+
+			await db
+				.delete(calendarEvents)
+				.where(
+					and(
+						eq(calendarEvents.id, eventId),
+						eq(calendarEvents.userId, userId),
+					),
+				);
+
+			return { ok: true as const, message: "Event deleted" };
+		} catch (err) {
+			console.error("[calendar] deleteEvent failed:", err);
+			return {
+				ok: false as const,
+				error: "Failed to delete event",
+				status: 500,
+			};
+		}
+	},
+
 	async disconnectAccount(
 		userId: string,
 		accountId: string,

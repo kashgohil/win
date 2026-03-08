@@ -86,6 +86,29 @@ export const eventListResponse = t.Object({
 
 export const eventDetailResponse = calendarEventSchema;
 
+/* ── Create/Update event ── */
+
+export const createEventBody = t.Object({
+	accountId: t.String(),
+	title: t.String(),
+	startTime: t.String(),
+	endTime: t.String(),
+	isAllDay: t.Optional(t.Boolean()),
+	description: t.Optional(t.String()),
+	location: t.Optional(t.String()),
+});
+
+export const updateEventBody = t.Object({
+	title: t.Optional(t.String()),
+	startTime: t.Optional(t.String()),
+	endTime: t.Optional(t.String()),
+	isAllDay: t.Optional(t.Boolean()),
+	description: t.Optional(t.String()),
+	location: t.Optional(t.String()),
+});
+
+export const mutateEventResponse = calendarEventSchema;
+
 /* ── Module data ── */
 
 export const moduleDataResponse = t.Object({

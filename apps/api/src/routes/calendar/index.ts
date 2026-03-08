@@ -5,11 +5,14 @@ import { betterAuthPlugin } from "../../plugins/auth";
 import {
 	accountListResponse,
 	connectResponse,
+	createEventBody,
 	disconnectResponse,
 	errorResponse,
 	eventDetailResponse,
 	eventListResponse,
 	moduleDataResponse,
+	mutateEventResponse,
+	updateEventBody,
 } from "./responses";
 import { calendarService } from "./service";
 
@@ -190,6 +193,92 @@ export const calendarRoutes = new Elysia({
 			response: { 200: moduleDataResponse },
 			detail: {
 				summary: "Calendar module briefing data",
+				tags: ["Calendar"],
+			},
+		},
+	)
+
+	/* ── Event mutations ── */
+
+	.post(
+		"/events",
+		async ({ user, body, set }) => {
+			const result = await calendarService.createEvent(user.id, body);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			body: createEventBody,
+			response: {
+				200: mutateEventResponse,
+				400: errorResponse,
+				404: errorResponse,
+				502: errorResponse,
+			},
+			detail: {
+				summary: "Create calendar event",
+				description: "Creates an event in Google Calendar and stores locally",
+				tags: ["Calendar"],
+			},
+		},
+	)
+
+	.patch(
+		"/events/:eventId",
+		async ({ user, params, body, set }) => {
+			const result = await calendarService.updateEvent(
+				user.id,
+				params.eventId,
+				body,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ eventId: t.String() }),
+			body: updateEventBody,
+			response: {
+				200: mutateEventResponse,
+				404: errorResponse,
+				502: errorResponse,
+			},
+			detail: {
+				summary: "Update calendar event",
+				description: "Patches an event in Google Calendar and updates locally",
+				tags: ["Calendar"],
+			},
+		},
+	)
+
+	.delete(
+		"/events/:eventId",
+		async ({ user, params, set }) => {
+			const result = await calendarService.deleteEvent(user.id, params.eventId);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			params: t.Object({ eventId: t.String() }),
+			response: {
+				200: disconnectResponse,
+				404: errorResponse,
+				502: errorResponse,
+			},
+			detail: {
+				summary: "Delete calendar event",
+				description: "Deletes an event from Google Calendar and local DB",
 				tags: ["Calendar"],
 			},
 		},
