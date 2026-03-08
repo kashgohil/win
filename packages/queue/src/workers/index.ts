@@ -1,3 +1,4 @@
+import { scheduleWebhookRenewal } from "../jobs/calendar-sync";
 import { createCalendarSyncWorker } from "./calendar-sync.worker";
 import { createMailAiWorker } from "./mail-ai.worker";
 import { createMailAutoHandleWorker } from "./mail-autohandle.worker";
@@ -23,6 +24,11 @@ const taskReminderWorker = createTaskReminderWorker();
 const taskSyncWorker = createTaskSyncWorker();
 const taskWriteBackWorker = createTaskWriteBackWorker();
 const workSummaryWorker = createWorkSummaryWorker();
+
+// Schedule recurring jobs
+scheduleWebhookRenewal().catch((err) =>
+	console.error("[workers] Failed to schedule webhook renewal:", err),
+);
 
 console.log("[workers] All workers started");
 
