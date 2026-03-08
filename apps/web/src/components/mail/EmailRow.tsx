@@ -12,7 +12,14 @@ import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
 import type { EmailCategory, SerializedEmail } from "@wingmnn/types";
-import { Archive, Mail, MailOpen, Paperclip, Star } from "lucide-react";
+import {
+	Archive,
+	CheckSquare,
+	Mail,
+	MailOpen,
+	Paperclip,
+	Star,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { CATEGORY_CONFIG } from "./category-colors";
@@ -292,6 +299,9 @@ export function EmailRow({
 								}}
 								className="col-start-1 row-start-1 flex items-center gap-2 pointer-events-none"
 							>
+								{email.relatedTaskId && (
+									<CheckSquare className="size-3 text-violet-500" />
+								)}
 								{email.hasAttachments && (
 									<Paperclip className="size-3 text-grey-3" />
 								)}
