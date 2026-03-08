@@ -1436,6 +1436,149 @@ async function triggerDiscover(
 	}
 }
 
+/* ── Meeting Prep Brief ── */
+
+async function getMeetingPrep(
+	userId: string,
+	eventId: string,
+): Promise<
+	ServiceResult<{
+		eventId: string;
+		eventTitle: string | null;
+		startTime: string;
+		attendees: {
+			contactId: string | null;
+			email: string;
+			name: string | null;
+			relationshipScore: number | null;
+			lastInteractionAt: string | null;
+			lastInteractionTitle: string | null;
+			recentEmailSubjects: string[];
+			notes: string | null;
+		}[];
+	}>
+> {
+	try {
+		const event = await db.query.calendarEvents.findFirst({
+			where: and(
+				eq(calendarEvents.id, eventId),
+				eq(calendarEvents.userId, userId),
+			),
+		});
+
+		if (!event) {
+			return { ok: false, error: "Event not found", status: 404 };
+		}
+
+		// Collect attendee emails
+		const attendeeEmails: { email: string; name: string | null }[] = [];
+		if (event.organizer?.email) {
+			attendeeEmails.push({
+				email: event.organizer.email.toLowerCase(),
+				name: event.organizer.displayName ?? null,
+			});
+		}
+		for (const a of event.attendees ?? []) {
+			if (a.email) {
+				attendeeEmails.push({
+					email: a.email.toLowerCase(),
+					name: a.displayName ?? null,
+				});
+			}
+		}
+
+		const result: {
+			contactId: string | null;
+			email: string;
+			name: string | null;
+			relationshipScore: number | null;
+			lastInteractionAt: string | null;
+			lastInteractionTitle: string | null;
+			recentEmailSubjects: string[];
+			notes: string | null;
+		}[] = [];
+
+		for (const attendee of attendeeEmails) {
+			const contact = await db.query.contacts.findFirst({
+				where: and(
+					eq(contacts.userId, userId),
+					eq(contacts.primaryEmail, attendee.email),
+				),
+			});
+
+			if (!contact) {
+				result.push({
+					contactId: null,
+					email: attendee.email,
+					name: attendee.name,
+					relationshipScore: null,
+					lastInteractionAt: null,
+					lastInteractionTitle: null,
+					recentEmailSubjects: [],
+					notes: null,
+				});
+				continue;
+			}
+
+			// Last interaction
+			const lastInteraction = await db
+				.select({
+					title: contactInteractions.title,
+					occurredAt: contactInteractions.occurredAt,
+				})
+				.from(contactInteractions)
+				.where(eq(contactInteractions.contactId, contact.id))
+				.orderBy(desc(contactInteractions.occurredAt))
+				.limit(1);
+
+			// Recent email subjects
+			const recentEmails = await db
+				.select({ subject: emails.subject })
+				.from(emails)
+				.where(
+					and(
+						eq(emails.userId, userId),
+						or(
+							eq(emails.fromAddress, contact.primaryEmail),
+							sql`${emails.toAddresses} @> ARRAY[${contact.primaryEmail}]::text[]`,
+						),
+					),
+				)
+				.orderBy(desc(emails.receivedAt))
+				.limit(5);
+
+			result.push({
+				contactId: contact.id,
+				email: contact.primaryEmail,
+				name: contact.name ?? attendee.name,
+				relationshipScore: contact.relationshipScore,
+				lastInteractionAt:
+					lastInteraction[0]?.occurredAt?.toISOString() ?? null,
+				lastInteractionTitle: lastInteraction[0]?.title ?? null,
+				recentEmailSubjects: recentEmails
+					.map((e) => e.subject)
+					.filter((s): s is string => s !== null),
+				notes: contact.notes,
+			});
+		}
+
+		return {
+			ok: true,
+			data: {
+				eventId: event.id,
+				eventTitle: event.title,
+				startTime: event.startTime.toISOString(),
+				attendees: result,
+			},
+		};
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to get meeting prep";
+		console.error("[contacts] getMeetingPrep error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
 export const contactService = {
 	listContacts,
 	getContact,
@@ -1460,4 +1603,5 @@ export const contactService = {
 	getModuleData,
 	getSuggestions,
 	triggerDiscover,
+	getMeetingPrep,
 };

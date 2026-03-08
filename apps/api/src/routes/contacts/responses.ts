@@ -213,6 +213,26 @@ export const suggestionsResponse = t.Object({
 	newContactsThisWeek: t.Number(),
 });
 
+/* ── Meeting Prep ── */
+
+export const meetingPrepResponse = t.Object({
+	eventId: t.String(),
+	eventTitle: t.Nullable(t.String()),
+	startTime: t.String(),
+	attendees: t.Array(
+		t.Object({
+			contactId: t.Nullable(t.String()),
+			email: t.String(),
+			name: t.Nullable(t.String()),
+			relationshipScore: t.Nullable(t.Number()),
+			lastInteractionAt: t.Nullable(t.String()),
+			lastInteractionTitle: t.Nullable(t.String()),
+			recentEmailSubjects: t.Array(t.String()),
+			notes: t.Nullable(t.String()),
+		}),
+	),
+});
+
 /* ── Create / Update ── */
 
 export const createContactBody = t.Object({

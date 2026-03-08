@@ -12,6 +12,7 @@ import {
 	errorResponse,
 	followUpListResponse,
 	interactionListResponse,
+	meetingPrepResponse,
 	messageResponse,
 	moduleDataResponse,
 	snoozeBody,
@@ -376,6 +377,34 @@ export const contactsRoutes = new Elysia({
 				500: errorResponse,
 			},
 			detail: { tags: ["Contacts"], summary: "Trigger contact discovery" },
+		},
+	)
+
+	/* ── Meeting Prep ── */
+
+	.get(
+		"/meeting-prep/:eventId",
+		async ({ params, user, set }) => {
+			const result = await contactService.getMeetingPrep(
+				user.id,
+				params.eventId,
+			);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ eventId: t.String() }),
+			response: {
+				200: meetingPrepResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Contacts"], summary: "Get meeting prep brief" },
 		},
 	)
 
