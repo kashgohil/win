@@ -326,6 +326,46 @@ export const taskActivityLog = pgTable(
 	],
 );
 
+/* ── Automation Rules ── */
+
+export const taskAutomationTriggerEnum = pgEnum("task_automation_trigger", [
+	"status_changed",
+	"task_created",
+	"task_overdue",
+	"priority_changed",
+]);
+
+export const taskAutomationActionEnum = pgEnum("task_automation_action", [
+	"notify",
+	"set_status",
+	"set_priority",
+	"move_project",
+]);
+
+export const taskAutomationRules = pgTable(
+	"task_automation_rules",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		name: varchar({ length: 255 }).notNull(),
+		trigger: taskAutomationTriggerEnum().notNull(),
+		conditions: jsonb().default({}).notNull(),
+		action: taskAutomationActionEnum().notNull(),
+		actionParams: jsonb("action_params").default({}).notNull(),
+		enabled: boolean().default(true).notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.notNull()
+			.$onUpdate(() => new Date()),
+	},
+	(table) => [index("task_automation_rules_user_idx").on(table.userId)],
+);
+
 /* ── Relations ── */
 
 export const taskConnectionsRelations = relations(
@@ -403,6 +443,16 @@ export const taskSyncStateRelations = relations(taskSyncState, ({ one }) => ({
 		references: [taskConnections.id],
 	}),
 }));
+
+export const taskAutomationRulesRelations = relations(
+	taskAutomationRules,
+	({ one }) => ({
+		user: one(users, {
+			fields: [taskAutomationRules.userId],
+			references: [users.id],
+		}),
+	}),
+);
 
 export const taskActivityLogRelations = relations(
 	taskActivityLog,
