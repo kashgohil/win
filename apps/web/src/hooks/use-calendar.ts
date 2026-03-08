@@ -53,11 +53,17 @@ export type CalendarEvent = {
 	createdAt: string;
 };
 
+export type CalendarConflict = {
+	event1: CalendarEvent;
+	event2: CalendarEvent;
+};
+
 export type CalendarModuleData = {
 	nextEvent: CalendarEvent | null;
 	minutesUntilNext: number | null;
 	todayCount: number;
 	conflictCount: number;
+	conflicts: CalendarConflict[];
 };
 
 /* ── Queries ── */

@@ -225,12 +225,45 @@ function CalendarBriefing() {
 			)}
 
 			{data.conflictCount > 0 && (
-				<div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2.5 flex items-center gap-2">
-					<AlertTriangle className="size-4 text-red-500 shrink-0" />
-					<span className="font-body text-[13px] text-red-500">
-						{data.conflictCount} overlapping{" "}
-						{data.conflictCount === 1 ? "event" : "events"} today
-					</span>
+				<div className="mt-3 space-y-2">
+					<div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2.5 flex items-center gap-2">
+						<AlertTriangle className="size-4 text-red-500 shrink-0" />
+						<span className="font-body text-[13px] text-red-500">
+							{data.conflictCount} overlapping{" "}
+							{data.conflictCount === 1 ? "event" : "events"} today
+						</span>
+					</div>
+					{data.conflicts.map((conflict) => (
+						<div
+							key={`${conflict.event1.id}-${conflict.event2.id}`}
+							className="rounded-lg border border-red-500/10 bg-red-500/[0.03] px-4 py-2.5"
+						>
+							<div className="flex items-center gap-2 font-body text-[12px]">
+								<span className="text-foreground font-medium truncate">
+									{conflict.event1.title ?? "Untitled"}
+								</span>
+								<span className="font-mono text-[10px] text-grey-3 shrink-0">
+									{formatEventTime(
+										conflict.event1.startTime,
+										conflict.event1.endTime,
+										conflict.event1.isAllDay,
+									)}
+								</span>
+							</div>
+							<div className="flex items-center gap-2 font-body text-[12px] mt-1">
+								<span className="text-foreground font-medium truncate">
+									{conflict.event2.title ?? "Untitled"}
+								</span>
+								<span className="font-mono text-[10px] text-grey-3 shrink-0">
+									{formatEventTime(
+										conflict.event2.startTime,
+										conflict.event2.endTime,
+										conflict.event2.isAllDay,
+									)}
+								</span>
+							</div>
+						</div>
+					))}
 				</div>
 			)}
 		</div>
