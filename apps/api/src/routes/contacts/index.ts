@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia";
 
 import { betterAuthPlugin } from "../../plugins/auth";
 import {
+	applyTagSuggestionBody,
 	contactDetailResponse,
 	contactEmailsResponse,
 	contactEventsResponse,
@@ -21,6 +22,7 @@ import {
 	suggestionsResponse,
 	tagListResponse,
 	tagResponse,
+	tagSuggestionsResponse,
 	updateContactBody,
 	updateTagBody,
 } from "./responses";
@@ -384,6 +386,70 @@ export const contactsRoutes = new Elysia({
 				500: errorResponse,
 			},
 			detail: { tags: ["Contacts"], summary: "Dismiss merge suggestion" },
+		},
+	)
+
+	/* ── Tag Suggestions ── */
+
+	.get(
+		"/tag-suggestions",
+		async ({ user, set }) => {
+			const result = await contactService.getTagSuggestions(user.id);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			response: {
+				200: tagSuggestionsResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Contacts"], summary: "Get auto-tag suggestions" },
+		},
+	)
+
+	.post(
+		"/tag-suggestions/apply",
+		async ({ body, user, set }) => {
+			// Create the tag
+			const tagResult = await contactService.createTag(user.id, {
+				name: body.name,
+				color: body.color,
+			});
+			if (!tagResult.ok) {
+				set.status = tagResult.status;
+				return { error: tagResult.error };
+			}
+
+			// Assign all contacts to the tag
+			let assigned = 0;
+			for (const contactId of body.contactIds) {
+				const r = await contactService.assignTag(
+					user.id,
+					contactId,
+					tagResult.data.id,
+				);
+				if (r.ok) assigned++;
+			}
+
+			return {
+				message: `Created tag "${body.name}" with ${assigned} contacts`,
+				tagId: tagResult.data.id,
+			};
+		},
+		{
+			auth: true,
+			body: applyTagSuggestionBody,
+			response: {
+				200: t.Object({ message: t.String(), tagId: t.String() }),
+				409: errorResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Contacts"], summary: "Apply tag suggestion" },
 		},
 	)
 

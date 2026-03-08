@@ -1896,6 +1896,106 @@ async function getMeetingPrep(
 	}
 }
 
+/* ── Tag suggestions ── */
+
+async function getTagSuggestions(userId: string): Promise<
+	ServiceResult<
+		{
+			name: string;
+			reason: string;
+			contactIds: string[];
+			contacts: { id: string; name: string | null; email: string }[];
+		}[]
+	>
+> {
+	try {
+		// Get existing tag names so we don't suggest duplicates
+		const existingTags = await db
+			.select({ name: contactTags.name })
+			.from(contactTags)
+			.where(eq(contactTags.userId, userId));
+		const existingNames = new Set(
+			existingTags.map((t) => t.name.toLowerCase()),
+		);
+
+		// Get already-tagged contact IDs so we skip them
+		const taggedRows = await db
+			.selectDistinct({ contactId: contactTagAssignments.contactId })
+			.from(contactTagAssignments)
+			.innerJoin(contactTags, eq(contactTags.id, contactTagAssignments.tagId))
+			.where(eq(contactTags.userId, userId));
+		const taggedIds = new Set(taggedRows.map((r) => r.contactId));
+
+		// Domain-based: group contacts by email domain (min 2 per domain)
+		type DomainRow = {
+			domain: string;
+			contact_ids: string[];
+			names: (string | null)[];
+			primary_emails: string[];
+		};
+		const domainGroups = (await db.execute(sql`
+			SELECT
+				split_part(c.primary_email, '@', 2) AS domain,
+				array_agg(c.id) AS contact_ids,
+				array_agg(c.name) AS names,
+				array_agg(c.primary_email) AS primary_emails
+			FROM contacts c
+			WHERE c.user_id = ${userId}
+				AND c.archived = false
+				AND c.primary_email IS NOT NULL
+				AND split_part(c.primary_email, '@', 2) NOT IN (
+					'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',
+					'icloud.com', 'aol.com', 'protonmail.com', 'mail.com'
+				)
+			GROUP BY split_part(c.primary_email, '@', 2)
+			HAVING count(*) >= 2
+			ORDER BY count(*) DESC
+			LIMIT 10
+		`)) as unknown as DomainRow[];
+
+		const suggestions: {
+			name: string;
+			reason: string;
+			contactIds: string[];
+			contacts: { id: string; name: string | null; email: string }[];
+		}[] = [];
+
+		for (const group of domainGroups) {
+			// Derive tag name from domain (e.g. "acme.com" → "Acme")
+			const domainParts = group.domain.split(".");
+			const rawName =
+				(domainParts.length > 1 ? domainParts[0] : group.domain) ?? "";
+			const tagName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+
+			if (existingNames.has(tagName.toLowerCase())) continue;
+
+			// Filter out already-tagged contacts
+			const contactIds = group.contact_ids.filter((id) => !taggedIds.has(id));
+			if (contactIds.length < 2) continue;
+
+			const contactList = contactIds.map((id) => ({
+				id,
+				name: group.names[group.contact_ids.indexOf(id)] ?? null,
+				email: group.primary_emails[group.contact_ids.indexOf(id)] ?? "",
+			}));
+
+			suggestions.push({
+				name: tagName,
+				reason: `${contactIds.length} contacts share @${group.domain}`,
+				contactIds,
+				contacts: contactList.slice(0, 5),
+			});
+		}
+
+		return { ok: true, data: suggestions.slice(0, 8) };
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to get tag suggestions";
+		console.error("[contacts] getTagSuggestions error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
 export const contactService = {
 	listContacts,
 	getContact,
@@ -1923,4 +2023,5 @@ export const contactService = {
 	dismissMergeSuggestion,
 	triggerDiscover,
 	getMeetingPrep,
+	getTagSuggestions,
 };

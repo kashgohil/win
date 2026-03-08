@@ -257,6 +257,29 @@ export const createContactBody = t.Object({
 	starred: t.Optional(t.Boolean()),
 });
 
+/* ── Tag suggestions ── */
+
+export const tagSuggestionsResponse = t.Array(
+	t.Object({
+		name: t.String(),
+		reason: t.String(),
+		contactIds: t.Array(t.String()),
+		contacts: t.Array(
+			t.Object({
+				id: t.String(),
+				name: t.Nullable(t.String()),
+				email: t.String(),
+			}),
+		),
+	}),
+);
+
+export const applyTagSuggestionBody = t.Object({
+	name: t.String({ minLength: 1 }),
+	contactIds: t.Array(t.String(), { minItems: 1 }),
+	color: t.Optional(t.String()),
+});
+
 export const updateContactBody = t.Object({
 	name: t.Optional(t.Nullable(t.String())),
 	company: t.Optional(t.Nullable(t.String())),
