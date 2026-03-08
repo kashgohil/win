@@ -1,15 +1,18 @@
 import {
 	and,
 	db,
+	eq,
 	inArray,
 	isNotNull,
 	isNull,
+	lt,
 	lte,
 	notifications,
 	tasks,
 	userProfiles,
 } from "@wingmnn/db";
 import { Worker } from "bullmq";
+import { evaluateAutomations } from "../automation";
 import { connection } from "../connection";
 import type { TaskReminderJobData } from "../jobs/task-reminder";
 
@@ -26,6 +29,9 @@ async function processReminderCheck() {
 	if (unsnoozed.length > 0) {
 		console.log(`[task-reminder] Un-snoozed ${unsnoozed.length} tasks`);
 	}
+
+	// Check for newly overdue tasks and fire automations
+	await processOverdueAutomations();
 
 	// Find tasks with reminders that are due (not yet completed)
 	const dueReminders = await db
@@ -50,6 +56,60 @@ async function processReminderCheck() {
 			`[task-reminder] Triggered ${dueReminders.length} task reminders`,
 		);
 		await createReminderNotifications(dueReminders);
+	}
+}
+
+async function processOverdueAutomations() {
+	const now = new Date();
+
+	// Find tasks that are overdue but haven't had their overdue automation triggered yet
+	const overdueTasks = await db
+		.select({
+			id: tasks.id,
+			userId: tasks.userId,
+			title: tasks.title,
+			statusKey: tasks.statusKey,
+			priority: tasks.priority,
+			projectId: tasks.projectId,
+		})
+		.from(tasks)
+		.where(
+			and(
+				isNotNull(tasks.dueAt),
+				lt(tasks.dueAt, now),
+				isNull(tasks.completedAt),
+				isNull(tasks.overdueNotifiedAt),
+			),
+		);
+
+	if (overdueTasks.length === 0) return;
+
+	console.log(
+		`[task-reminder] Found ${overdueTasks.length} newly overdue tasks`,
+	);
+
+	for (const task of overdueTasks) {
+		try {
+			await evaluateAutomations("task_overdue", {
+				id: task.id,
+				userId: task.userId,
+				title: task.title,
+				statusKey: task.statusKey,
+				priority: task.priority,
+				projectId: task.projectId,
+			});
+
+			// Mark as notified so we don't re-trigger
+			await db
+				.update(tasks)
+				.set({ overdueNotifiedAt: now })
+				.where(eq(tasks.id, task.id));
+		} catch (err) {
+			console.error(
+				`[task-reminder] Overdue automation failed for task ${task.id}:`,
+				err instanceof Error ? err.message : "Unknown error",
+			);
+		}
 	}
 }
 
