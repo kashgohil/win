@@ -10,6 +10,7 @@ import { Worker } from "bullmq";
 import { getValidCalendarToken } from "../calendar-token";
 import { connection } from "../connection";
 import type { CalendarSyncJobData } from "../jobs/calendar-sync";
+import { enqueueContactExtractFromEvents } from "../jobs/contact-discovery";
 
 const GOOGLE_CALENDAR_API = "https://www.googleapis.com/calendar/v3";
 
@@ -110,8 +111,8 @@ async function upsertEvents(
 	events: GoogleEvent[],
 	calendarAccountId: string,
 	userId: string,
-): Promise<number> {
-	let count = 0;
+): Promise<string[]> {
+	const upsertedIds: string[] = [];
 
 	for (const event of events) {
 		if (!event.id) continue;
@@ -147,7 +148,7 @@ async function upsertEvents(
 
 		const reminders = event.reminders?.overrides ?? null;
 
-		await db
+		const result = await db
 			.insert(calendarEvents)
 			.values({
 				calendarAccountId,
@@ -189,12 +190,15 @@ async function upsertEvents(
 					reminders,
 					syncedAt: new Date(),
 				},
-			});
+			})
+			.returning({ id: calendarEvents.id });
 
-		count++;
+		if (result[0]) {
+			upsertedIds.push(result[0].id);
+		}
 	}
 
-	return count;
+	return upsertedIds;
 }
 
 async function processCalendarSync(
@@ -243,7 +247,7 @@ async function processCalendarSync(
 					Date.now() + 60 * 24 * 60 * 60 * 1000,
 				).toISOString();
 
-				let totalEvents = 0;
+				const allEventIds: string[] = [];
 				let pageToken: string | undefined;
 				let syncToken: string | undefined;
 
@@ -260,12 +264,12 @@ async function processCalendarSync(
 					const response = await fetchGoogleEvents(accessToken, params);
 
 					if (response.items && response.items.length > 0) {
-						const count = await upsertEvents(
+						const ids = await upsertEvents(
 							response.items,
 							data.calendarAccountId,
 							data.userId,
 						);
-						totalEvents += count;
+						allEventIds.push(...ids);
 					}
 
 					pageToken = response.nextPageToken;
@@ -273,7 +277,7 @@ async function processCalendarSync(
 				} while (pageToken);
 
 				console.log(
-					`[calendar-sync] Initial sync for account ${data.calendarAccountId}: ${totalEvents} events`,
+					`[calendar-sync] Initial sync for account ${data.calendarAccountId}: ${allEventIds.length} events`,
 				);
 
 				await db
@@ -285,6 +289,10 @@ async function processCalendarSync(
 						syncError: null,
 					})
 					.where(eq(calendarAccounts.id, data.calendarAccountId));
+
+				if (allEventIds.length > 0) {
+					await enqueueContactExtractFromEvents(data.userId, allEventIds);
+				}
 				break;
 			}
 
@@ -305,7 +313,7 @@ async function processCalendarSync(
 					return;
 				}
 
-				let totalEvents = 0;
+				const allEventIds: string[] = [];
 				let pageToken: string | undefined;
 				let newSyncToken: string | undefined;
 
@@ -318,12 +326,12 @@ async function processCalendarSync(
 					const response = await fetchGoogleEvents(accessToken, params);
 
 					if (response.items && response.items.length > 0) {
-						const count = await upsertEvents(
+						const ids = await upsertEvents(
 							response.items,
 							data.calendarAccountId,
 							data.userId,
 						);
-						totalEvents += count;
+						allEventIds.push(...ids);
 					}
 
 					pageToken = response.nextPageToken;
@@ -331,7 +339,7 @@ async function processCalendarSync(
 				} while (pageToken);
 
 				console.log(
-					`[calendar-sync] Incremental sync for account ${data.calendarAccountId}: ${totalEvents} events updated`,
+					`[calendar-sync] Incremental sync for account ${data.calendarAccountId}: ${allEventIds.length} events updated`,
 				);
 
 				await db
@@ -343,6 +351,10 @@ async function processCalendarSync(
 						syncError: null,
 					})
 					.where(eq(calendarAccounts.id, data.calendarAccountId));
+
+				if (allEventIds.length > 0) {
+					await enqueueContactExtractFromEvents(data.userId, allEventIds);
+				}
 				break;
 			}
 		}
