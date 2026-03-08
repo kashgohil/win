@@ -218,6 +218,11 @@ export const tasks = pgTable(
 		reminderAt: timestamp("reminder_at", { withTimezone: true }),
 		snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
 
+		// overdue automation tracking
+		overdueNotifiedAt: timestamp("overdue_notified_at", {
+			withTimezone: true,
+		}),
+
 		// ai categorization
 		suggestedProjectId: uuid("suggested_project_id").references(
 			() => taskProjects.id,

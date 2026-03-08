@@ -120,6 +120,13 @@
       "when": 1772956716784,
       "tag": "0016_silent_ikaris",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1772969025384,
+      "tag": "0017_slippery_gamora",
+      "breakpoints": true
     }
   ]
 }
