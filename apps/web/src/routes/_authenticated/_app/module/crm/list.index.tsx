@@ -7,7 +7,6 @@ import {
 	useArchiveContact,
 	useContacts,
 	useContactTags,
-	useDeleteContact,
 	useStarContact,
 } from "@/hooks/use-contacts";
 import { cn } from "@/lib/utils";
@@ -81,7 +80,6 @@ function ContactListPage() {
 	});
 	const starContact = useStarContact();
 	const archiveContact = useArchiveContact();
-	const deleteContact = useDeleteContact();
 	const { data: tags } = useContactTags();
 
 	const allContacts: Contact[] =
