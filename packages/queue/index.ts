@@ -20,6 +20,7 @@ export {
 	enqueueCalendarIncrementalSync,
 	enqueueCalendarInitialSync,
 	scheduleRecurringCalendarSync,
+	scheduleWebhookRenewal,
 	type CalendarSyncJobData,
 } from "./src/jobs/calendar-sync";
 export {

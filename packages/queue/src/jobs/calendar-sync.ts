@@ -10,6 +10,9 @@ export type CalendarSyncJobData =
 			type: "incremental-sync";
 			calendarAccountId: string;
 			userId: string;
+	  }
+	| {
+			type: "renew-webhooks";
 	  };
 
 export async function enqueueCalendarInitialSync(
@@ -48,6 +51,17 @@ export async function scheduleRecurringCalendarSync(
 		{
 			repeat: { every: 5 * 60 * 1000 },
 			jobId: `recurring-calendar-sync:${calendarAccountId}`,
+		},
+	);
+}
+
+export async function scheduleWebhookRenewal() {
+	return calendarSyncQueue.add(
+		"renew-webhooks",
+		{ type: "renew-webhooks" },
+		{
+			repeat: { every: 12 * 60 * 60 * 1000 }, // every 12 hours
+			jobId: "calendar-webhook-renewal",
 		},
 	);
 }

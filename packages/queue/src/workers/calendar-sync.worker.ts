@@ -1,4 +1,11 @@
-import { and, calendarAccounts, calendarEvents, db, eq } from "@wingmnn/db";
+import {
+	and,
+	calendarAccounts,
+	calendarEvents,
+	db,
+	eq,
+	lte,
+} from "@wingmnn/db";
 import { Worker } from "bullmq";
 import { getValidCalendarToken } from "../calendar-token";
 import { connection } from "../connection";
@@ -190,7 +197,9 @@ async function upsertEvents(
 	return count;
 }
 
-async function processCalendarSync(data: CalendarSyncJobData): Promise<void> {
+async function processCalendarSync(
+	data: Extract<CalendarSyncJobData, { calendarAccountId: string }>,
+): Promise<void> {
 	const account = await db.query.calendarAccounts.findFirst({
 		where: eq(calendarAccounts.id, data.calendarAccountId),
 	});
@@ -366,12 +375,105 @@ async function processCalendarSync(data: CalendarSyncJobData): Promise<void> {
 	}
 }
 
+async function renewWebhooks(): Promise<void> {
+	const soonExpiring = new Date(Date.now() + 24 * 60 * 60 * 1000);
+	const accounts = await db.query.calendarAccounts.findMany({
+		where: and(
+			eq(calendarAccounts.active, true),
+			lte(calendarAccounts.webhookExpiry, soonExpiring),
+		),
+	});
+
+	for (const account of accounts) {
+		const accessToken = await getValidCalendarToken(account.id);
+		if (!accessToken) continue;
+
+		// Stop old channel
+		if (account.webhookChannelId && account.webhookResourceId) {
+			try {
+				await fetch("https://www.googleapis.com/calendar/v3/channels/stop", {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						id: account.webhookChannelId,
+						resourceId: account.webhookResourceId,
+					}),
+				});
+			} catch {
+				// Ignore stop errors
+			}
+		}
+
+		// Register new channel
+		const channelId = crypto.randomUUID();
+		const webhookUrl = `${process.env.BETTER_AUTH_URL ?? "http://localhost:8080"}/calendar/webhook`;
+
+		try {
+			const res = await fetch(
+				`${GOOGLE_CALENDAR_API}/calendars/primary/events/watch`,
+				{
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						id: channelId,
+						type: "web_hook",
+						address: webhookUrl,
+						params: { ttl: "604800" },
+					}),
+				},
+			);
+
+			if (res.ok) {
+				const data = (await res.json()) as {
+					id: string;
+					resourceId: string;
+					expiration: string;
+				};
+
+				await db
+					.update(calendarAccounts)
+					.set({
+						webhookChannelId: data.id,
+						webhookResourceId: data.resourceId,
+						webhookExpiry: new Date(Number(data.expiration)),
+					})
+					.where(eq(calendarAccounts.id, account.id));
+
+				console.log(
+					`[calendar-sync] Renewed webhook for account ${account.id}`,
+				);
+			}
+		} catch (err) {
+			console.error(
+				`[calendar-sync] Webhook renewal failed for ${account.id}:`,
+				err,
+			);
+		}
+	}
+
+	if (accounts.length > 0) {
+		console.log(
+			`[calendar-sync] Processed ${accounts.length} webhook renewals`,
+		);
+	}
+}
+
 export function createCalendarSyncWorker() {
 	const worker = new Worker<CalendarSyncJobData>(
 		"calendar-sync",
 		async (job) => {
 			console.log(`[calendar-sync] Processing job ${job.id}: ${job.data.type}`);
-			await processCalendarSync(job.data);
+			if (job.data.type === "renew-webhooks") {
+				await renewWebhooks();
+			} else {
+				await processCalendarSync(job.data);
+			}
 		},
 		{ connection, concurrency: 3 },
 	);
