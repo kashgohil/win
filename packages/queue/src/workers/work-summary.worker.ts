@@ -1,5 +1,7 @@
 import {
 	and,
+	contactInteractions,
+	contacts,
 	count,
 	db,
 	eq,
@@ -83,13 +85,57 @@ async function processUserDigest(userId: string, from: Date, now: Date) {
 	const createdCount = createdResult?.count ?? 0;
 	const overdueCount = overdueResult?.count ?? 0;
 
-	// Skip if no activity
-	if (completedCount === 0 && createdCount === 0) return false;
+	// Contacts stats
+	const [touchedResult] = await db
+		.select({
+			count: sql<number>`count(distinct ${contactInteractions.contactId})::int`,
+		})
+		.from(contactInteractions)
+		.where(
+			and(
+				eq(contactInteractions.userId, userId),
+				gte(contactInteractions.occurredAt, from),
+			),
+		);
+
+	const [newContactsResult] = await db
+		.select({ count: sql<number>`count(*)::int` })
+		.from(contacts)
+		.where(and(eq(contacts.userId, userId), gte(contacts.createdAt, from)));
+
+	const [coolingResult] = await db
+		.select({ count: sql<number>`count(*)::int` })
+		.from(contacts)
+		.where(
+			and(
+				eq(contacts.userId, userId),
+				eq(contacts.starred, true),
+				eq(contacts.archived, false),
+				lte(contacts.relationshipScore, 30),
+			),
+		);
+
+	const contactsTouched = touchedResult?.count ?? 0;
+	const newContacts = newContactsResult?.count ?? 0;
+	const coolingOff = coolingResult?.count ?? 0;
+
+	// Skip if no activity at all
+	if (completedCount === 0 && createdCount === 0 && contactsTouched === 0)
+		return false;
 
 	// Try AI summary
 	let body = `Completed ${completedCount} task${completedCount !== 1 ? "s" : ""} yesterday.`;
 	if (overdueCount > 0) {
 		body += ` ${overdueCount} task${overdueCount !== 1 ? "s" : ""} overdue.`;
+	}
+	if (contactsTouched > 0) {
+		body += ` ${contactsTouched} contact${contactsTouched !== 1 ? "s" : ""} touched.`;
+	}
+	if (coolingOff > 0) {
+		body += ` ${coolingOff} starred contact${coolingOff !== 1 ? "s" : ""} cooling off.`;
+	}
+	if (newContacts > 0) {
+		body += ` ${newContacts} new contact${newContacts !== 1 ? "s" : ""} detected.`;
 	}
 
 	try {
