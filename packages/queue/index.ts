@@ -12,6 +12,7 @@ export type {
 	WorkSummaryInput,
 	WorkSummaryResult,
 } from "./src/ai/types";
+export { evaluateAutomations } from "./src/automation";
 export {
 	enqueueClassify,
 	enqueueDraftResponse,
