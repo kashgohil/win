@@ -1,6 +1,9 @@
 import {
 	and,
 	asc,
+	contactFollowUps,
+	contactInteractions,
+	contacts,
 	count,
 	db,
 	desc,
@@ -2321,6 +2324,13 @@ export const taskService = {
 					streak: number;
 					aiSummary: string | null;
 					aiHighlights: string[] | null;
+					contacts: {
+						touchedThisWeek: number;
+						newContacts: number;
+						coolingOff: number;
+						followUpsCompleted: number;
+						followUpsPending: number;
+					} | null;
 				};
 		  }
 		| { ok: false; error: string; status: number }
@@ -2458,6 +2468,79 @@ export const taskService = {
 				}
 			}
 
+			// Contacts digest (best-effort, null on error)
+			let contactsDigest: {
+				touchedThisWeek: number;
+				newContacts: number;
+				coolingOff: number;
+				followUpsCompleted: number;
+				followUpsPending: number;
+			} | null = null;
+
+			try {
+				const [touchedResult] = await db
+					.select({
+						count: sql<number>`count(distinct ${contactInteractions.contactId})::int`,
+					})
+					.from(contactInteractions)
+					.where(
+						and(
+							eq(contactInteractions.userId, userId),
+							gte(contactInteractions.occurredAt, from),
+						),
+					);
+
+				const [newResult] = await db
+					.select({ count: sql<number>`count(*)::int` })
+					.from(contacts)
+					.where(
+						and(eq(contacts.userId, userId), gte(contacts.createdAt, from)),
+					);
+
+				const [coolingResult] = await db
+					.select({ count: sql<number>`count(*)::int` })
+					.from(contacts)
+					.where(
+						and(
+							eq(contacts.userId, userId),
+							eq(contacts.starred, true),
+							eq(contacts.archived, false),
+							lte(contacts.relationshipScore, 30),
+						),
+					);
+
+				const [completedFuResult] = await db
+					.select({ count: sql<number>`count(*)::int` })
+					.from(contactFollowUps)
+					.where(
+						and(
+							eq(contactFollowUps.userId, userId),
+							eq(contactFollowUps.status, "completed"),
+							gte(contactFollowUps.completedAt, from),
+						),
+					);
+
+				const [pendingFuResult] = await db
+					.select({ count: sql<number>`count(*)::int` })
+					.from(contactFollowUps)
+					.where(
+						and(
+							eq(contactFollowUps.userId, userId),
+							eq(contactFollowUps.status, "pending"),
+						),
+					);
+
+				contactsDigest = {
+					touchedThisWeek: touchedResult?.count ?? 0,
+					newContacts: newResult?.count ?? 0,
+					coolingOff: coolingResult?.count ?? 0,
+					followUpsCompleted: completedFuResult?.count ?? 0,
+					followUpsPending: pendingFuResult?.count ?? 0,
+				};
+			} catch {
+				// Non-fatal — contacts data is optional
+			}
+
 			return {
 				ok: true as const,
 				data: {
@@ -2477,6 +2560,7 @@ export const taskService = {
 					streak,
 					aiSummary,
 					aiHighlights,
+					contacts: contactsDigest,
 				},
 			};
 		} catch (err) {

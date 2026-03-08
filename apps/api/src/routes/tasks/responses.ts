@@ -379,4 +379,13 @@ export const workSummaryResponse = t.Object({
 	streak: t.Number(),
 	aiSummary: t.Optional(t.Nullable(t.String())),
 	aiHighlights: t.Optional(t.Nullable(t.Array(t.String()))),
+	contacts: t.Nullable(
+		t.Object({
+			touchedThisWeek: t.Number(),
+			newContacts: t.Number(),
+			coolingOff: t.Number(),
+			followUpsCompleted: t.Number(),
+			followUpsPending: t.Number(),
+		}),
+	),
 });
