@@ -30,6 +30,10 @@ export {
 	type ContactDiscoveryJobData,
 } from "./src/jobs/contact-discovery";
 export {
+	scheduleContactScoring,
+	type ContactScoreJobData,
+} from "./src/jobs/contact-score";
+export {
 	enqueueClassify,
 	enqueueDraftResponse,
 	type MailAiJobData,
@@ -80,6 +84,7 @@ export {
 export {
 	calendarSyncQueue,
 	contactDiscoveryQueue,
+	contactScoreQueue,
 	mailAiQueue,
 	mailAutoHandleQueue,
 	mailFollowUpQueue,
