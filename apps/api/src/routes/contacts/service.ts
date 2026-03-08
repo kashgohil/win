@@ -1,16 +1,21 @@
 import {
 	and,
+	calendarEvents,
+	contactFollowUps,
 	contactInteractions,
 	contacts,
 	contactTagAssignments,
 	contactTags,
 	db,
 	desc,
+	emails,
 	eq,
+	gte,
 	ilike,
 	or,
 	sql,
 } from "@wingmnn/db";
+import { enqueueContactFullScan } from "@wingmnn/queue";
 
 /* ── Types ── */
 
@@ -516,6 +521,921 @@ async function toggleArchive(
 	}
 }
 
+/* ── Tags: List ── */
+
+async function listTags(userId: string): Promise<
+	ServiceResult<{
+		tags: {
+			id: string;
+			name: string;
+			color: string | null;
+			contactCount: number;
+			createdAt: string;
+		}[];
+	}>
+> {
+	try {
+		const rows = await db
+			.select({
+				id: contactTags.id,
+				name: contactTags.name,
+				color: contactTags.color,
+				createdAt: contactTags.createdAt,
+				contactCount: sql<number>`(SELECT count(*)::int FROM ${contactTagAssignments} WHERE ${contactTagAssignments.tagId} = ${contactTags.id})`,
+			})
+			.from(contactTags)
+			.where(eq(contactTags.userId, userId))
+			.orderBy(contactTags.name);
+
+		return {
+			ok: true,
+			data: {
+				tags: rows.map((r) => ({
+					id: r.id,
+					name: r.name,
+					color: r.color ?? null,
+					contactCount: r.contactCount,
+					createdAt: r.createdAt.toISOString(),
+				})),
+			},
+		};
+	} catch (err) {
+		const message = err instanceof Error ? err.message : "Failed to list tags";
+		console.error("[contacts] listTags error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Tags: Create ── */
+
+async function createTag(
+	userId: string,
+	body: { name: string; color?: string },
+): Promise<
+	ServiceResult<{
+		id: string;
+		name: string;
+		color: string | null;
+		contactCount: number;
+		createdAt: string;
+	}>
+> {
+	try {
+		const result = await db
+			.insert(contactTags)
+			.values({
+				userId,
+				name: body.name.trim(),
+				color: body.color ?? null,
+			})
+			.onConflictDoNothing({
+				target: [contactTags.userId, contactTags.name],
+			})
+			.returning();
+
+		const tag = result[0];
+		if (!tag) {
+			return {
+				ok: false,
+				error: "A tag with this name already exists",
+				status: 409,
+			};
+		}
+
+		return {
+			ok: true,
+			data: {
+				id: tag.id,
+				name: tag.name,
+				color: tag.color ?? null,
+				contactCount: 0,
+				createdAt: tag.createdAt.toISOString(),
+			},
+		};
+	} catch (err) {
+		const message = err instanceof Error ? err.message : "Failed to create tag";
+		console.error("[contacts] createTag error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Tags: Update ── */
+
+async function updateTag(
+	userId: string,
+	tagId: string,
+	body: { name?: string; color?: string | null },
+): Promise<
+	ServiceResult<{
+		id: string;
+		name: string;
+		color: string | null;
+		contactCount: number;
+		createdAt: string;
+	}>
+> {
+	try {
+		const updateFields: Record<string, unknown> = {};
+		if (body.name !== undefined) updateFields.name = body.name.trim();
+		if (body.color !== undefined) updateFields.color = body.color;
+
+		if (Object.keys(updateFields).length === 0) {
+			return { ok: false, error: "No fields to update", status: 400 };
+		}
+
+		const result = await db
+			.update(contactTags)
+			.set(updateFields)
+			.where(and(eq(contactTags.id, tagId), eq(contactTags.userId, userId)))
+			.returning();
+
+		const tag = result[0];
+		if (!tag) {
+			return { ok: false, error: "Tag not found", status: 404 };
+		}
+
+		const countResult = await db
+			.select({ count: sql<number>`count(*)::int` })
+			.from(contactTagAssignments)
+			.where(eq(contactTagAssignments.tagId, tagId));
+
+		return {
+			ok: true,
+			data: {
+				id: tag.id,
+				name: tag.name,
+				color: tag.color ?? null,
+				contactCount: countResult[0]?.count ?? 0,
+				createdAt: tag.createdAt.toISOString(),
+			},
+		};
+	} catch (err) {
+		const message = err instanceof Error ? err.message : "Failed to update tag";
+		console.error("[contacts] updateTag error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Tags: Delete ── */
+
+async function deleteTag(
+	userId: string,
+	tagId: string,
+): Promise<ServiceResult<{ message: string }>> {
+	try {
+		const result = await db
+			.delete(contactTags)
+			.where(and(eq(contactTags.id, tagId), eq(contactTags.userId, userId)))
+			.returning({ id: contactTags.id });
+
+		if (result.length === 0) {
+			return { ok: false, error: "Tag not found", status: 404 };
+		}
+
+		return { ok: true, data: { message: "Tag deleted" } };
+	} catch (err) {
+		const message = err instanceof Error ? err.message : "Failed to delete tag";
+		console.error("[contacts] deleteTag error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Tags: Assign ── */
+
+async function assignTag(
+	userId: string,
+	contactId: string,
+	tagId: string,
+): Promise<ServiceResult<{ message: string }>> {
+	try {
+		// Verify ownership of both contact and tag
+		const [contact, tag] = await Promise.all([
+			db.query.contacts.findFirst({
+				where: and(eq(contacts.id, contactId), eq(contacts.userId, userId)),
+				columns: { id: true },
+			}),
+			db.query.contactTags.findFirst({
+				where: and(eq(contactTags.id, tagId), eq(contactTags.userId, userId)),
+				columns: { id: true },
+			}),
+		]);
+
+		if (!contact) {
+			return { ok: false, error: "Contact not found", status: 404 };
+		}
+		if (!tag) {
+			return { ok: false, error: "Tag not found", status: 404 };
+		}
+
+		await db
+			.insert(contactTagAssignments)
+			.values({ contactId, tagId })
+			.onConflictDoNothing();
+
+		return { ok: true, data: { message: "Tag assigned" } };
+	} catch (err) {
+		const message = err instanceof Error ? err.message : "Failed to assign tag";
+		console.error("[contacts] assignTag error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Tags: Remove ── */
+
+async function removeTag(
+	userId: string,
+	contactId: string,
+	tagId: string,
+): Promise<ServiceResult<{ message: string }>> {
+	try {
+		// Verify contact ownership
+		const contact = await db.query.contacts.findFirst({
+			where: and(eq(contacts.id, contactId), eq(contacts.userId, userId)),
+			columns: { id: true },
+		});
+
+		if (!contact) {
+			return { ok: false, error: "Contact not found", status: 404 };
+		}
+
+		await db
+			.delete(contactTagAssignments)
+			.where(
+				and(
+					eq(contactTagAssignments.contactId, contactId),
+					eq(contactTagAssignments.tagId, tagId),
+				),
+			);
+
+		return { ok: true, data: { message: "Tag removed" } };
+	} catch (err) {
+		const message = err instanceof Error ? err.message : "Failed to remove tag";
+		console.error("[contacts] removeTag error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Interactions: List ── */
+
+async function listInteractions(
+	userId: string,
+	contactId: string,
+	options: { limit?: number; cursor?: string },
+): Promise<
+	ServiceResult<{
+		interactions: {
+			id: string;
+			type: string;
+			referenceId: string | null;
+			title: string;
+			occurredAt: string;
+			metadata: unknown;
+			createdAt: string;
+		}[];
+		total: number;
+		hasMore: boolean;
+		nextCursor?: string;
+	}>
+> {
+	try {
+		// Verify contact ownership
+		const contact = await db.query.contacts.findFirst({
+			where: and(eq(contacts.id, contactId), eq(contacts.userId, userId)),
+			columns: { id: true },
+		});
+
+		if (!contact) {
+			return { ok: false, error: "Contact not found", status: 404 };
+		}
+
+		const limit = Math.min(options.limit ?? 20, 100);
+		const conditions = [eq(contactInteractions.contactId, contactId)];
+
+		if (options.cursor) {
+			conditions.push(sql`${contactInteractions.id} < ${options.cursor}`);
+		}
+
+		const where = and(...conditions);
+
+		const [rows, countResult] = await Promise.all([
+			db
+				.select()
+				.from(contactInteractions)
+				.where(where)
+				.orderBy(desc(contactInteractions.occurredAt))
+				.limit(limit + 1),
+			db
+				.select({ count: sql<number>`count(*)::int` })
+				.from(contactInteractions)
+				.where(eq(contactInteractions.contactId, contactId)),
+		]);
+
+		const hasMore = rows.length > limit;
+		const items = hasMore ? rows.slice(0, limit) : rows;
+
+		return {
+			ok: true,
+			data: {
+				interactions: items.map((i) => ({
+					id: i.id,
+					type: i.type,
+					referenceId: i.referenceId,
+					title: i.title,
+					occurredAt: i.occurredAt.toISOString(),
+					metadata: i.metadata,
+					createdAt: i.createdAt.toISOString(),
+				})),
+				total: countResult[0]?.count ?? 0,
+				hasMore,
+				nextCursor: hasMore ? items[items.length - 1]?.id : undefined,
+			},
+		};
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to list interactions";
+		console.error("[contacts] listInteractions error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Cross-module: Emails ── */
+
+async function getContactEmails(
+	userId: string,
+	contactId: string,
+	options: { limit?: number; offset?: number },
+): Promise<
+	ServiceResult<{
+		emails: {
+			id: string;
+			subject: string | null;
+			fromAddress: string | null;
+			fromName: string | null;
+			receivedAt: string;
+			snippet: string | null;
+			isRead: boolean;
+		}[];
+		total: number;
+		hasMore: boolean;
+	}>
+> {
+	try {
+		const contact = await db.query.contacts.findFirst({
+			where: and(eq(contacts.id, contactId), eq(contacts.userId, userId)),
+			columns: { id: true, primaryEmail: true, additionalEmails: true },
+		});
+
+		if (!contact) {
+			return { ok: false, error: "Contact not found", status: 404 };
+		}
+
+		const allEmails = [
+			contact.primaryEmail,
+			...(contact.additionalEmails ?? []),
+		];
+		const limit = Math.min(options.limit ?? 20, 100);
+		const offset = options.offset ?? 0;
+
+		// Find emails where this contact is sender or recipient
+		const emailCondition = and(
+			eq(emails.userId, userId),
+			or(
+				sql`${emails.fromAddress} IN (${sql.join(
+					allEmails.map((e) => sql`${e}`),
+					sql`, `,
+				)})`,
+				sql`${emails.toAddresses} && ARRAY[${sql.join(
+					allEmails.map((e) => sql`${e}`),
+					sql`, `,
+				)}]::text[]`,
+				sql`${emails.ccAddresses} && ARRAY[${sql.join(
+					allEmails.map((e) => sql`${e}`),
+					sql`, `,
+				)}]::text[]`,
+			),
+		);
+
+		const [rows, countResult] = await Promise.all([
+			db
+				.select({
+					id: emails.id,
+					subject: emails.subject,
+					fromAddress: emails.fromAddress,
+					fromName: emails.fromName,
+					receivedAt: emails.receivedAt,
+					snippet: emails.snippet,
+					isRead: emails.isRead,
+				})
+				.from(emails)
+				.where(emailCondition)
+				.orderBy(desc(emails.receivedAt))
+				.limit(limit)
+				.offset(offset),
+			db
+				.select({ count: sql<number>`count(*)::int` })
+				.from(emails)
+				.where(emailCondition),
+		]);
+
+		return {
+			ok: true,
+			data: {
+				emails: rows.map((e) => ({
+					id: e.id,
+					subject: e.subject,
+					fromAddress: e.fromAddress,
+					fromName: e.fromName,
+					receivedAt: e.receivedAt.toISOString(),
+					snippet: e.snippet,
+					isRead: e.isRead,
+				})),
+				total: countResult[0]?.count ?? 0,
+				hasMore: offset + limit < (countResult[0]?.count ?? 0),
+			},
+		};
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to get contact emails";
+		console.error("[contacts] getContactEmails error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Cross-module: Calendar Events ── */
+
+async function getContactEvents(
+	userId: string,
+	contactId: string,
+	options: { limit?: number; offset?: number },
+): Promise<
+	ServiceResult<{
+		events: {
+			id: string;
+			title: string | null;
+			startTime: string;
+			endTime: string;
+			location: string | null;
+			status: string;
+		}[];
+		total: number;
+		hasMore: boolean;
+	}>
+> {
+	try {
+		const contact = await db.query.contacts.findFirst({
+			where: and(eq(contacts.id, contactId), eq(contacts.userId, userId)),
+			columns: { id: true, primaryEmail: true, additionalEmails: true },
+		});
+
+		if (!contact) {
+			return { ok: false, error: "Contact not found", status: 404 };
+		}
+
+		const allEmails = [
+			contact.primaryEmail,
+			...(contact.additionalEmails ?? []),
+		];
+		const limit = Math.min(options.limit ?? 20, 100);
+		const offset = options.offset ?? 0;
+
+		// Search attendees JSONB for contact's email addresses
+		const emailConditions = allEmails.map(
+			(email) =>
+				sql`${calendarEvents.attendees}::jsonb @> ${`[{"email":"${email}"}]`}::jsonb`,
+		);
+		const organizerConditions = allEmails.map(
+			(email) =>
+				sql`${calendarEvents.organizer}::jsonb @> ${`{"email":"${email}"}`}::jsonb`,
+		);
+
+		const eventCondition = and(
+			eq(calendarEvents.userId, userId),
+			or(...emailConditions, ...organizerConditions),
+		);
+
+		const [rows, countResult] = await Promise.all([
+			db
+				.select({
+					id: calendarEvents.id,
+					title: calendarEvents.title,
+					startTime: calendarEvents.startTime,
+					endTime: calendarEvents.endTime,
+					location: calendarEvents.location,
+					status: calendarEvents.status,
+				})
+				.from(calendarEvents)
+				.where(eventCondition)
+				.orderBy(desc(calendarEvents.startTime))
+				.limit(limit)
+				.offset(offset),
+			db
+				.select({ count: sql<number>`count(*)::int` })
+				.from(calendarEvents)
+				.where(eventCondition),
+		]);
+
+		return {
+			ok: true,
+			data: {
+				events: rows.map((e) => ({
+					id: e.id,
+					title: e.title,
+					startTime: e.startTime.toISOString(),
+					endTime: e.endTime.toISOString(),
+					location: e.location,
+					status: e.status,
+				})),
+				total: countResult[0]?.count ?? 0,
+				hasMore: offset + limit < (countResult[0]?.count ?? 0),
+			},
+		};
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to get contact events";
+		console.error("[contacts] getContactEvents error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Follow-ups: List ── */
+
+async function listFollowUps(
+	userId: string,
+	options: { type?: string; limit?: number; cursor?: string },
+): Promise<
+	ServiceResult<{
+		followUps: {
+			id: string;
+			contactId: string;
+			contactName: string | null;
+			contactEmail: string;
+			type: string;
+			title: string;
+			context: string | null;
+			dueAt: string | null;
+			status: string;
+			snoozedUntil: string | null;
+			createdAt: string;
+		}[];
+		total: number;
+		hasMore: boolean;
+		nextCursor?: string;
+	}>
+> {
+	try {
+		const limit = Math.min(options.limit ?? 20, 100);
+		const conditions = [
+			eq(contactFollowUps.userId, userId),
+			eq(contactFollowUps.status, "pending"),
+		];
+
+		if (options.type) {
+			conditions.push(sql`${contactFollowUps.type} = ${options.type}`);
+		}
+		if (options.cursor) {
+			conditions.push(sql`${contactFollowUps.id} < ${options.cursor}`);
+		}
+
+		const where = and(...conditions);
+
+		const [rows, countResult] = await Promise.all([
+			db
+				.select({
+					id: contactFollowUps.id,
+					contactId: contactFollowUps.contactId,
+					contactName: contacts.name,
+					contactEmail: contacts.primaryEmail,
+					type: contactFollowUps.type,
+					title: contactFollowUps.title,
+					context: contactFollowUps.context,
+					dueAt: contactFollowUps.dueAt,
+					status: contactFollowUps.status,
+					snoozedUntil: contactFollowUps.snoozedUntil,
+					createdAt: contactFollowUps.createdAt,
+				})
+				.from(contactFollowUps)
+				.innerJoin(contacts, eq(contactFollowUps.contactId, contacts.id))
+				.where(where)
+				.orderBy(sql`${contactFollowUps.dueAt} ASC NULLS LAST`)
+				.limit(limit + 1),
+			db
+				.select({ count: sql<number>`count(*)::int` })
+				.from(contactFollowUps)
+				.where(where),
+		]);
+
+		const hasMore = rows.length > limit;
+		const items = hasMore ? rows.slice(0, limit) : rows;
+
+		return {
+			ok: true,
+			data: {
+				followUps: items.map((f) => ({
+					id: f.id,
+					contactId: f.contactId,
+					contactName: f.contactName,
+					contactEmail: f.contactEmail,
+					type: f.type,
+					title: f.title,
+					context: f.context,
+					dueAt: f.dueAt?.toISOString() ?? null,
+					status: f.status,
+					snoozedUntil: f.snoozedUntil?.toISOString() ?? null,
+					createdAt: f.createdAt.toISOString(),
+				})),
+				total: countResult[0]?.count ?? 0,
+				hasMore,
+				nextCursor: hasMore ? items[items.length - 1]?.id : undefined,
+			},
+		};
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to list follow-ups";
+		console.error("[contacts] listFollowUps error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Follow-ups: Complete ── */
+
+async function completeFollowUp(
+	userId: string,
+	followUpId: string,
+): Promise<ServiceResult<{ message: string }>> {
+	try {
+		const result = await db
+			.update(contactFollowUps)
+			.set({ status: "completed", completedAt: new Date() })
+			.where(
+				and(
+					eq(contactFollowUps.id, followUpId),
+					eq(contactFollowUps.userId, userId),
+					eq(contactFollowUps.status, "pending"),
+				),
+			)
+			.returning({ id: contactFollowUps.id });
+
+		if (result.length === 0) {
+			return {
+				ok: false,
+				error: "Follow-up not found or already resolved",
+				status: 404,
+			};
+		}
+
+		return { ok: true, data: { message: "Follow-up completed" } };
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to complete follow-up";
+		console.error("[contacts] completeFollowUp error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Follow-ups: Dismiss ── */
+
+async function dismissFollowUp(
+	userId: string,
+	followUpId: string,
+): Promise<ServiceResult<{ message: string }>> {
+	try {
+		const result = await db
+			.update(contactFollowUps)
+			.set({ status: "dismissed" })
+			.where(
+				and(
+					eq(contactFollowUps.id, followUpId),
+					eq(contactFollowUps.userId, userId),
+					eq(contactFollowUps.status, "pending"),
+				),
+			)
+			.returning({ id: contactFollowUps.id });
+
+		if (result.length === 0) {
+			return {
+				ok: false,
+				error: "Follow-up not found or already resolved",
+				status: 404,
+			};
+		}
+
+		return { ok: true, data: { message: "Follow-up dismissed" } };
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to dismiss follow-up";
+		console.error("[contacts] dismissFollowUp error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Follow-ups: Snooze ── */
+
+async function snoozeFollowUp(
+	userId: string,
+	followUpId: string,
+	until: string,
+): Promise<ServiceResult<{ message: string }>> {
+	try {
+		const snoozedUntil = new Date(until);
+		if (Number.isNaN(snoozedUntil.getTime())) {
+			return { ok: false, error: "Invalid date", status: 400 };
+		}
+
+		const result = await db
+			.update(contactFollowUps)
+			.set({ status: "snoozed", snoozedUntil })
+			.where(
+				and(
+					eq(contactFollowUps.id, followUpId),
+					eq(contactFollowUps.userId, userId),
+					eq(contactFollowUps.status, "pending"),
+				),
+			)
+			.returning({ id: contactFollowUps.id });
+
+		if (result.length === 0) {
+			return {
+				ok: false,
+				error: "Follow-up not found or already resolved",
+				status: 404,
+			};
+		}
+
+		return { ok: true, data: { message: "Follow-up snoozed" } };
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to snooze follow-up";
+		console.error("[contacts] snoozeFollowUp error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Module Data (hub briefing) ── */
+
+async function getModuleData(userId: string): Promise<
+	ServiceResult<{
+		contactsTouchedThisWeek: number;
+		followUpsDue: number;
+		coolingOff: number;
+		totalContacts: number;
+		starredContacts: number;
+	}>
+> {
+	try {
+		const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+		const [
+			touchedResult,
+			followUpResult,
+			coolingResult,
+			totalResult,
+			starredResult,
+		] = await Promise.all([
+			// Contacts with interactions this week
+			db
+				.select({ count: sql<number>`count(*)::int` })
+				.from(contacts)
+				.where(
+					and(
+						eq(contacts.userId, userId),
+						eq(contacts.archived, false),
+						gte(contacts.lastInteractionAt, weekAgo),
+					),
+				),
+			// Pending follow-ups due
+			db
+				.select({ count: sql<number>`count(*)::int` })
+				.from(contactFollowUps)
+				.where(
+					and(
+						eq(contactFollowUps.userId, userId),
+						eq(contactFollowUps.status, "pending"),
+					),
+				),
+			// Contacts "cooling off" (score < 30, not archived, has interactions)
+			db
+				.select({ count: sql<number>`count(*)::int` })
+				.from(contacts)
+				.where(
+					and(
+						eq(contacts.userId, userId),
+						eq(contacts.archived, false),
+						sql`${contacts.relationshipScore} < 30`,
+						sql`${contacts.interactionCount} > 0`,
+					),
+				),
+			// Total non-archived contacts
+			db
+				.select({ count: sql<number>`count(*)::int` })
+				.from(contacts)
+				.where(and(eq(contacts.userId, userId), eq(contacts.archived, false))),
+			// Starred contacts
+			db
+				.select({ count: sql<number>`count(*)::int` })
+				.from(contacts)
+				.where(and(eq(contacts.userId, userId), eq(contacts.starred, true))),
+		]);
+
+		return {
+			ok: true,
+			data: {
+				contactsTouchedThisWeek: touchedResult[0]?.count ?? 0,
+				followUpsDue: followUpResult[0]?.count ?? 0,
+				coolingOff: coolingResult[0]?.count ?? 0,
+				totalContacts: totalResult[0]?.count ?? 0,
+				starredContacts: starredResult[0]?.count ?? 0,
+			},
+		};
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to get module data";
+		console.error("[contacts] getModuleData error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Suggestions (merge candidates + new contacts) ── */
+
+async function getSuggestions(userId: string): Promise<
+	ServiceResult<{
+		mergeSuggestions: {
+			contactA: { id: string; name: string | null; email: string };
+			contactB: { id: string; name: string | null; email: string };
+			reason: string;
+		}[];
+		newContactsThisWeek: number;
+	}>
+> {
+	try {
+		const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+		// Find potential duplicates: same name, different email
+		const dupesByName = await db.execute<{
+			id1: string;
+			name1: string;
+			email1: string;
+			id2: string;
+			name2: string;
+			email2: string;
+		}>(sql`
+			SELECT a.id AS id1, a.name AS name1, a.primary_email AS email1,
+			       b.id AS id2, b.name AS name2, b.primary_email AS email2
+			FROM contacts a
+			JOIN contacts b ON a.user_id = b.user_id
+			  AND lower(a.name) = lower(b.name)
+			  AND a.id < b.id
+			  AND a.name IS NOT NULL
+			  AND length(a.name) > 2
+			WHERE a.user_id = ${userId}
+			  AND a.archived = false AND b.archived = false
+			LIMIT 10
+		`);
+
+		const mergeSuggestions = (dupesByName ?? []).map((r) => ({
+			contactA: { id: r.id1, name: r.name1, email: r.email1 },
+			contactB: { id: r.id2, name: r.name2, email: r.email2 },
+			reason: "Same name, different email address",
+		}));
+
+		// New contacts this week
+		const newResult = await db
+			.select({ count: sql<number>`count(*)::int` })
+			.from(contacts)
+			.where(
+				and(eq(contacts.userId, userId), gte(contacts.createdAt, weekAgo)),
+			);
+
+		return {
+			ok: true,
+			data: {
+				mergeSuggestions,
+				newContactsThisWeek: newResult[0]?.count ?? 0,
+			},
+		};
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to get suggestions";
+		console.error("[contacts] getSuggestions error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Discover (trigger full scan) ── */
+
+async function triggerDiscover(
+	userId: string,
+): Promise<ServiceResult<{ message: string }>> {
+	try {
+		await enqueueContactFullScan(userId);
+		return { ok: true, data: { message: "Contact discovery started" } };
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to start discovery";
+		console.error("[contacts] triggerDiscover error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
 export const contactService = {
 	listContacts,
 	getContact,
@@ -524,4 +1444,20 @@ export const contactService = {
 	deleteContact,
 	toggleStar,
 	toggleArchive,
+	listTags,
+	createTag,
+	updateTag,
+	deleteTag,
+	assignTag,
+	removeTag,
+	listInteractions,
+	getContactEmails,
+	getContactEvents,
+	listFollowUps,
+	completeFollowUp,
+	dismissFollowUp,
+	snoozeFollowUp,
+	getModuleData,
+	getSuggestions,
+	triggerDiscover,
 };
