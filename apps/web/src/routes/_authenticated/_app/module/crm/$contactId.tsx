@@ -31,6 +31,7 @@ import {
 	StickyNote,
 	Tag,
 	Trash2,
+	UserPlus,
 	X,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -58,7 +59,6 @@ function ContactDetailPage() {
 	const starContact = useStarContact();
 	const archiveContact = useArchiveContact();
 	const deleteContact = useDeleteContact();
-	const updateContact = useUpdateContact();
 
 	const [activeTab, setActiveTab] = useState<
 		"overview" | "emails" | "events" | "interactions"
@@ -217,6 +217,38 @@ function ContactDetailPage() {
 									)}
 								</div>
 
+								{/* Introduced by */}
+								{contact.introducedBy && (
+									<div className="flex items-center gap-1.5 mt-2">
+										<UserPlus className="size-3 text-grey-3" />
+										<span className="font-mono text-[11px] text-grey-3">
+											Introduced by{" "}
+											<Link
+												to="/module/crm/$contactId"
+												params={{
+													contactId: contact.introducedBy as string,
+												}}
+												className="text-foreground hover:underline"
+											>
+												{(contact.introducedByName as string) ?? "someone"}
+											</Link>
+											{contact.introducedAt && (
+												<>
+													{" "}
+													on{" "}
+													{new Date(
+														contact.introducedAt as string,
+													).toLocaleDateString("en-US", {
+														month: "short",
+														day: "numeric",
+														year: "numeric",
+													})}
+												</>
+											)}
+										</span>
+									</div>
+								)}
+
 								{/* Tags */}
 								{contact.tags && (contact.tags as any[]).length > 0 && (
 									<div className="flex items-center gap-1.5 mt-2 flex-wrap">
@@ -295,7 +327,7 @@ function ContactDetailPage() {
 
 					{/* Score + Meta strip */}
 					<motion.div
-						className="mt-6 grid grid-cols-3 gap-px bg-border/30 rounded-lg overflow-hidden border border-border/30"
+						className="mt-6 grid grid-cols-4 gap-px bg-border/30 rounded-lg overflow-hidden border border-border/30"
 						initial={{ opacity: 0, y: 12 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{
@@ -328,7 +360,19 @@ function ContactDetailPage() {
 									: "—"}
 							</span>
 							<span className="font-mono text-[9px] uppercase tracking-[0.16em] text-foreground/50 mt-1">
-								Avg response
+								Their reply
+							</span>
+						</div>
+						<div className="bg-background px-4 py-3 flex flex-col items-center text-center">
+							<span className="font-display text-[1.5rem] leading-none text-foreground">
+								{contact.avgYourResponseTimeMins != null
+									? formatResponseTime(
+											contact.avgYourResponseTimeMins as number,
+										)
+									: "—"}
+							</span>
+							<span className="font-mono text-[9px] uppercase tracking-[0.16em] text-foreground/50 mt-1">
+								Your reply
 							</span>
 						</div>
 						<div className="bg-background px-4 py-3 flex flex-col items-center text-center">
