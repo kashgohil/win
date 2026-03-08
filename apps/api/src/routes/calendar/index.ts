@@ -22,6 +22,37 @@ export const calendarRoutes = new Elysia({
 })
 	.use(betterAuthPlugin)
 
+	/* ── Webhook (public — called by Google) ── */
+
+	.post(
+		"/webhook",
+		async ({ request }) => {
+			const channelId = request.headers.get("x-goog-channel-id");
+			const resourceId = request.headers.get("x-goog-resource-id");
+			const resourceState = request.headers.get("x-goog-resource-state");
+
+			if (!channelId || !resourceId) {
+				return new Response("Missing headers", { status: 400 });
+			}
+
+			// Google sends "sync" on initial verification — ignore it
+			if (resourceState === "sync") {
+				return new Response("OK", { status: 200 });
+			}
+
+			await calendarService.handleWebhookNotification(channelId, resourceId);
+			return new Response("OK", { status: 200 });
+		},
+		{
+			detail: {
+				summary: "Google Calendar webhook",
+				description:
+					"Receives push notifications from Google Calendar when events change",
+				tags: ["Calendar"],
+			},
+		},
+	)
+
 	/* ── OAuth callbacks (public — no auth required) ── */
 
 	.get(

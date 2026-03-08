@@ -12,6 +12,7 @@ import {
 	lte,
 } from "@wingmnn/db";
 import {
+	enqueueCalendarIncrementalSync,
 	enqueueCalendarInitialSync,
 	scheduleRecurringCalendarSync,
 } from "@wingmnn/queue";
@@ -296,6 +297,9 @@ export const calendarService = {
 
 			await enqueueCalendarInitialSync(account.id, userId);
 			await scheduleRecurringCalendarSync(account.id, userId);
+
+			// Register webhook for real-time push notifications
+			await this.registerWebhook(account.id);
 
 			return { ok: true, accountId: account.id };
 		} catch (err) {
@@ -872,6 +876,166 @@ export const calendarService = {
 				error: "Failed to disconnect account",
 				status: 500,
 			};
+		}
+	},
+
+	/* ── Webhooks ── */
+
+	async registerWebhook(accountId: string) {
+		try {
+			const account = await db.query.calendarAccounts.findFirst({
+				where: eq(calendarAccounts.id, accountId),
+			});
+
+			if (!account || !account.active) {
+				console.error(
+					`[calendar] registerWebhook: account ${accountId} not found or inactive`,
+				);
+				return;
+			}
+
+			const tokenResult = await this.getValidToken(accountId);
+			if (!tokenResult.ok) {
+				console.error(
+					`[calendar] registerWebhook: token failed for ${accountId}`,
+				);
+				return;
+			}
+
+			const channelId = crypto.randomUUID();
+			const webhookUrl = `${env.BETTER_AUTH_URL}/calendar/webhook`;
+
+			// Google Calendar watch API — watches for changes to the calendar
+			const res = await fetch(
+				"https://www.googleapis.com/calendar/v3/calendars/primary/events/watch",
+				{
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${tokenResult.token}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						id: channelId,
+						type: "web_hook",
+						address: webhookUrl,
+						params: { ttl: "604800" }, // 7 days
+					}),
+				},
+			);
+
+			if (!res.ok) {
+				const body = await res.text();
+				console.error("[calendar] registerWebhook Google API failed:", body);
+				return;
+			}
+
+			const data = (await res.json()) as {
+				id: string;
+				resourceId: string;
+				expiration: string;
+			};
+
+			await db
+				.update(calendarAccounts)
+				.set({
+					webhookChannelId: data.id,
+					webhookResourceId: data.resourceId,
+					webhookExpiry: new Date(Number(data.expiration)),
+				})
+				.where(eq(calendarAccounts.id, accountId));
+
+			console.log(
+				`[calendar] webhook registered for account ${accountId}, expires ${data.expiration}`,
+			);
+		} catch (err) {
+			console.error(`[calendar] registerWebhook failed for ${accountId}:`, err);
+		}
+	},
+
+	async handleWebhookNotification(channelId: string, resourceId: string) {
+		try {
+			const account = await db.query.calendarAccounts.findFirst({
+				where: and(
+					eq(calendarAccounts.webhookChannelId, channelId),
+					eq(calendarAccounts.webhookResourceId, resourceId),
+				),
+			});
+
+			if (!account) {
+				console.warn(`[calendar] webhook: no account for channel ${channelId}`);
+				return { ok: false as const, error: "Unknown channel", status: 404 };
+			}
+
+			// Enqueue an incremental sync
+			await enqueueCalendarIncrementalSync(account.id, account.userId);
+			console.log(
+				`[calendar] webhook triggered incremental sync for account ${account.id}`,
+			);
+
+			return { ok: true as const };
+		} catch (err) {
+			console.error("[calendar] handleWebhookNotification failed:", err);
+			return {
+				ok: false as const,
+				error: "Webhook processing failed",
+				status: 500,
+			};
+		}
+	},
+
+	async renewWebhooks() {
+		try {
+			// Find accounts with webhooks expiring within 24 hours
+			const soonExpiring = new Date(Date.now() + 24 * 60 * 60 * 1000);
+			const accounts = await db.query.calendarAccounts.findMany({
+				where: and(
+					eq(calendarAccounts.active, true),
+					lte(calendarAccounts.webhookExpiry, soonExpiring),
+				),
+			});
+
+			for (const account of accounts) {
+				// Stop the old channel first
+				if (account.webhookChannelId && account.webhookResourceId) {
+					await this.stopWebhookChannel(
+						account.id,
+						account.webhookChannelId,
+						account.webhookResourceId,
+					);
+				}
+				await this.registerWebhook(account.id);
+			}
+
+			if (accounts.length > 0) {
+				console.log(`[calendar] renewed ${accounts.length} webhooks`);
+			}
+		} catch (err) {
+			console.error("[calendar] renewWebhooks failed:", err);
+		}
+	},
+
+	async stopWebhookChannel(
+		accountId: string,
+		channelId: string,
+		resourceId: string,
+	) {
+		try {
+			const tokenResult = await this.getValidToken(accountId);
+			if (!tokenResult.ok) return;
+
+			await fetch("https://www.googleapis.com/calendar/v3/channels/stop", {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${tokenResult.token}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ id: channelId, resourceId }),
+			});
+		} catch (err) {
+			console.error(
+				`[calendar] stopWebhookChannel failed for ${accountId}:`,
+				err,
+			);
 		}
 	},
 };
