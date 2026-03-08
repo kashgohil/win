@@ -93,22 +93,37 @@ function CrmModule() {
 	const triageItems: TriageItem[] = useMemo(() => {
 		if (!followUpsData?.pages) return [];
 		const items = followUpsData.pages.flatMap((p) => p.followUps ?? []);
-		return items.slice(0, 5).map((fu) => ({
-			id: fu.id,
-			title: fu.title,
-			subtitle: fu.contactName
-				? `${fu.contactName}${fu.context ? ` — ${fu.context.slice(0, 80)}` : ""}`
-				: fu.context?.slice(0, 100),
-			timestamp: fu.dueAt
-				? formatRelative(fu.dueAt)
-				: formatRelative(fu.createdAt),
-			urgent: fu.type === "meeting_prep",
-			actions: [
-				{ label: "Done", variant: "default" as const },
-				{ label: "Snooze", variant: "outline" as const },
-				{ label: "Dismiss", variant: "ghost" as const },
-			],
-		}));
+		return items.slice(0, 5).map((fu) => {
+			const isCommitment = fu.type === "commitment";
+			const commitmentText =
+				fu.context ?? fu.title.replace(/^Commitment:\s*/i, "");
+			const name = fu.contactName ?? fu.contactEmail ?? "someone";
+			return {
+				id: fu.id,
+				title: isCommitment
+					? `You told ${name} you'd ${commitmentText}`
+					: fu.title,
+				subtitle: isCommitment
+					? fu.dueAt
+						? `Due ${new Date(fu.dueAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+						: undefined
+					: fu.contactName
+						? `${fu.contactName}${fu.context ? ` — ${fu.context.slice(0, 80)}` : ""}`
+						: fu.context?.slice(0, 100),
+				timestamp: fu.dueAt
+					? formatRelative(fu.dueAt)
+					: formatRelative(fu.createdAt),
+				urgent: fu.type === "meeting_prep",
+				actions: [
+					{
+						label: isCommitment ? "I did it" : "Done",
+						variant: "default" as const,
+					},
+					{ label: "Snooze", variant: "outline" as const },
+					{ label: "Dismiss", variant: "ghost" as const },
+				],
+			};
+		});
 	}, [followUpsData]);
 
 	const liveData: ModuleData = {

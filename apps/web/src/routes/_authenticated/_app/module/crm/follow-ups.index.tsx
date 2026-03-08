@@ -16,6 +16,8 @@ import {
 	Calendar,
 	Check,
 	Clock,
+	ExternalLink,
+	HandshakeIcon,
 	Users,
 	X,
 } from "lucide-react";
@@ -30,6 +32,20 @@ export const Route = createFileRoute(
 
 const FOLLOWUP_SHORTCUTS = [[{ keys: ["["], label: "back" }]];
 
+type FollowUp = {
+	id: string;
+	contactId: string;
+	contactName: string | null;
+	contactEmail: string | null;
+	type: string;
+	title: string;
+	context: string | null;
+	sourceEmailId: string | null;
+	dueAt: string | null;
+	status: string;
+	createdAt: string;
+};
+
 function FollowUpsPage() {
 	const { data, isLoading, fetchNextPage, hasNextPage } = useFollowUps();
 	const completeFollowUp = useCompleteFollowUp();
@@ -37,24 +53,10 @@ function FollowUpsPage() {
 	const snoozeFollowUp = useSnoozeFollowUp();
 
 	const allFollowUps =
-		data?.pages.flatMap(
-			(p) =>
-				(p?.followUps ?? []) as {
-					id: string;
-					contactId: string;
-					contactName: string | null;
-					contactEmail: string | null;
-					type: string;
-					title: string;
-					context: string | null;
-					dueAt: string | null;
-					status: string;
-					createdAt: string;
-				}[],
-		) ?? [];
+		data?.pages.flatMap((p) => (p?.followUps ?? []) as FollowUp[]) ?? [];
 
 	const [filter, setFilter] = useState<
-		"all" | "cadence_nudge" | "meeting_prep"
+		"all" | "cadence_nudge" | "meeting_prep" | "commitment"
 	>("all");
 	const filtered =
 		filter === "all"
@@ -98,7 +100,8 @@ function FollowUpsPage() {
 							follow-ups
 						</h1>
 						<p className="font-mono text-[12px] text-grey-2 tracking-[0.02em] mt-1">
-							Nudges and meeting prep briefs that need your attention.
+							Nudges, commitments, and meeting prep briefs that need your
+							attention.
 						</p>
 					</motion.header>
 
@@ -117,6 +120,11 @@ function FollowUpsPage() {
 							[
 								{ key: "all", label: "All", icon: Bell },
 								{ key: "cadence_nudge", label: "Nudges", icon: Clock },
+								{
+									key: "commitment",
+									label: "Commitments",
+									icon: HandshakeIcon,
+								},
 								{ key: "meeting_prep", label: "Meeting prep", icon: Calendar },
 							] as const
 						).map((tab) => (
@@ -172,83 +180,16 @@ function FollowUpsPage() {
 						) : (
 							<div className="space-y-2">
 								{filtered.map((fu) => (
-									<div
+									<FollowUpCard
 										key={fu.id}
-										className={cn(
-											"rounded-lg border px-4 py-3.5 transition-colors",
-											fu.type === "meeting_prep"
-												? "border-l-4 border-l-amber-500/50 border-border/30"
-												: "border-border/30",
-										)}
-									>
-										<div className="flex items-start justify-between gap-3">
-											<div className="flex-1 min-w-0">
-												<div className="flex items-center gap-2">
-													{fu.type === "meeting_prep" ? (
-														<Calendar className="size-3.5 text-amber-500 shrink-0" />
-													) : (
-														<Clock className="size-3.5 text-grey-3 shrink-0" />
-													)}
-													<span className="font-body text-[14px] text-foreground tracking-[0.01em] truncate">
-														{fu.title}
-													</span>
-												</div>
-												{(fu.contactName || fu.contactEmail) && (
-													<Link
-														to="/module/crm/$contactId"
-														params={{ contactId: fu.contactId }}
-														className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-grey-3 hover:text-foreground transition-colors"
-													>
-														<Users className="size-3" />
-														{fu.contactName ?? fu.contactEmail}
-													</Link>
-												)}
-												{fu.context && (
-													<p className="font-body text-[12px] text-grey-2 mt-1.5 line-clamp-2">
-														{fu.context}
-													</p>
-												)}
-											</div>
-											<span className="font-mono text-[10px] text-grey-3 shrink-0">
-												{fu.dueAt
-													? formatRelative(fu.dueAt)
-													: formatRelative(fu.createdAt)}
-											</span>
-										</div>
-
-										{/* Actions */}
-										<div className="flex items-center gap-2 mt-3">
-											<Button
-												size="sm"
-												className="font-mono text-[11px] tracking-[0.02em] h-7 px-3 bg-foreground text-background hover:bg-foreground/90"
-												onClick={() => completeFollowUp.mutate(fu.id)}
-												disabled={completeFollowUp.isPending}
-											>
-												<Check className="size-3 mr-1" />
-												Done
-											</Button>
-											<Button
-												variant="outline"
-												size="sm"
-												className="font-mono text-[11px] tracking-[0.02em] h-7 px-3"
-												onClick={() => handleSnooze(fu.id)}
-												disabled={snoozeFollowUp.isPending}
-											>
-												<Clock className="size-3 mr-1" />
-												Tomorrow
-											</Button>
-											<Button
-												variant="ghost"
-												size="sm"
-												className="font-mono text-[11px] tracking-[0.02em] h-7 px-3 text-grey-3"
-												onClick={() => dismissFollowUp.mutate(fu.id)}
-												disabled={dismissFollowUp.isPending}
-											>
-												<X className="size-3 mr-1" />
-												Dismiss
-											</Button>
-										</div>
-									</div>
+										followUp={fu}
+										onComplete={() => completeFollowUp.mutate(fu.id)}
+										onSnooze={() => handleSnooze(fu.id)}
+										onDismiss={() => dismissFollowUp.mutate(fu.id)}
+										isCompletePending={completeFollowUp.isPending}
+										isSnoozePending={snoozeFollowUp.isPending}
+										isDismissPending={dismissFollowUp.isPending}
+									/>
 								))}
 								{hasNextPage && (
 									<button
@@ -270,7 +211,155 @@ function FollowUpsPage() {
 	);
 }
 
+/* ── Follow-up card ── */
+
+function FollowUpCard({
+	followUp: fu,
+	onComplete,
+	onSnooze,
+	onDismiss,
+	isCompletePending,
+	isSnoozePending,
+	isDismissPending,
+}: {
+	followUp: FollowUp;
+	onComplete: () => void;
+	onSnooze: () => void;
+	onDismiss: () => void;
+	isCompletePending: boolean;
+	isSnoozePending: boolean;
+	isDismissPending: boolean;
+}) {
+	const isCommitment = fu.type === "commitment";
+
+	// Format commitment title: "You told [Name] you'd [commitment]"
+	const displayTitle = isCommitment ? formatCommitmentTitle(fu) : fu.title;
+
+	return (
+		<div
+			className={cn(
+				"rounded-lg border px-4 py-3.5 transition-colors",
+				isCommitment
+					? "border-l-4 border-l-blue-500/50 border-border/30"
+					: fu.type === "meeting_prep"
+						? "border-l-4 border-l-amber-500/50 border-border/30"
+						: "border-border/30",
+			)}
+		>
+			<div className="flex items-start justify-between gap-3">
+				<div className="flex-1 min-w-0">
+					<div className="flex items-center gap-2">
+						{isCommitment ? (
+							<HandshakeIcon className="size-3.5 text-blue-500 shrink-0" />
+						) : fu.type === "meeting_prep" ? (
+							<Calendar className="size-3.5 text-amber-500 shrink-0" />
+						) : (
+							<Clock className="size-3.5 text-grey-3 shrink-0" />
+						)}
+						<span className="font-body text-[14px] text-foreground tracking-[0.01em] truncate">
+							{displayTitle}
+						</span>
+					</div>
+					{(fu.contactName || fu.contactEmail) && (
+						<Link
+							to="/module/crm/$contactId"
+							params={{ contactId: fu.contactId }}
+							className="mt-1 inline-flex items-center gap-1 font-mono text-[11px] text-grey-3 hover:text-foreground transition-colors"
+						>
+							<Users className="size-3" />
+							{fu.contactName ?? fu.contactEmail}
+						</Link>
+					)}
+					{!isCommitment && fu.context && (
+						<p className="font-body text-[12px] text-grey-2 mt-1.5 line-clamp-2">
+							{fu.context}
+						</p>
+					)}
+					{/* Source email link for commitments */}
+					{isCommitment && fu.sourceEmailId && (
+						<Link
+							to="/module/mail/sent"
+							search={{
+								starred: undefined,
+								attachment: undefined,
+							}}
+							className="mt-1.5 inline-flex items-center gap-1 font-mono text-[11px] text-blue-500/70 hover:text-blue-500 transition-colors"
+						>
+							<ExternalLink className="size-3" />
+							View original email
+						</Link>
+					)}
+					{/* Deadline for commitments */}
+					{isCommitment && fu.dueAt && (
+						<p className="font-mono text-[11px] text-grey-2 mt-1">
+							Deadline:{" "}
+							<span
+								className={cn(
+									isPastDue(fu.dueAt) ? "text-red-500" : "text-foreground",
+								)}
+							>
+								{new Date(fu.dueAt).toLocaleDateString("en-US", {
+									month: "short",
+									day: "numeric",
+									year: "numeric",
+								})}
+							</span>
+						</p>
+					)}
+				</div>
+				<span className="font-mono text-[10px] text-grey-3 shrink-0">
+					{fu.dueAt ? formatRelative(fu.dueAt) : formatRelative(fu.createdAt)}
+				</span>
+			</div>
+
+			{/* Actions */}
+			<div className="flex items-center gap-2 mt-3">
+				<Button
+					size="sm"
+					className="font-mono text-[11px] tracking-[0.02em] h-7 px-3 bg-foreground text-background hover:bg-foreground/90"
+					onClick={onComplete}
+					disabled={isCompletePending}
+				>
+					<Check className="size-3 mr-1" />
+					{isCommitment ? "I did it" : "Done"}
+				</Button>
+				<Button
+					variant="outline"
+					size="sm"
+					className="font-mono text-[11px] tracking-[0.02em] h-7 px-3"
+					onClick={onSnooze}
+					disabled={isSnoozePending}
+				>
+					<Clock className="size-3 mr-1" />
+					Tomorrow
+				</Button>
+				<Button
+					variant="ghost"
+					size="sm"
+					className="font-mono text-[11px] tracking-[0.02em] h-7 px-3 text-grey-3"
+					onClick={onDismiss}
+					disabled={isDismissPending}
+				>
+					<X className="size-3 mr-1" />
+					Dismiss
+				</Button>
+			</div>
+		</div>
+	);
+}
+
 /* ── Helpers ── */
+
+function formatCommitmentTitle(fu: FollowUp): string {
+	// The worker stores title as "Commitment: <text>" and context as the raw text
+	const commitmentText = fu.context ?? fu.title.replace(/^Commitment:\s*/i, "");
+	const name = fu.contactName ?? fu.contactEmail ?? "someone";
+	return `You told ${name} you'd ${commitmentText}`;
+}
+
+function isPastDue(dateStr: string): boolean {
+	return new Date(dateStr) < new Date();
+}
 
 function formatRelative(dateStr: string): string {
 	const date = new Date(dateStr);
