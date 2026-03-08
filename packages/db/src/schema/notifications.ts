@@ -22,6 +22,8 @@ export const notificationTypeEnum = pgEnum("notification_type", [
 	"sync_failed",
 	"task_assigned",
 	"work_summary",
+	"contact_follow_up",
+	"contact_meeting_prep",
 ]);
 
 /* ── Notifications ── */
