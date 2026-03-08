@@ -432,12 +432,18 @@ export const calendarService = {
 			});
 
 			let conflictCount = 0;
+			const conflicts: { event1: SerializedEvent; event2: SerializedEvent }[] =
+				[];
 			for (let i = 0; i < todayEvents.length - 1; i++) {
 				const current = todayEvents[i]!;
 				const next = todayEvents[i + 1]!;
 				if (current.isAllDay || next.isAllDay) continue;
 				if (current.endTime > next.startTime) {
 					conflictCount++;
+					conflicts.push({
+						event1: serializeEvent(current),
+						event2: serializeEvent(next),
+					});
 				}
 			}
 
@@ -456,6 +462,7 @@ export const calendarService = {
 					minutesUntilNext,
 					todayCount: todayCount?.count ?? 0,
 					conflictCount,
+					conflicts,
 				},
 			};
 		} catch (err) {

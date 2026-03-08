@@ -111,9 +111,15 @@ export const mutateEventResponse = calendarEventSchema;
 
 /* ── Module data ── */
 
+const conflictPairSchema = t.Object({
+	event1: calendarEventSchema,
+	event2: calendarEventSchema,
+});
+
 export const moduleDataResponse = t.Object({
 	nextEvent: t.Nullable(calendarEventSchema),
 	minutesUntilNext: t.Nullable(t.Number()),
 	todayCount: t.Number(),
 	conflictCount: t.Number(),
+	conflicts: t.Array(conflictPairSchema),
 });

@@ -184,6 +184,7 @@ export const calendarRoutes = new Elysia({
 					minutesUntilNext: null,
 					todayCount: 0,
 					conflictCount: 0,
+					conflicts: [],
 				};
 			}
 			return result.data;
