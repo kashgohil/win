@@ -1,5 +1,6 @@
 import { scheduleWebhookRenewal } from "../jobs/calendar-sync";
 import { createCalendarSyncWorker } from "./calendar-sync.worker";
+import { createContactDiscoveryWorker } from "./contact-discovery.worker";
 import { createMailAiWorker } from "./mail-ai.worker";
 import { createMailAutoHandleWorker } from "./mail-autohandle.worker";
 import { createMailFollowUpWorker } from "./mail-followup.worker";
@@ -14,6 +15,7 @@ import { createWorkSummaryWorker } from "./work-summary.worker";
 console.log("[workers] Starting workers...");
 
 const calendarSyncWorker = createCalendarSyncWorker();
+const contactDiscoveryWorker = createContactDiscoveryWorker();
 const mailSyncWorker = createMailSyncWorker();
 const mailAiWorker = createMailAiWorker();
 const mailAutoHandleWorker = createMailAutoHandleWorker();
@@ -36,6 +38,7 @@ async function shutdown() {
 	console.log("[workers] Shutting down gracefully...");
 	await Promise.all([
 		calendarSyncWorker.close(),
+		contactDiscoveryWorker.close(),
 		mailSyncWorker.close(),
 		mailAiWorker.close(),
 		mailAutoHandleWorker.close(),

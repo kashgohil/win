@@ -24,6 +24,12 @@ export {
 	type CalendarSyncJobData,
 } from "./src/jobs/calendar-sync";
 export {
+	enqueueContactExtractFromEmails,
+	enqueueContactExtractFromEvents,
+	enqueueContactFullScan,
+	type ContactDiscoveryJobData,
+} from "./src/jobs/contact-discovery";
+export {
 	enqueueClassify,
 	enqueueDraftResponse,
 	type MailAiJobData,
@@ -73,6 +79,7 @@ export {
 } from "./src/jobs/work-summary";
 export {
 	calendarSyncQueue,
+	contactDiscoveryQueue,
 	mailAiQueue,
 	mailAutoHandleQueue,
 	mailFollowUpQueue,
