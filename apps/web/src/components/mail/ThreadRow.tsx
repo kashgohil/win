@@ -1,4 +1,5 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
+import { ContactCardLazy } from "@/components/contacts/ContactCard";
 import {
 	Tooltip,
 	TooltipContent,
@@ -225,6 +226,7 @@ export function ThreadRow({
 	const initial = isSent
 		? getInitial(null, toAddresses?.[0] ?? null)
 		: getInitial(fromName, fromAddress);
+	const contactEmail = isSent ? toAddresses?.[0] : fromAddress;
 	const isUrgent = thread.category === "urgent";
 	const isUnread = thread.unreadCount > 0;
 	const queryClient = useQueryClient();
@@ -323,14 +325,27 @@ export function ThreadRow({
 						{isUrgent && (
 							<span className="size-2 rounded-full bg-accent-red shrink-0" />
 						)}
-						<span
-							className={cn(
-								"font-body text-[14px] tracking-[0.01em] truncate",
-								!isUnread ? "text-grey-2" : "text-foreground font-medium",
-							)}
-						>
-							{senderDisplay}
-						</span>
+						{contactEmail ? (
+							<ContactCardLazy email={contactEmail} side="bottom" align="start">
+								<span
+									className={cn(
+										"font-body text-[14px] tracking-[0.01em] truncate",
+										!isUnread ? "text-grey-2" : "text-foreground font-medium",
+									)}
+								>
+									{senderDisplay}
+								</span>
+							</ContactCardLazy>
+						) : (
+							<span
+								className={cn(
+									"font-body text-[14px] tracking-[0.01em] truncate",
+									!isUnread ? "text-grey-2" : "text-foreground font-medium",
+								)}
+							>
+								{senderDisplay}
+							</span>
+						)}
 						{thread.messageCount > 1 && (
 							<span className="inline-flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full bg-foreground/8 text-grey-2 font-mono text-[10px] font-medium shrink-0">
 								{thread.messageCount}

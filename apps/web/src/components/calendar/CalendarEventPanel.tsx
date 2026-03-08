@@ -1,3 +1,4 @@
+import { ContactCardLazy } from "@/components/contacts/ContactCard";
 import { Button } from "@/components/ui/button";
 import {
 	Sheet,
@@ -182,9 +183,15 @@ export function CalendarEventPanel({
 										className="flex items-center justify-between font-body text-[12px] py-0.5"
 									>
 										<div className="min-w-0">
-											<span className="text-foreground block truncate">
-												{a.displayName ?? a.email}
-											</span>
+											<ContactCardLazy
+												email={a.email}
+												side="left"
+												align="start"
+											>
+												<span className="text-foreground block truncate">
+													{a.displayName ?? a.email}
+												</span>
+											</ContactCardLazy>
 											{a.displayName && (
 												<span className="text-grey-3 text-[11px] block truncate">
 													{a.email}
