@@ -158,3 +158,69 @@ export function useDisconnectCalendar() {
 		},
 	});
 }
+
+export function useCreateCalendarEvent() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (input: {
+			accountId: string;
+			title: string;
+			startTime: string;
+			endTime: string;
+			isAllDay?: boolean;
+			description?: string;
+			location?: string;
+		}) => {
+			const { data, error } = await api.calendar.events.post(input);
+			if (error) throw new Error("Failed to create event");
+			return data as CalendarEvent;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: calendarKeys.all });
+		},
+	});
+}
+
+export function useUpdateCalendarEvent() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			eventId,
+			...input
+		}: {
+			eventId: string;
+			title?: string;
+			startTime?: string;
+			endTime?: string;
+			isAllDay?: boolean;
+			description?: string;
+			location?: string;
+		}) => {
+			const { data, error } = await api.calendar
+				.events({ eventId })
+				.patch(input);
+			if (error) throw new Error("Failed to update event");
+			return data as CalendarEvent;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: calendarKeys.all });
+		},
+	});
+}
+
+export function useDeleteCalendarEvent() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (eventId: string) => {
+			const { data, error } = await api.calendar.events({ eventId }).delete();
+			if (error) throw new Error("Failed to delete event");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: calendarKeys.all });
+		},
+	});
+}
