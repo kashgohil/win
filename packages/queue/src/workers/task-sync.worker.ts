@@ -26,6 +26,44 @@ import type { TaskSyncJobData } from "../jobs/task-sync";
 registerProvider(linearProvider);
 registerProvider(jiraProvider);
 
+async function getValidToken(conn: {
+	id: string;
+	accessToken: string | null;
+	refreshToken: string | null;
+	tokenExpiresAt: Date | null;
+	provider: string;
+}): Promise<string> {
+	if (!conn.accessToken) throw new Error("No access token");
+
+	// If no expiry or not expiring within 5 minutes, use current token
+	if (
+		!conn.tokenExpiresAt ||
+		conn.tokenExpiresAt.getTime() > Date.now() + 5 * 60 * 1000
+	) {
+		return conn.accessToken;
+	}
+
+	// Token is expiring — try to refresh
+	if (!conn.refreshToken) {
+		return conn.accessToken; // No refresh token, use what we have
+	}
+
+	const provider = getTaskProvider(conn.provider);
+	if (!provider) throw new Error(`Unknown provider: ${conn.provider}`);
+
+	const refreshed = await provider.refreshAccessToken(conn.refreshToken);
+	await db
+		.update(taskConnections)
+		.set({
+			accessToken: refreshed.accessToken,
+			tokenExpiresAt: refreshed.expiresAt,
+		})
+		.where(eq(taskConnections.id, conn.id));
+
+	console.log(`[task-sync] Refreshed token for connection ${conn.id}`);
+	return refreshed.accessToken;
+}
+
 async function processFullSync(connectionId: string, userId: string) {
 	const conn = await db.query.taskConnections.findFirst({
 		where: and(
@@ -47,7 +85,7 @@ async function processFullSync(connectionId: string, userId: string) {
 		return;
 	}
 
-	const accessToken = conn.accessToken;
+	const accessToken = await getValidToken(conn);
 
 	// 1. Sync projects
 	const providerProjects = await provider.listProjects(accessToken);

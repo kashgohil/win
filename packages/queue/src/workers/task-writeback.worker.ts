@@ -20,6 +20,40 @@ import type { TaskWriteBackJobData } from "../jobs/task-writeback";
 registerProvider(linearProvider);
 registerProvider(jiraProvider);
 
+async function getValidToken(conn: {
+	id: string;
+	accessToken: string | null;
+	refreshToken: string | null;
+	tokenExpiresAt: Date | null;
+	provider: string;
+}): Promise<string> {
+	if (!conn.accessToken) throw new Error("No access token");
+
+	if (
+		!conn.tokenExpiresAt ||
+		conn.tokenExpiresAt.getTime() > Date.now() + 5 * 60 * 1000
+	) {
+		return conn.accessToken;
+	}
+
+	if (!conn.refreshToken) return conn.accessToken;
+
+	const provider = getTaskProvider(conn.provider);
+	if (!provider) throw new Error(`Unknown provider: ${conn.provider}`);
+
+	const refreshed = await provider.refreshAccessToken(conn.refreshToken);
+	await db
+		.update(taskConnections)
+		.set({
+			accessToken: refreshed.accessToken,
+			tokenExpiresAt: refreshed.expiresAt,
+		})
+		.where(eq(taskConnections.id, conn.id));
+
+	console.log(`[task-writeback] Refreshed token for connection ${conn.id}`);
+	return refreshed.accessToken;
+}
+
 async function processWriteBack(data: TaskWriteBackJobData) {
 	const conn = await db.query.taskConnections.findFirst({
 		where: and(
@@ -55,7 +89,8 @@ async function processWriteBack(data: TaskWriteBackJobData) {
 	}
 
 	try {
-		await provider.updateTask(conn.accessToken, data.externalId, {
+		const accessToken = await getValidToken(conn);
+		await provider.updateTask(accessToken, data.externalId, {
 			title: data.updates.title,
 			description: data.updates.description,
 			statusExternalId,
