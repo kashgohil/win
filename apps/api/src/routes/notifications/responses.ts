@@ -21,6 +21,8 @@ const notificationSchema = t.Object({
 		t.Literal("sync_failed"),
 		t.Literal("task_assigned"),
 		t.Literal("work_summary"),
+		t.Literal("contact_follow_up"),
+		t.Literal("contact_meeting_prep"),
 	]),
 	title: t.String(),
 	body: t.Nullable(t.String()),
