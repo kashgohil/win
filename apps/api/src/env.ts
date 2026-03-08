@@ -19,6 +19,9 @@ const envSchema = Type.Object({
 	LINEAR_CLIENT_ID: Type.Optional(Type.String()),
 	LINEAR_CLIENT_SECRET: Type.Optional(Type.String()),
 	LINEAR_REDIRECT_URI: Type.Optional(Type.String()),
+	JIRA_CLIENT_ID: Type.Optional(Type.String()),
+	JIRA_CLIENT_SECRET: Type.Optional(Type.String()),
+	JIRA_REDIRECT_URI: Type.Optional(Type.String()),
 });
 
 const envWithDefaults = {
