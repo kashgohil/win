@@ -690,3 +690,21 @@ export function useDiscoverContacts() {
 		},
 	});
 }
+
+/* ── Contextual suggestions ── */
+
+export function useSuggestCc(toEmail: string | null) {
+	return useQuery({
+		queryKey: [...contactKeys.all, "suggest-cc", toEmail] as const,
+		queryFn: async () => {
+			if (!toEmail) return [];
+			const { data, error } = await api.contacts["suggest-cc"].get({
+				query: { to: toEmail },
+			});
+			if (error) throw new Error("Failed to suggest CC");
+			return data;
+		},
+		enabled: !!toEmail,
+		staleTime: 60_000,
+	});
+}

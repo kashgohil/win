@@ -17,6 +17,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { MOTION_CONSTANTS } from "@/components/constant";
+import { useSuggestCc } from "@/hooks/use-contacts";
 
 interface ComposeSheetProps {
 	open: boolean;
@@ -39,7 +40,11 @@ export function ComposeSheet({
 }: ComposeSheetProps) {
 	const [to, setTo] = useState("");
 	const [body, setBody] = useState("");
+	const [cc, setCc] = useState<string[]>([]);
 	const [showOriginal, setShowOriginal] = useState(false);
+	const { data: ccSuggestions } = useSuggestCc(
+		mode === "reply" ? fromAddress : null,
+	);
 
 	const reply = useReplyDelayed();
 	const forward = useForwardDelayed();
@@ -50,7 +55,7 @@ export function ComposeSheet({
 	const handleSend = async () => {
 		if (mode === "reply") {
 			reply.mutate(
-				{ id: emailId, body },
+				{ id: emailId, body, cc: cc.length > 0 ? cc : undefined },
 				{
 					onSuccess: (data) => {
 						resetAndClose();
@@ -118,6 +123,7 @@ export function ComposeSheet({
 	const resetAndClose = () => {
 		setTo("");
 		setBody("");
+		setCc([]);
 		setShowOriginal(false);
 		onOpenChange(false);
 	};
@@ -139,9 +145,54 @@ export function ComposeSheet({
 
 				<div className="flex flex-col gap-3 flex-1 px-4 overflow-y-auto">
 					{mode === "reply" ? (
-						<div className="font-body text-[13px]">
-							<span className="text-grey-2">To: </span>
-							<span className="text-foreground">{fromAddress ?? ""}</span>
+						<div>
+							<div className="font-body text-[13px]">
+								<span className="text-grey-2">To: </span>
+								<span className="text-foreground">{fromAddress ?? ""}</span>
+							</div>
+							{cc.length > 0 && (
+								<div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+									<span className="font-body text-[12px] text-grey-2">Cc:</span>
+									{cc.map((email) => (
+										<span
+											key={email}
+											className="inline-flex items-center gap-1 rounded-full bg-secondary/40 px-2 py-0.5 font-mono text-[10px] text-foreground"
+										>
+											{email}
+											<button
+												type="button"
+												className="hover:text-red-500 cursor-pointer"
+												onClick={() =>
+													setCc((prev) => prev.filter((e) => e !== email))
+												}
+											>
+												×
+											</button>
+										</span>
+									))}
+								</div>
+							)}
+							{ccSuggestions &&
+								ccSuggestions.length > 0 &&
+								ccSuggestions.some((s) => !cc.includes(s.email)) && (
+									<div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+										<span className="font-mono text-[10px] text-grey-3">
+											Add Cc:
+										</span>
+										{ccSuggestions
+											.filter((s) => !cc.includes(s.email))
+											.map((s) => (
+												<button
+													key={s.id}
+													type="button"
+													className="inline-flex items-center gap-1 rounded-full border border-border/40 hover:border-border/70 px-2 py-0.5 font-mono text-[10px] text-grey-2 hover:text-foreground transition-colors cursor-pointer"
+													onClick={() => setCc((prev) => [...prev, s.email])}
+												>
+													+ {s.name || s.email}
+												</button>
+											))}
+									</div>
+								)}
 						</div>
 					) : (
 						<div>
