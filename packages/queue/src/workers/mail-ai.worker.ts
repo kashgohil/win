@@ -4,13 +4,20 @@ import {
 	emails,
 	eq,
 	inArray,
+	isNull,
 	mailSenderRules,
+	notifications,
 	sql,
+	tasks,
 } from "@wingmnn/db";
 import { Worker } from "bullmq";
 import { getAiEnv } from "../ai/env";
 import { getAiProvider } from "../ai/factory";
-import { CLASSIFY_SYSTEM_PROMPT, DRAFT_SYSTEM_PROMPT } from "../ai/prompts";
+import {
+	CLASSIFY_SYSTEM_PROMPT,
+	DRAFT_SYSTEM_PROMPT,
+	EMAIL_TASK_MATCH_SYSTEM_PROMPT,
+} from "../ai/prompts";
 import { classifyByRules } from "../ai/rules";
 import type {
 	AiProvider,
@@ -288,6 +295,11 @@ async function processClassify(
 			}
 		}
 
+		// Try email-task matching for actionable emails
+		if (result.category === "urgent" || result.category === "actionable") {
+			await matchEmailToTasks(email, userId, aiProvider);
+		}
+
 		if (result.shouldAutoHandle && result.autoHandleAction) {
 			try {
 				await enqueueAutoHandle({
@@ -305,6 +317,81 @@ async function processClassify(
 				);
 			}
 		}
+	}
+}
+
+// ── Match email to tasks ──
+
+async function matchEmailToTasks(
+	email: {
+		id: string;
+		subject: string | null;
+		snippet: string | null;
+		fromAddress: string | null;
+		fromName: string | null;
+	},
+	userId: string,
+	aiProvider: AiProvider | null,
+): Promise<void> {
+	if (!aiProvider) return;
+
+	// Get user's open tasks (limit to 30 for token efficiency)
+	const openTasks = await db
+		.select({ id: tasks.id, title: tasks.title })
+		.from(tasks)
+		.where(and(eq(tasks.userId, userId), isNull(tasks.completedAt)))
+		.limit(30);
+
+	if (openTasks.length === 0) return;
+
+	try {
+		const result = await aiProvider.matchEmailToTasks(
+			{
+				emailSubject: email.subject ?? "",
+				emailSnippet: email.snippet ?? "",
+				emailFrom: `${email.fromName ?? ""} <${email.fromAddress ?? ""}>`,
+				tasks: openTasks,
+			},
+			EMAIL_TASK_MATCH_SYSTEM_PROMPT,
+		);
+
+		if (result.matches.length > 0) {
+			// Take the highest confidence match
+			const best = result.matches.sort(
+				(a, b) => b.confidence - a.confidence,
+			)[0];
+			if (best && best.confidence >= 0.7) {
+				await db
+					.update(emails)
+					.set({
+						relatedTaskId: best.taskId,
+						relatedTaskReason: best.reason,
+					})
+					.where(eq(emails.id, email.id));
+
+				// Create proactive alert notification
+				const matchedTask = openTasks.find((t) => t.id === best.taskId);
+				if (matchedTask) {
+					await db.insert(notifications).values({
+						userId,
+						type: "task_reminder" as const,
+						title: `Email related to: ${matchedTask.title}`,
+						body: `"${email.subject ?? "(no subject)"}" from ${email.fromName ?? email.fromAddress ?? "unknown"} — ${best.reason}`,
+						link: `/module/task/list?taskId=${best.taskId}`,
+						taskId: best.taskId,
+					});
+				}
+
+				console.log(
+					`[mail-ai] Linked email "${email.subject}" to task ${best.taskId} (confidence: ${best.confidence})`,
+				);
+			}
+		}
+	} catch (err) {
+		console.error(
+			`[mail-ai] Email-task matching failed for "${email.subject}":`,
+			err instanceof Error ? err.message : "Unknown error",
+		);
 	}
 }
 

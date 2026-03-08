@@ -5,6 +5,8 @@ import type {
 	ClassificationResult,
 	DraftInput,
 	EmailInput,
+	EmailTaskMatchInput,
+	EmailTaskMatchResult,
 	TaskCategorizeInput,
 	TaskCategorizeResult,
 	TaskParseInput,
@@ -265,7 +267,62 @@ export class AnthropicProvider implements AiProvider {
 
 		return result;
 	}
+
+	async matchEmailToTasks(
+		input: EmailTaskMatchInput,
+		systemPrompt: string,
+	): Promise<EmailTaskMatchResult> {
+		if (input.tasks.length === 0) {
+			return { matches: [] };
+		}
+
+		const lines = [
+			`Email subject: ${input.emailSubject}`,
+			`From: ${input.emailFrom}`,
+			`Preview: ${input.emailSnippet}`,
+			"",
+			"Open tasks:",
+			...input.tasks.map((t) => `- ${t.id}: ${t.title}`),
+		].join("\n");
+
+		const response = await this.client.messages.create({
+			model: this.model,
+			max_tokens: 256,
+			system: [
+				{
+					type: "text",
+					text: systemPrompt,
+					cache_control: { type: "ephemeral" },
+				},
+			],
+			messages: [{ role: "user", content: lines }],
+		});
+
+		const text =
+			response.content[0]?.type === "text" ? response.content[0].text : "";
+
+		const parsed = parseJsonResponse(text);
+		const result = EmailTaskMatchSchema.parse(parsed);
+
+		// Validate taskIds exist in input and filter by confidence
+		return {
+			matches: result.matches.filter(
+				(m) =>
+					m.confidence >= 0.6 && input.tasks.some((t) => t.id === m.taskId),
+			),
+		};
+	}
 }
+
+const EmailTaskMatchSchema = z.object({
+	matches: z.array(
+		z.object({
+			taskId: z.string(),
+			confidence: z.number().min(0).max(1),
+			reason: z.string(),
+		}),
+	),
+});
 
 const TaskCategorizeSchema = z.object({
 	projectId: z.string().nullable(),

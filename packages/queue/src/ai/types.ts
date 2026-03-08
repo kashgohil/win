@@ -77,6 +77,17 @@ export interface TaskCategorizeResult {
 	confidence: number;
 }
 
+export interface EmailTaskMatchInput {
+	emailSubject: string;
+	emailSnippet: string;
+	emailFrom: string;
+	tasks: { id: string; title: string }[];
+}
+
+export interface EmailTaskMatchResult {
+	matches: { taskId: string; confidence: number; reason: string }[];
+}
+
 export interface AiProvider {
 	classify(
 		email: EmailInput,
@@ -95,4 +106,8 @@ export interface AiProvider {
 		input: TaskCategorizeInput,
 		systemPrompt: string,
 	): Promise<TaskCategorizeResult>;
+	matchEmailToTasks(
+		input: EmailTaskMatchInput,
+		systemPrompt: string,
+	): Promise<EmailTaskMatchResult>;
 }

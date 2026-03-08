@@ -1,10 +1,13 @@
 export { getAiProvider } from "./src/ai/factory";
 export {
+	EMAIL_TASK_MATCH_SYSTEM_PROMPT,
 	TASK_CATEGORIZE_SYSTEM_PROMPT,
 	TASK_PARSE_SYSTEM_PROMPT,
 	WORK_SUMMARY_SYSTEM_PROMPT,
 } from "./src/ai/prompts";
 export type {
+	EmailTaskMatchInput,
+	EmailTaskMatchResult,
 	TaskCategorizeInput,
 	TaskCategorizeResult,
 	TaskParseInput,
