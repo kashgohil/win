@@ -1,17 +1,10 @@
+import { CalendarEventPanel } from "@/components/calendar/CalendarEventPanel";
+import { CreateEventDialog } from "@/components/calendar/CreateEventDialog";
 import { Button } from "@/components/ui/button";
 import { type CalendarEvent, useCalendarEvents } from "@/hooks/use-calendar";
 import { cn } from "@/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-	ArrowLeft,
-	ChevronLeft,
-	ChevronRight,
-	ExternalLink,
-	MapPin,
-	Users,
-	Video,
-	X,
-} from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/_app/module/cal/month/")({
@@ -69,11 +62,6 @@ function formatTime(iso: string) {
 		hour: "numeric",
 		minute: "2-digit",
 	});
-}
-
-function formatTimeRange(start: string, end: string, isAllDay: boolean) {
-	if (isAllDay) return "All day";
-	return `${formatTime(start)} \u2013 ${formatTime(end)}`;
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -174,6 +162,7 @@ function MonthView() {
 					</h2>
 				</div>
 				<div className="flex items-center gap-1">
+					<CreateEventDialog />
 					<Button
 						variant="ghost"
 						size="sm"
@@ -272,126 +261,13 @@ function MonthView() {
 			</div>
 
 			{/* Event detail panel */}
-			{selectedEvent && (
-				<EventDetailPanel
-					event={selectedEvent}
-					onClose={() => setSelectedEvent(null)}
-				/>
-			)}
-		</div>
-	);
-}
-
-function EventDetailPanel({
-	event,
-	onClose,
-}: {
-	event: CalendarEvent;
-	onClose: () => void;
-}) {
-	return (
-		<div className="fixed bottom-4 right-4 w-[360px] rounded-lg border border-border/60 bg-background shadow-lg z-50">
-			<div className="flex items-center justify-between px-4 pt-3 pb-2">
-				<h3 className="font-body text-[14px] text-foreground font-medium truncate pr-2">
-					{event.title ?? "Untitled event"}
-				</h3>
-				<button
-					type="button"
-					onClick={onClose}
-					className="text-grey-3 hover:text-foreground transition-colors shrink-0"
-				>
-					<X className="size-4" />
-				</button>
-			</div>
-
-			<div className="px-4 pb-4 space-y-2.5">
-				<div className="font-mono text-[11px] text-grey-3">
-					{formatTimeRange(event.startTime, event.endTime, event.isAllDay)}
-					{!event.isAllDay && (
-						<span className="ml-1.5">
-							{new Date(event.startTime).toLocaleDateString(undefined, {
-								weekday: "short",
-								month: "short",
-								day: "numeric",
-							})}
-						</span>
-					)}
-				</div>
-
-				{event.location && (
-					<div className="flex items-center gap-1.5 font-body text-[12px] text-grey-3">
-						<MapPin className="size-3 shrink-0" />
-						<span className="truncate">{event.location}</span>
-					</div>
-				)}
-
-				{event.meetingLink && (
-					<a href={event.meetingLink} target="_blank" rel="noopener noreferrer">
-						<Button
-							variant="outline"
-							size="sm"
-							className="font-mono text-[11px] gap-1.5 w-full"
-						>
-							<Video className="size-3" />
-							Join meeting
-						</Button>
-					</a>
-				)}
-
-				{event.attendees.length > 0 && (
-					<div>
-						<div className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 mb-1">
-							<Users className="size-3" />
-							{event.attendees.length} attendee
-							{event.attendees.length !== 1 && "s"}
-						</div>
-						<div className="space-y-0.5 max-h-[120px] overflow-y-auto">
-							{event.attendees.map((a) => (
-								<div
-									key={a.email}
-									className="flex items-center justify-between font-body text-[11px]"
-								>
-									<span className="text-foreground truncate">
-										{a.displayName ?? a.email}
-									</span>
-									{a.responseStatus && (
-										<span
-											className={cn(
-												"font-mono text-[9px] shrink-0 ml-2",
-												a.responseStatus === "accepted"
-													? "text-emerald-500"
-													: a.responseStatus === "declined"
-														? "text-red-500"
-														: "text-grey-3",
-											)}
-										>
-											{a.responseStatus}
-										</span>
-									)}
-								</div>
-							))}
-						</div>
-					</div>
-				)}
-
-				{event.description && (
-					<p className="font-body text-[12px] text-grey-3 line-clamp-4 whitespace-pre-wrap">
-						{event.description}
-					</p>
-				)}
-
-				{event.htmlLink && (
-					<a
-						href={event.htmlLink}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="flex items-center gap-1 font-mono text-[10px] text-grey-3 hover:text-foreground transition-colors"
-					>
-						<ExternalLink className="size-3" />
-						Open in Google Calendar
-					</a>
-				)}
-			</div>
+			<CalendarEventPanel
+				event={selectedEvent}
+				open={selectedEvent !== null}
+				onOpenChange={(open) => {
+					if (!open) setSelectedEvent(null);
+				}}
+			/>
 		</div>
 	);
 }
