@@ -2,9 +2,15 @@ import { CalendarEventPanel } from "@/components/calendar/CalendarEventPanel";
 import { CreateEventDialog } from "@/components/calendar/CreateEventDialog";
 import { Button } from "@/components/ui/button";
 import { type CalendarEvent, useCalendarEvents } from "@/hooks/use-calendar";
+import { type Task, useTasksForDateRange } from "@/hooks/use-tasks";
 import { cn } from "@/lib/utils";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+	ArrowLeft,
+	CheckCircle2,
+	ChevronLeft,
+	ChevronRight,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/_app/module/cal/week/")({
@@ -107,11 +113,15 @@ function WeekView() {
 	const startAfter = weekStart.toISOString();
 	const startBefore = addDays(weekStart, 7).toISOString();
 
+	const navigate = useNavigate();
+
 	const { data, isLoading } = useCalendarEvents({
 		startAfter,
 		startBefore,
 		limit: 500,
 	});
+
+	const { data: tasks } = useTasksForDateRange(startAfter, startBefore);
 
 	const { eventsByDay, allDayByDay } = useMemo(() => {
 		const byDay = new Map<string, CalendarEvent[]>();
@@ -128,6 +138,19 @@ function WeekView() {
 		return { eventsByDay: byDay, allDayByDay: allDay };
 	}, [data?.events]);
 
+	const tasksByDay = useMemo(() => {
+		const map = new Map<string, Task[]>();
+		if (!tasks) return map;
+		for (const task of tasks) {
+			if (!task.dueAt) continue;
+			const key = new Date(task.dueAt).toDateString();
+			const arr = map.get(key) ?? [];
+			arr.push(task);
+			map.set(key, arr);
+		}
+		return map;
+	}, [tasks]);
+
 	// Scroll to 7am on mount
 	useEffect(() => {
 		if (scrollRef.current) {
@@ -139,8 +162,10 @@ function WeekView() {
 	const nextWeek = () => setWeekStart(addDays(weekStart, 7));
 	const goToday = () => setWeekStart(startOfWeek(new Date()));
 
-	const hasAllDay = weekDays.some(
-		(d) => (allDayByDay.get(d.toDateString()) ?? []).length > 0,
+	const hasAnyTopRow = weekDays.some(
+		(d) =>
+			(allDayByDay.get(d.toDateString()) ?? []).length > 0 ||
+			(tasksByDay.get(d.toDateString()) ?? []).length > 0,
 	);
 
 	return (
@@ -202,8 +227,8 @@ function WeekView() {
 				})}
 			</div>
 
-			{/* All-day events row */}
-			{hasAllDay && (
+			{/* All-day events & tasks row */}
+			{hasAnyTopRow && (
 				<div
 					className="grid border-b border-border/30 shrink-0"
 					style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}
@@ -213,6 +238,7 @@ function WeekView() {
 					</div>
 					{weekDays.map((day) => {
 						const events = allDayByDay.get(day.toDateString()) ?? [];
+						const dayTasks = tasksByDay.get(day.toDateString()) ?? [];
 						return (
 							<div
 								key={day.toISOString()}
@@ -231,6 +257,24 @@ function WeekView() {
 										)}
 									>
 										{event.title ?? "Untitled"}
+									</button>
+								))}
+								{dayTasks.map((task) => (
+									<button
+										type="button"
+										key={task.id}
+										onClick={() => navigate({ to: "/module/task" })}
+										className={cn(
+											"w-full text-left rounded px-1 py-0.5 mb-0.5 border truncate",
+											"font-body text-[10px] leading-tight cursor-pointer",
+											"hover:opacity-80 transition-opacity",
+											task.statusKey === "done"
+												? "bg-secondary/10 text-grey-3 border-border/20 line-through"
+												: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
+										)}
+									>
+										<CheckCircle2 className="size-2.5 inline mr-0.5 -mt-px" />
+										{task.title}
 									</button>
 								))}
 							</div>

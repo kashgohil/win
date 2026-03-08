@@ -2,9 +2,15 @@ import { CalendarEventPanel } from "@/components/calendar/CalendarEventPanel";
 import { CreateEventDialog } from "@/components/calendar/CreateEventDialog";
 import { Button } from "@/components/ui/button";
 import { type CalendarEvent, useCalendarEvents } from "@/hooks/use-calendar";
+import { type Task, useTasksForDateRange } from "@/hooks/use-tasks";
 import { cn } from "@/lib/utils";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+	ArrowLeft,
+	CheckCircle2,
+	ChevronLeft,
+	ChevronRight,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/_app/module/cal/month/")({
@@ -89,6 +95,7 @@ function MonthView() {
 	const now = new Date();
 	const [year, setYear] = useState(now.getFullYear());
 	const [month, setMonth] = useState(now.getMonth());
+	const navigate = useNavigate();
 	const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
 		null,
 	);
@@ -111,6 +118,8 @@ function MonthView() {
 		limit: 500,
 	});
 
+	const { data: tasks } = useTasksForDateRange(startAfter, startBefore);
+
 	const eventsByDay = useMemo(() => {
 		const map = new Map<string, CalendarEvent[]>();
 		if (!data?.events) return map;
@@ -123,6 +132,20 @@ function MonthView() {
 		}
 		return map;
 	}, [data?.events]);
+
+	const tasksByDay = useMemo(() => {
+		const map = new Map<string, Task[]>();
+		if (!tasks) return map;
+
+		for (const task of tasks) {
+			if (!task.dueAt) continue;
+			const key = new Date(task.dueAt).toDateString();
+			const arr = map.get(key) ?? [];
+			arr.push(task);
+			map.set(key, arr);
+		}
+		return map;
+	}, [tasks]);
 
 	const prevMonth = () => {
 		if (month === 0) {
@@ -196,7 +219,9 @@ function MonthView() {
 			<div className="grid grid-cols-7 border-t border-l border-border/30">
 				{days.map(({ date, inMonth }) => {
 					const dayEvents = eventsByDay.get(date.toDateString()) ?? [];
+					const dayTasks = tasksByDay.get(date.toDateString()) ?? [];
 					const today = isToday(date);
+					const totalItems = dayEvents.length + dayTasks.length;
 					const maxShow = 3;
 
 					return (
@@ -243,7 +268,29 @@ function MonthView() {
 										</button>
 									))}
 
-							{dayEvents.length > maxShow && (
+							{/* Tasks with due dates */}
+							{dayEvents.length < maxShow &&
+								dayTasks.slice(0, maxShow - dayEvents.length).map((task) => (
+									<button
+										type="button"
+										key={task.id}
+										onClick={() => navigate({ to: "/module/task" })}
+										className={cn(
+											"w-full text-left rounded px-1 py-0.5 mb-0.5 border truncate",
+											"font-body text-[10px] leading-tight cursor-pointer",
+											"hover:opacity-80 transition-opacity",
+											task.statusKey === "done"
+												? "bg-secondary/10 text-grey-3 border-border/20 line-through"
+												: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
+										)}
+										title={task.title}
+									>
+										<CheckCircle2 className="size-2.5 inline mr-0.5 -mt-px" />
+										{task.title}
+									</button>
+								))}
+
+							{totalItems > maxShow && (
 								<button
 									type="button"
 									onClick={() => {
@@ -252,7 +299,7 @@ function MonthView() {
 									}}
 									className="font-mono text-[9px] text-grey-3 hover:text-foreground transition-colors px-1 cursor-pointer"
 								>
-									+{dayEvents.length - maxShow} more
+									+{totalItems - maxShow} more
 								</button>
 							)}
 						</div>
