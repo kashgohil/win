@@ -114,6 +114,24 @@ export function useTasksInfinite(params?: {
 	});
 }
 
+export function useTasksForDateRange(dueAfter?: string, dueBefore?: string) {
+	return useQuery({
+		queryKey: [...taskKeys.all, "calendar-range", dueAfter, dueBefore],
+		queryFn: async () => {
+			const { data, error } = await api.tasks.get({
+				query: {
+					dueAfter,
+					dueBefore,
+					limit: "200",
+				},
+			});
+			if (error) throw new Error("Failed to load tasks");
+			return (data as { tasks: Task[]; hasMore: boolean }).tasks;
+		},
+		enabled: !!dueAfter && !!dueBefore,
+	});
+}
+
 export function useTaskDetail(id: string) {
 	return useQuery({
 		queryKey: taskKeys.detail(id),
