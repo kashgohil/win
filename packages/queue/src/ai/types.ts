@@ -88,6 +88,22 @@ export interface EmailTaskMatchResult {
 	matches: { taskId: string; confidence: number; reason: string }[];
 }
 
+export interface CommitmentExtractInput {
+	subject: string;
+	fromAddress: string;
+	toAddresses: string[];
+	bodyPlain: string;
+}
+
+export interface CommitmentExtractResult {
+	commitments: {
+		text: string;
+		deadline: string | null;
+		confidence: number;
+		recipientEmail: string | null;
+	}[];
+}
+
 export interface AiProvider {
 	classify(
 		email: EmailInput,
@@ -110,4 +126,8 @@ export interface AiProvider {
 		input: EmailTaskMatchInput,
 		systemPrompt: string,
 	): Promise<EmailTaskMatchResult>;
+	extractCommitments(
+		input: CommitmentExtractInput,
+		systemPrompt: string,
+	): Promise<CommitmentExtractResult>;
 }

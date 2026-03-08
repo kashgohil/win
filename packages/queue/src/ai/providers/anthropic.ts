@@ -3,6 +3,8 @@ import { z } from "zod";
 import type {
 	AiProvider,
 	ClassificationResult,
+	CommitmentExtractInput,
+	CommitmentExtractResult,
 	DraftInput,
 	EmailInput,
 	EmailTaskMatchInput,
@@ -312,7 +314,62 @@ export class AnthropicProvider implements AiProvider {
 			),
 		};
 	}
+	async extractCommitments(
+		input: CommitmentExtractInput,
+		systemPrompt: string,
+	): Promise<CommitmentExtractResult> {
+		const body = input.bodyPlain.slice(0, CLASSIFY_BODY_LIMIT);
+
+		const today = new Date().toISOString().split("T")[0];
+		const dayName = new Date().toLocaleDateString("en-US", {
+			weekday: "long",
+		});
+
+		const lines = [
+			`Today is ${dayName}, ${today}.`,
+			`Subject: ${input.subject}`,
+			`From: ${input.fromAddress}`,
+			`To: ${input.toAddresses.join(", ")}`,
+			"",
+			"Email body:",
+			body,
+		].join("\n");
+
+		const response = await this.client.messages.create({
+			model: this.model,
+			max_tokens: 512,
+			system: [
+				{
+					type: "text",
+					text: systemPrompt,
+					cache_control: { type: "ephemeral" },
+				},
+			],
+			messages: [{ role: "user", content: lines }],
+		});
+
+		const text =
+			response.content[0]?.type === "text" ? response.content[0].text : "";
+
+		const parsed = parseJsonResponse(text);
+		const result = CommitmentExtractSchema.parse(parsed);
+
+		return {
+			commitments: result.commitments.filter((c) => c.confidence >= 0.7),
+		};
+	}
 }
+
+const CommitmentExtractSchema = z.object({
+	commitments: z.array(
+		z.object({
+			text: z.string(),
+			deadline: z.string().nullable(),
+			confidence: z.number().min(0).max(1),
+			recipientEmail: z.string().nullable(),
+		}),
+	),
+});
 
 const EmailTaskMatchSchema = z.object({
 	matches: z.array(

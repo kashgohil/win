@@ -1,5 +1,7 @@
 import {
 	and,
+	contactFollowUps,
+	contacts,
 	db,
 	emails,
 	eq,
@@ -15,6 +17,7 @@ import { getAiEnv } from "../ai/env";
 import { getAiProvider } from "../ai/factory";
 import {
 	CLASSIFY_SYSTEM_PROMPT,
+	COMMITMENT_EXTRACT_SYSTEM_PROMPT,
 	DRAFT_SYSTEM_PROMPT,
 	EMAIL_TASK_MATCH_SYSTEM_PROMPT,
 } from "../ai/prompts";
@@ -317,6 +320,127 @@ async function processClassify(
 				);
 			}
 		}
+
+		// Extract commitments from outgoing emails
+		const isSent = email.labels?.some(
+			(l) => l === "SENT" || l === "\\Sent" || l?.toLowerCase() === "sent",
+		);
+		if (isSent) {
+			try {
+				await extractCommitments(email, userId, aiProvider);
+			} catch (err) {
+				console.error(
+					`[mail-ai] Failed to extract commitments from email ${email.id}:`,
+					err,
+				);
+			}
+		}
+	}
+}
+
+// ── Extract commitments from outgoing emails ──
+
+async function extractCommitments(
+	email: {
+		id: string;
+		subject: string | null;
+		fromAddress: string | null;
+		toAddresses: string[] | null;
+		bodyPlain: string | null;
+	},
+	userId: string,
+	aiProvider: AiProvider | null,
+): Promise<void> {
+	if (!aiProvider) return;
+	if (!email.bodyPlain || !email.toAddresses || email.toAddresses.length === 0)
+		return;
+
+	let result;
+	try {
+		result = await aiProvider.extractCommitments(
+			{
+				subject: email.subject ?? "",
+				fromAddress: email.fromAddress ?? "",
+				toAddresses: email.toAddresses,
+				bodyPlain: email.bodyPlain,
+			},
+			COMMITMENT_EXTRACT_SYSTEM_PROMPT,
+		);
+	} catch (err) {
+		console.error(
+			`[mail-ai] Commitment extraction AI call failed for email ${email.id}:`,
+			err,
+		);
+		return;
+	}
+
+	if (result.commitments.length === 0) return;
+
+	let created = 0;
+	for (const commitment of result.commitments) {
+		// Try to find a matching contact for the recipient
+		let contactId: string | null = null;
+		if (commitment.recipientEmail) {
+			const match = await db
+				.select({ id: contacts.id })
+				.from(contacts)
+				.where(
+					and(
+						eq(contacts.userId, userId),
+						eq(
+							sql`lower(${contacts.primaryEmail})`,
+							commitment.recipientEmail.toLowerCase(),
+						),
+					),
+				)
+				.limit(1);
+
+			if (match[0]) {
+				contactId = match[0].id;
+			}
+		}
+
+		// Parse deadline
+		let dueAt: Date | null = null;
+		if (commitment.deadline) {
+			const parsed = new Date(commitment.deadline);
+			if (!Number.isNaN(parsed.getTime())) {
+				dueAt = parsed;
+			}
+		}
+
+		const title = `Commitment: ${commitment.text.slice(0, 200)}`;
+
+		// Skip if no matching contact — follow-ups require a contact
+		if (!contactId) continue;
+
+		await db.insert(contactFollowUps).values({
+			userId,
+			contactId,
+			type: "commitment",
+			title,
+			context: commitment.text,
+			sourceEmailId: email.id,
+			dueAt,
+			status: "pending",
+		});
+
+		// Create notification
+		await db.insert(notifications).values({
+			userId,
+			type: "contact_follow_up",
+			title: `You committed to something`,
+			body: commitment.text.slice(0, 200),
+			link: `/contacts/${contactId}`,
+		});
+
+		created++;
+	}
+
+	if (created > 0) {
+		console.log(
+			`[mail-ai] Extracted ${created} commitment(s) from email ${email.id}`,
+		);
 	}
 }
 
