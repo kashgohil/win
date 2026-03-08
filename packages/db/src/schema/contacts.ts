@@ -210,6 +210,34 @@ export const contactFollowUps = pgTable(
 	],
 );
 
+/* ── Merge Dismissals ── */
+
+export const contactMergeDismissals = pgTable(
+	"contact_merge_dismissals",
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		contactIdA: uuid("contact_id_a")
+			.notNull()
+			.references(() => contacts.id, { onDelete: "cascade" }),
+		contactIdB: uuid("contact_id_b")
+			.notNull()
+			.references(() => contacts.id, { onDelete: "cascade" }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("contact_merge_dismissals_pair_idx").on(
+			table.userId,
+			table.contactIdA,
+			table.contactIdB,
+		),
+	],
+);
+
 /* ── Relations ── */
 
 export const contactsRelations = relations(contacts, ({ one, many }) => ({
