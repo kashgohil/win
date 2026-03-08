@@ -19,6 +19,7 @@ import {
 	useDeleteTask,
 	useDeleteTaskItem,
 	useProjects,
+	useRelatedEmails,
 	useResolveConflict,
 	useRetrySync,
 	useSnoozeTask,
@@ -37,6 +38,7 @@ import {
 	Flag,
 	FolderOpen,
 	Loader2,
+	Mail,
 	Plus,
 	RefreshCw,
 	Trash2,
@@ -79,6 +81,7 @@ export function TaskDetailDrawer({
 	const retrySync = useRetrySync();
 	const resolveConflict = useResolveConflict();
 	const { data: allProjects } = useProjects();
+	const { data: relatedEmails } = useRelatedEmails(taskId);
 	const snoozeTask = useSnoozeTask();
 	const createItem = useCreateTaskItem();
 	const updateItem = useUpdateTaskItem();
@@ -684,6 +687,40 @@ export function TaskDetailDrawer({
 								)}
 							</div>
 						</div>
+
+						{/* Related emails */}
+						{relatedEmails && relatedEmails.length > 0 && (
+							<div>
+								<span className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 block mb-2">
+									Related emails
+								</span>
+								<div className="space-y-1.5">
+									{relatedEmails.map((email) => (
+										<a
+											key={email.id}
+											href={`/module/mail?emailId=${email.id}`}
+											className="group flex items-start gap-2 rounded-md border border-border/30 px-3 py-2 hover:border-border/60 transition-colors"
+										>
+											<Mail className="size-3.5 text-grey-3 mt-0.5 shrink-0" />
+											<div className="min-w-0 flex-1">
+												<p className="font-body text-[13px] text-foreground truncate">
+													{email.subject ?? "(no subject)"}
+												</p>
+												<p className="font-mono text-[10px] text-grey-3 truncate">
+													{email.fromName ?? email.fromAddress}
+													{email.reason && (
+														<>
+															{" · "}
+															{email.reason}
+														</>
+													)}
+												</p>
+											</div>
+										</a>
+									))}
+								</div>
+							</div>
+						)}
 
 						{/* Activity log */}
 						<div>

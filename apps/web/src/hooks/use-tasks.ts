@@ -23,6 +23,7 @@ export const taskKeys = {
 	detail: (id: string) => [...taskKeys.all, "detail", id] as const,
 	projects: () => [...taskKeys.all, "projects"] as const,
 	integrations: () => [...taskKeys.all, "integrations"] as const,
+	automations: () => [...taskKeys.all, "automations"] as const,
 };
 
 /* ── Task type (inferred from API response) ── */
@@ -630,6 +631,20 @@ export function useDeleteProject() {
 	});
 }
 
+export function useRelatedEmails(taskId: string) {
+	return useQuery({
+		queryKey: [...taskKeys.detail(taskId), "related-emails"],
+		queryFn: async () => {
+			const { data, error } = await api
+				.tasks({ taskId })
+				["related-emails"].get();
+			if (error) throw new Error("Failed to load related emails");
+			return data;
+		},
+		enabled: !!taskId,
+	});
+}
+
 export function useWorkSummary(days = 7) {
 	return useQuery({
 		queryKey: [...taskKeys.all, "summary", days],
@@ -641,6 +656,110 @@ export function useWorkSummary(days = 7) {
 			return data;
 		},
 		staleTime: 5 * 60 * 1000,
+	});
+}
+
+/* ── Automation types ── */
+
+export type AutomationTrigger =
+	| "status_changed"
+	| "task_created"
+	| "task_overdue"
+	| "priority_changed";
+
+export type AutomationAction =
+	| "notify"
+	| "set_status"
+	| "set_priority"
+	| "move_project";
+
+export type AutomationRule = {
+	id: string;
+	name: string;
+	trigger: AutomationTrigger;
+	conditions: Record<string, unknown> | null;
+	action: AutomationAction;
+	actionParams: Record<string, unknown> | null;
+	enabled: boolean;
+	createdAt: string;
+};
+
+/* ── Automation queries ── */
+
+export function useAutomationRules() {
+	return useQuery({
+		queryKey: taskKeys.automations(),
+		queryFn: async () => {
+			const { data, error } = await api.tasks.automations.get();
+			if (error) throw new Error("Failed to load automation rules");
+			return data as AutomationRule[];
+		},
+	});
+}
+
+export function useCreateAutomationRule() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (input: {
+			name: string;
+			trigger: AutomationTrigger;
+			conditions?: Record<string, unknown>;
+			action: AutomationAction;
+			actionParams?: Record<string, unknown>;
+		}) => {
+			const { data, error } = await api.tasks.automations.post(input);
+			if (error) throw new Error("Failed to create automation rule");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.automations() });
+		},
+	});
+}
+
+export function useUpdateAutomationRule() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			id,
+			...input
+		}: {
+			id: string;
+			name?: string;
+			trigger?: AutomationTrigger;
+			conditions?: Record<string, unknown>;
+			action?: AutomationAction;
+			actionParams?: Record<string, unknown>;
+			enabled?: boolean;
+		}) => {
+			const { data, error } = await api.tasks
+				.automations({ ruleId: id })
+				.patch(input);
+			if (error) throw new Error("Failed to update automation rule");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.automations() });
+		},
+	});
+}
+
+export function useDeleteAutomationRule() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (id: string) => {
+			const { data, error } = await api.tasks
+				.automations({ ruleId: id })
+				.delete();
+			if (error) throw new Error("Failed to delete automation rule");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: taskKeys.automations() });
+		},
 	});
 }
 

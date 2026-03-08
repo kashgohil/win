@@ -1,5 +1,6 @@
 import { KeyboardShortcutBar } from "@/components/mail/KeyboardShortcutBar";
 import ModulePage from "@/components/module/ModulePage";
+import { TaskAutomations } from "@/components/tasks/TaskAutomations";
 import { TaskIntegrations } from "@/components/tasks/TaskIntegrations";
 import { TaskSuggestions } from "@/components/tasks/TaskSuggestions";
 import { useProjects, useTaskStats, useWorkSummary } from "@/hooks/use-tasks";
@@ -142,6 +143,14 @@ function TaskModule() {
 
 					{/* Projects */}
 					<ProjectsList />
+
+					{/* Automations */}
+					<div className="mt-8">
+						<h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3 mb-3">
+							Automations
+						</h3>
+						<TaskAutomations />
+					</div>
 
 					{/* Integrations */}
 					<div className="mt-8">
