@@ -14,6 +14,8 @@ import {
 	FolderOpen,
 	KanbanSquare,
 	List,
+	Snowflake,
+	Users,
 } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
@@ -256,6 +258,51 @@ function WeeklySummary() {
 						))}
 					</div>
 				)}
+
+				{/* Contacts digest */}
+				{summary.contacts &&
+					(summary.contacts.touchedThisWeek > 0 ||
+						summary.contacts.newContacts > 0 ||
+						summary.contacts.coolingOff > 0) && (
+						<div className="mt-3 pt-3 border-t border-border/20">
+							<div className="flex items-center gap-4 flex-wrap">
+								{summary.contacts.touchedThisWeek > 0 && (
+									<div className="flex items-center gap-1.5">
+										<Users className="size-3.5 text-grey-3" />
+										<span className="font-body text-[13px] text-foreground">
+											{summary.contacts.touchedThisWeek} contact
+											{summary.contacts.touchedThisWeek !== 1 ? "s" : ""}{" "}
+											touched
+										</span>
+									</div>
+								)}
+								{summary.contacts.coolingOff > 0 && (
+									<div className="flex items-center gap-1.5">
+										<Snowflake className="size-3.5 text-blue-400" />
+										<span className="font-body text-[13px] text-blue-500">
+											{summary.contacts.coolingOff} cooling off
+										</span>
+									</div>
+								)}
+								{summary.contacts.newContacts > 0 && (
+									<div className="flex items-center gap-1.5">
+										<span className="font-body text-[13px] text-grey-2">
+											+{summary.contacts.newContacts} new
+										</span>
+									</div>
+								)}
+								{summary.contacts.followUpsPending > 0 && (
+									<div className="flex items-center gap-1.5">
+										<span className="font-body text-[13px] text-amber-500">
+											{summary.contacts.followUpsPending} follow-up
+											{summary.contacts.followUpsPending !== 1 ? "s" : ""}{" "}
+											pending
+										</span>
+									</div>
+								)}
+							</div>
+						</div>
+					)}
 			</div>
 		</div>
 	);
