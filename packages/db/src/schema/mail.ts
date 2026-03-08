@@ -137,6 +137,8 @@ export const emails = pgTable(
 		unsubscribeUrl: text("unsubscribe_url"),
 		followUpAt: timestamp("follow_up_at", { withTimezone: true }),
 		followUpDismissed: boolean("follow_up_dismissed").default(false).notNull(),
+		relatedTaskId: uuid("related_task_id"),
+		relatedTaskReason: text("related_task_reason"),
 		updatedAt: timestamp("updated_at", { withTimezone: true })
 			.defaultNow()
 			.notNull()
