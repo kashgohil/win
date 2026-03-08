@@ -295,6 +295,73 @@ export const parseTaskResponse = t.Object({
 	projectName: t.Nullable(t.String()),
 });
 
+/* ── Automation rules ── */
+
+const automationRuleSchema = t.Object({
+	id: t.String(),
+	name: t.String(),
+	trigger: t.Union([
+		t.Literal("status_changed"),
+		t.Literal("task_created"),
+		t.Literal("task_overdue"),
+		t.Literal("priority_changed"),
+	]),
+	conditions: t.Any(),
+	action: t.Union([
+		t.Literal("notify"),
+		t.Literal("set_status"),
+		t.Literal("set_priority"),
+		t.Literal("move_project"),
+	]),
+	actionParams: t.Any(),
+	enabled: t.Boolean(),
+	createdAt: t.String(),
+});
+
+export const automationRuleListResponse = t.Array(automationRuleSchema);
+export const automationRuleResponse = automationRuleSchema;
+
+export const createAutomationRuleBody = t.Object({
+	name: t.String({ minLength: 1 }),
+	trigger: t.Union([
+		t.Literal("status_changed"),
+		t.Literal("task_created"),
+		t.Literal("task_overdue"),
+		t.Literal("priority_changed"),
+	]),
+	conditions: t.Optional(t.Any()),
+	action: t.Union([
+		t.Literal("notify"),
+		t.Literal("set_status"),
+		t.Literal("set_priority"),
+		t.Literal("move_project"),
+	]),
+	actionParams: t.Optional(t.Any()),
+});
+
+export const updateAutomationRuleBody = t.Object({
+	name: t.Optional(t.String({ minLength: 1 })),
+	trigger: t.Optional(
+		t.Union([
+			t.Literal("status_changed"),
+			t.Literal("task_created"),
+			t.Literal("task_overdue"),
+			t.Literal("priority_changed"),
+		]),
+	),
+	conditions: t.Optional(t.Any()),
+	action: t.Optional(
+		t.Union([
+			t.Literal("notify"),
+			t.Literal("set_status"),
+			t.Literal("set_priority"),
+			t.Literal("move_project"),
+		]),
+	),
+	actionParams: t.Optional(t.Any()),
+	enabled: t.Optional(t.Boolean()),
+});
+
 /* ── Work summary ── */
 
 export const workSummaryResponse = t.Object({

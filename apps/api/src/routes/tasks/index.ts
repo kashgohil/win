@@ -4,12 +4,15 @@ import { env } from "../../env";
 import { betterAuthPlugin } from "../../plugins/auth";
 import {
 	activityLogResponse,
+	automationRuleListResponse,
+	automationRuleResponse,
 	bulkDeleteBody,
 	bulkDeleteResponse,
 	bulkUpdateBody,
 	bulkUpdateResponse,
 	connectionListResponse,
 	connectResponse,
+	createAutomationRuleBody,
 	createProjectBody,
 	createTaskBody,
 	createTaskItemBody,
@@ -26,6 +29,7 @@ import {
 	taskItemResponse,
 	taskListResponse,
 	taskStatsResponse,
+	updateAutomationRuleBody,
 	updateProjectBody,
 	updateTaskBody,
 	updateTaskItemBody,
@@ -162,6 +166,36 @@ export const tasksRoutes = new Elysia({
 				500: errorResponse,
 			},
 			detail: { tags: ["Tasks"], summary: "Get task detail" },
+		},
+	)
+
+	.get(
+		"/:taskId/related-emails",
+		async ({ params, user, set }) => {
+			const result = await taskService.getRelatedEmails(user.id, params.taskId);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ taskId: t.String() }),
+			response: {
+				200: t.Array(
+					t.Object({
+						id: t.String(),
+						subject: t.Nullable(t.String()),
+						fromName: t.Nullable(t.String()),
+						fromAddress: t.Nullable(t.String()),
+						receivedAt: t.String(),
+						reason: t.Nullable(t.String()),
+					}),
+				),
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Get related emails for a task" },
 		},
 	)
 
@@ -813,5 +847,91 @@ export const tasksRoutes = new Elysia({
 				500: errorResponse,
 			},
 			detail: { tags: ["Tasks"], summary: "Provider webhook" },
+		},
+	)
+
+	/* ── Automation Rules ── */
+
+	.get(
+		"/automations",
+		async ({ user }) => {
+			return taskService.listAutomationRules(user.id);
+		},
+		{
+			auth: true,
+			response: { 200: automationRuleListResponse },
+			detail: { tags: ["Tasks"], summary: "List automation rules" },
+		},
+	)
+
+	.post(
+		"/automations",
+		async ({ body, user, set }) => {
+			const result = await taskService.createAutomationRule(user.id, body);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			body: createAutomationRuleBody,
+			response: {
+				200: automationRuleResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Create automation rule" },
+		},
+	)
+
+	.patch(
+		"/automations/:ruleId",
+		async ({ params, body, user, set }) => {
+			const result = await taskService.updateAutomationRule(
+				user.id,
+				params.ruleId,
+				body,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			params: t.Object({ ruleId: t.String() }),
+			body: updateAutomationRuleBody,
+			response: {
+				200: automationRuleResponse,
+				400: errorResponse,
+				404: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Update automation rule" },
+		},
+	)
+
+	.delete(
+		"/automations/:ruleId",
+		async ({ params, user, set }) => {
+			const result = await taskService.deleteAutomationRule(
+				user.id,
+				params.ruleId,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: "Rule deleted" };
+		},
+		{
+			auth: true,
+			params: t.Object({ ruleId: t.String() }),
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+			},
+			detail: { tags: ["Tasks"], summary: "Delete automation rule" },
 		},
 	);

@@ -13,6 +13,7 @@ import {
 	or,
 	sql,
 	taskActivityLog,
+	taskAutomationRules,
 	taskConnections,
 	taskItems,
 	taskProjects,
@@ -24,6 +25,7 @@ import {
 	enqueueFullTaskSync,
 	enqueueTaskWebhookEvent,
 	enqueueTaskWriteBack,
+	evaluateAutomations,
 	getAiProvider,
 	scheduleRecurringTaskSync,
 	TASK_PARSE_SYSTEM_PROMPT,
@@ -522,6 +524,18 @@ export const taskService = {
 				details: { source: "native" },
 			});
 
+			// Evaluate automation rules for task creation
+			evaluateAutomations("task_created", {
+				id: created.id,
+				userId,
+				title: created.title,
+				statusKey: created.statusKey,
+				priority: created.priority,
+				projectId: created.projectId,
+			}).catch((err) =>
+				console.error("[tasks] Automation evaluation failed:", err),
+			);
+
 			return {
 				ok: true,
 				data: serializeTask(created, []),
@@ -639,6 +653,28 @@ export const taskService = {
 				action: "updated",
 				details: { fields: Object.keys(updates) },
 			});
+
+			// Evaluate automation rules
+			const taskContext = {
+				id: taskId,
+				userId,
+				title: updated.title,
+				statusKey: updated.statusKey,
+				priority: updated.priority,
+				projectId: updated.projectId,
+				oldStatusKey: existing.statusKey,
+				oldPriority: existing.priority,
+			};
+			if (input.statusKey && input.statusKey !== existing.statusKey) {
+				evaluateAutomations("status_changed", taskContext).catch((err) =>
+					console.error("[tasks] Automation evaluation failed:", err),
+				);
+			}
+			if (input.priority && input.priority !== existing.priority) {
+				evaluateAutomations("priority_changed", taskContext).catch((err) =>
+					console.error("[tasks] Automation evaluation failed:", err),
+				);
+			}
 
 			// Enqueue write-back for external tasks
 			if (
@@ -2441,5 +2477,227 @@ export const taskService = {
 			console.error("[tasks] getWorkSummary error:", message);
 			return { ok: false as const, error: message, status: 500 };
 		}
+	},
+
+	/* ── Related emails for a task ── */
+	async getRelatedEmails(
+		userId: string,
+		taskId: string,
+	): Promise<
+		| {
+				ok: true;
+				data: {
+					id: string;
+					subject: string | null;
+					fromName: string | null;
+					fromAddress: string | null;
+					receivedAt: string;
+					reason: string | null;
+				}[];
+		  }
+		| { ok: false; error: string; status: number }
+	> {
+		try {
+			// Emails linked via relatedTaskId + emails linked via sourceEmailId on the task
+			const related = await db
+				.select({
+					id: emails.id,
+					subject: emails.subject,
+					fromName: emails.fromName,
+					fromAddress: emails.fromAddress,
+					receivedAt: emails.receivedAt,
+					reason: emails.relatedTaskReason,
+				})
+				.from(emails)
+				.where(and(eq(emails.userId, userId), eq(emails.relatedTaskId, taskId)))
+				.orderBy(desc(emails.receivedAt))
+				.limit(10);
+
+			// Also get the source email if task was created from one
+			const task = await db.query.tasks.findFirst({
+				where: and(eq(tasks.id, taskId), eq(tasks.userId, userId)),
+				columns: { sourceEmailId: true },
+			});
+
+			if (task?.sourceEmailId) {
+				const sourceEmail = await db
+					.select({
+						id: emails.id,
+						subject: emails.subject,
+						fromName: emails.fromName,
+						fromAddress: emails.fromAddress,
+						receivedAt: emails.receivedAt,
+					})
+					.from(emails)
+					.where(eq(emails.id, task.sourceEmailId));
+
+				if (sourceEmail[0]) {
+					const src = sourceEmail[0];
+					const exists = related.some((r) => r.id === src.id);
+					if (!exists) {
+						related.unshift({
+							...src,
+							reason: "Task created from this email",
+						});
+					}
+				}
+			}
+
+			return {
+				ok: true as const,
+				data: related.map((r) => ({
+					...r,
+					receivedAt: r.receivedAt.toISOString(),
+				})),
+			};
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error";
+			console.error("[tasks] getRelatedEmails error:", message);
+			return { ok: false as const, error: message, status: 500 };
+		}
+	},
+
+	/* ── Automation rules ── */
+
+	async listAutomationRules(userId: string) {
+		const rules = await db.query.taskAutomationRules.findMany({
+			where: eq(taskAutomationRules.userId, userId),
+			orderBy: desc(taskAutomationRules.createdAt),
+		});
+		return rules.map((r) => ({
+			id: r.id,
+			name: r.name,
+			trigger: r.trigger,
+			conditions: r.conditions,
+			action: r.action,
+			actionParams: r.actionParams,
+			enabled: r.enabled,
+			createdAt: r.createdAt.toISOString(),
+		}));
+	},
+
+	async createAutomationRule(
+		userId: string,
+		input: {
+			name: string;
+			trigger:
+				| "status_changed"
+				| "task_created"
+				| "task_overdue"
+				| "priority_changed";
+			conditions?: unknown;
+			action: "notify" | "set_status" | "set_priority" | "move_project";
+			actionParams?: unknown;
+		},
+	) {
+		const [rule] = await db
+			.insert(taskAutomationRules)
+			.values({
+				userId,
+				name: input.name,
+				trigger: input.trigger,
+				conditions: input.conditions ?? {},
+				action: input.action,
+				actionParams: input.actionParams ?? {},
+			})
+			.returning();
+
+		if (!rule) {
+			return {
+				ok: false as const,
+				error: "Failed to create rule",
+				status: 500,
+			};
+		}
+
+		return {
+			ok: true as const,
+			data: {
+				id: rule.id,
+				name: rule.name,
+				trigger: rule.trigger,
+				conditions: rule.conditions,
+				action: rule.action,
+				actionParams: rule.actionParams,
+				enabled: rule.enabled,
+				createdAt: rule.createdAt.toISOString(),
+			},
+		};
+	},
+
+	async updateAutomationRule(
+		userId: string,
+		ruleId: string,
+		input: {
+			name?: string;
+			trigger?:
+				| "status_changed"
+				| "task_created"
+				| "task_overdue"
+				| "priority_changed";
+			conditions?: unknown;
+			action?: "notify" | "set_status" | "set_priority" | "move_project";
+			actionParams?: unknown;
+			enabled?: boolean;
+		},
+	) {
+		const updates: Record<string, unknown> = {};
+		if (input.name !== undefined) updates.name = input.name;
+		if (input.trigger !== undefined) updates.trigger = input.trigger;
+		if (input.conditions !== undefined) updates.conditions = input.conditions;
+		if (input.action !== undefined) updates.action = input.action;
+		if (input.actionParams !== undefined)
+			updates.actionParams = input.actionParams;
+		if (input.enabled !== undefined) updates.enabled = input.enabled;
+
+		if (Object.keys(updates).length === 0) {
+			return { ok: false as const, error: "No fields to update", status: 400 };
+		}
+
+		const [updated] = await db
+			.update(taskAutomationRules)
+			.set(updates)
+			.where(
+				and(
+					eq(taskAutomationRules.id, ruleId),
+					eq(taskAutomationRules.userId, userId),
+				),
+			)
+			.returning();
+
+		if (!updated) {
+			return { ok: false as const, error: "Rule not found", status: 404 };
+		}
+
+		return {
+			ok: true as const,
+			data: {
+				id: updated.id,
+				name: updated.name,
+				trigger: updated.trigger,
+				conditions: updated.conditions,
+				action: updated.action,
+				actionParams: updated.actionParams,
+				enabled: updated.enabled,
+				createdAt: updated.createdAt.toISOString(),
+			},
+		};
+	},
+
+	async deleteAutomationRule(userId: string, ruleId: string) {
+		const [deleted] = await db
+			.delete(taskAutomationRules)
+			.where(
+				and(
+					eq(taskAutomationRules.id, ruleId),
+					eq(taskAutomationRules.userId, userId),
+				),
+			)
+			.returning({ id: taskAutomationRules.id });
+
+		if (!deleted) {
+			return { ok: false as const, error: "Rule not found", status: 404 };
+		}
+		return { ok: true as const };
 	},
 };
