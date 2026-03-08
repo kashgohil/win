@@ -1,5 +1,6 @@
 import { Queue } from "bullmq";
 import { connection } from "./connection";
+import type { CalendarSyncJobData } from "./jobs/calendar-sync";
 import type { MailAiJobData } from "./jobs/mail-ai";
 import type { MailAutoHandleJobData } from "./jobs/mail-autohandle";
 import type { MailFollowUpJobData } from "./jobs/mail-followup";
@@ -10,6 +11,19 @@ import type { TaskReminderJobData } from "./jobs/task-reminder";
 import type { TaskSyncJobData } from "./jobs/task-sync";
 import type { TaskWriteBackJobData } from "./jobs/task-writeback";
 import type { WorkSummaryJobData } from "./jobs/work-summary";
+
+export const calendarSyncQueue = new Queue<CalendarSyncJobData>(
+	"calendar-sync",
+	{
+		connection,
+		defaultJobOptions: {
+			attempts: 3,
+			backoff: { type: "exponential", delay: 5000 },
+			removeOnComplete: { count: 1000 },
+			removeOnFail: { count: 5000 },
+		},
+	},
+);
 
 export const mailSyncQueue = new Queue<MailSyncJobData>("mail-sync", {
 	connection,

@@ -17,6 +17,12 @@ export type {
 } from "./src/ai/types";
 export { evaluateAutomations } from "./src/automation";
 export {
+	enqueueCalendarIncrementalSync,
+	enqueueCalendarInitialSync,
+	scheduleRecurringCalendarSync,
+	type CalendarSyncJobData,
+} from "./src/jobs/calendar-sync";
+export {
 	enqueueClassify,
 	enqueueDraftResponse,
 	type MailAiJobData,
@@ -65,6 +71,7 @@ export {
 	type WorkSummaryJobData,
 } from "./src/jobs/work-summary";
 export {
+	calendarSyncQueue,
 	mailAiQueue,
 	mailAutoHandleQueue,
 	mailFollowUpQueue,
