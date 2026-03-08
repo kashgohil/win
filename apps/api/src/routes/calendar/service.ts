@@ -854,19 +854,34 @@ export const calendarService = {
 		accountId: string,
 	): Promise<DisconnectResult> {
 		try {
-			const [deleted] = await db
+			// Stop webhook channel before deleting
+			const account = await db.query.calendarAccounts.findFirst({
+				where: and(
+					eq(calendarAccounts.id, accountId),
+					eq(calendarAccounts.userId, userId),
+				),
+			});
+
+			if (!account) {
+				return { ok: false, error: "Account not found", status: 404 };
+			}
+
+			if (account.webhookChannelId && account.webhookResourceId) {
+				await this.stopWebhookChannel(
+					accountId,
+					account.webhookChannelId,
+					account.webhookResourceId,
+				);
+			}
+
+			await db
 				.delete(calendarAccounts)
 				.where(
 					and(
 						eq(calendarAccounts.id, accountId),
 						eq(calendarAccounts.userId, userId),
 					),
-				)
-				.returning();
-
-			if (!deleted) {
-				return { ok: false, error: "Account not found", status: 404 };
-			}
+				);
 
 			return { ok: true, message: "Account disconnected" };
 		} catch (err) {
