@@ -10,6 +10,7 @@ const isDev = process.env.NODE_ENV !== "production";
 
 import { betterAuthHandler } from "./auth";
 import { betterAuthPlugin } from "./plugins/auth";
+import { calendarRoutes } from "./routes/calendar";
 import { health } from "./routes/health";
 import { mail } from "./routes/mail";
 import { me } from "./routes/me";
@@ -42,6 +43,10 @@ const app = new Elysia({ name: "wingmnn-api" })
 					{
 						name: "Mail",
 						description: "Mail module — emails, triage, accounts",
+					},
+					{
+						name: "Calendar",
+						description: "Calendar module — events, scheduling",
 					},
 					{
 						name: "Tasks",
@@ -77,6 +82,7 @@ const app = new Elysia({ name: "wingmnn-api" })
 	.use(isDev ? (app) => app : strictLimit())
 	.use(isDev ? (app) => app : lenientLimit())
 	.use(mail)
+	.use(calendarRoutes)
 	.use(tasksRoutes)
 	.use(notificationsRoutes)
 	.use(me)

@@ -1,0 +1,500 @@
+import {
+	and,
+	asc,
+	calendarAccounts,
+	calendarEvents,
+	count,
+	db,
+	desc,
+	eq,
+	gte,
+	lt,
+	lte,
+} from "@wingmnn/db";
+import {
+	enqueueCalendarInitialSync,
+	scheduleRecurringCalendarSync,
+} from "@wingmnn/queue";
+import { env } from "../../env";
+import { createOAuthState, verifyOAuthState } from "../mail/oauth-state";
+
+/* ── Google Calendar OAuth config ── */
+
+const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
+const GOOGLE_SCOPES = [
+	"https://www.googleapis.com/auth/calendar.readonly",
+	"https://www.googleapis.com/auth/calendar.events",
+	"https://www.googleapis.com/auth/userinfo.email",
+].join(" ");
+
+function getGoogleRedirectUri(): string {
+	return `${env.BETTER_AUTH_URL}/calendar/accounts/callback/google`;
+}
+
+function isGoogleConfigured(): boolean {
+	return !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+}
+
+/* ── Serialization ── */
+
+type SerializedAccount = {
+	id: string;
+	provider: "google" | "outlook";
+	email: string;
+	syncStatus: "pending" | "syncing" | "synced" | "error";
+	lastSyncAt: string | null;
+	syncError: string | null;
+	active: boolean;
+	createdAt: string;
+};
+
+function serializeAccount(
+	account: typeof calendarAccounts.$inferSelect,
+): SerializedAccount {
+	return {
+		id: account.id,
+		provider: account.provider,
+		email: account.email,
+		syncStatus: account.syncStatus,
+		lastSyncAt: account.lastSyncAt?.toISOString() ?? null,
+		syncError: account.syncError ?? null,
+		active: account.active,
+		createdAt: account.createdAt.toISOString(),
+	};
+}
+
+type SerializedEvent = {
+	id: string;
+	calendarAccountId: string;
+	externalId: string;
+	title: string | null;
+	description: string | null;
+	location: string | null;
+	startTime: string;
+	endTime: string;
+	isAllDay: boolean;
+	status: "confirmed" | "tentative" | "cancelled";
+	organizer: { email: string; displayName?: string } | null;
+	attendees: {
+		email: string;
+		displayName?: string;
+		responseStatus?: string;
+	}[];
+	recurrenceRule: string | null;
+	recurringEventId: string | null;
+	htmlLink: string | null;
+	meetingLink: string | null;
+	source: string;
+	createdAt: string;
+};
+
+function serializeEvent(
+	event: typeof calendarEvents.$inferSelect,
+): SerializedEvent {
+	return {
+		id: event.id,
+		calendarAccountId: event.calendarAccountId,
+		externalId: event.externalId,
+		title: event.title,
+		description: event.description,
+		location: event.location,
+		startTime: event.startTime.toISOString(),
+		endTime: event.endTime.toISOString(),
+		isAllDay: event.isAllDay,
+		status: event.status,
+		organizer: event.organizer as SerializedEvent["organizer"],
+		attendees: (event.attendees as SerializedEvent["attendees"]) ?? [],
+		recurrenceRule: event.recurrenceRule,
+		recurringEventId: event.recurringEventId,
+		htmlLink: event.htmlLink,
+		meetingLink: event.meetingLink,
+		source: event.source,
+		createdAt: event.createdAt.toISOString(),
+	};
+}
+
+/* ── Result types ── */
+
+type AccountListResult =
+	| { ok: true; data: SerializedAccount[] }
+	| { ok: false; error: string; status: number };
+
+type ConnectResult =
+	| { ok: true; url: string }
+	| { ok: false; error: string; status: number };
+
+type OAuthCallbackResult =
+	| { ok: true; accountId: string }
+	| { ok: false; error: string; status: number };
+
+type DisconnectResult =
+	| { ok: true; message: string }
+	| { ok: false; error: string; status: number };
+
+/* ── Service ── */
+
+export const calendarService = {
+	async getAccounts(userId: string): Promise<AccountListResult> {
+		try {
+			const accounts = await db.query.calendarAccounts.findMany({
+				where: eq(calendarAccounts.userId, userId),
+				orderBy: [desc(calendarAccounts.createdAt)],
+			});
+			return { ok: true, data: accounts.map(serializeAccount) };
+		} catch (err) {
+			console.error("[calendar] getAccounts failed:", err);
+			return { ok: false, error: "Failed to load accounts", status: 500 };
+		}
+	},
+
+	async connectAccount(
+		userId: string,
+		provider: string,
+	): Promise<ConnectResult> {
+		if (provider !== "google") {
+			return {
+				ok: false,
+				error: `Unsupported provider: ${provider}. Only Google Calendar is supported.`,
+				status: 400,
+			};
+		}
+
+		if (!isGoogleConfigured()) {
+			return {
+				ok: false,
+				error: "Google Calendar is not configured",
+				status: 400,
+			};
+		}
+
+		try {
+			const state = await createOAuthState(userId);
+			const params = new URLSearchParams({
+				client_id: env.GOOGLE_CLIENT_ID!,
+				redirect_uri: getGoogleRedirectUri(),
+				response_type: "code",
+				scope: GOOGLE_SCOPES,
+				access_type: "offline",
+				prompt: "consent",
+				state,
+			});
+
+			const url = `${GOOGLE_AUTH_URL}?${params.toString()}`;
+			return { ok: true, url };
+		} catch (err) {
+			console.error("[calendar] connectAccount failed:", err);
+			return { ok: false, error: "Failed to generate auth URL", status: 500 };
+		}
+	},
+
+	async handleOAuthCallback(
+		code: string,
+		state: string,
+	): Promise<OAuthCallbackResult> {
+		const userId = await verifyOAuthState(state);
+		if (!userId) {
+			return {
+				ok: false,
+				error: "Invalid or expired OAuth state",
+				status: 400,
+			};
+		}
+
+		try {
+			// Exchange code for tokens
+			const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
+				method: "POST",
+				headers: { "Content-Type": "application/x-www-form-urlencoded" },
+				body: new URLSearchParams({
+					code,
+					client_id: env.GOOGLE_CLIENT_ID!,
+					client_secret: env.GOOGLE_CLIENT_SECRET!,
+					redirect_uri: getGoogleRedirectUri(),
+					grant_type: "authorization_code",
+				}),
+			});
+
+			if (!tokenRes.ok) {
+				const errBody = await tokenRes.text();
+				console.error("[calendar] Token exchange failed:", errBody);
+				return {
+					ok: false,
+					error: "Failed to exchange authorization code",
+					status: 500,
+				};
+			}
+
+			const tokens = (await tokenRes.json()) as {
+				access_token: string;
+				refresh_token?: string;
+				expires_in: number;
+				scope: string;
+			};
+
+			// Get user's email
+			const userInfoRes = await fetch(GOOGLE_USERINFO_URL, {
+				headers: { Authorization: `Bearer ${tokens.access_token}` },
+			});
+
+			if (!userInfoRes.ok) {
+				return {
+					ok: false,
+					error: "Failed to get user info",
+					status: 500,
+				};
+			}
+
+			const userInfo = (await userInfoRes.json()) as { email: string };
+			const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+
+			// Upsert account
+			const conflictSet: Record<string, unknown> = {
+				accessToken: tokens.access_token,
+				tokenExpiresAt: expiresAt,
+				scopes: tokens.scope,
+				syncStatus: "pending" as const,
+				active: true,
+				syncError: null,
+			};
+			if (tokens.refresh_token) {
+				conflictSet.refreshToken = tokens.refresh_token;
+			}
+
+			const rows = await db
+				.insert(calendarAccounts)
+				.values({
+					userId,
+					provider: "google",
+					email: userInfo.email,
+					accessToken: tokens.access_token,
+					refreshToken: tokens.refresh_token ?? null,
+					tokenExpiresAt: expiresAt,
+					scopes: tokens.scope,
+					syncStatus: "pending",
+					active: true,
+				})
+				.onConflictDoUpdate({
+					target: [
+						calendarAccounts.userId,
+						calendarAccounts.provider,
+						calendarAccounts.email,
+					],
+					set: conflictSet,
+				})
+				.returning();
+
+			const account = rows[0];
+			if (!account) {
+				return {
+					ok: false,
+					error: "Failed to create calendar account",
+					status: 500,
+				};
+			}
+
+			await enqueueCalendarInitialSync(account.id, userId);
+			await scheduleRecurringCalendarSync(account.id, userId);
+
+			return { ok: true, accountId: account.id };
+		} catch (err) {
+			console.error("[calendar] handleOAuthCallback failed:", err);
+			return {
+				ok: false,
+				error: "Failed to complete OAuth connection",
+				status: 500,
+			};
+		}
+	},
+
+	async listEvents(
+		userId: string,
+		params: {
+			startAfter?: string;
+			startBefore?: string;
+			accountId?: string;
+			limit?: number;
+			cursor?: string;
+		},
+	) {
+		try {
+			const conditions = [eq(calendarEvents.userId, userId)];
+
+			if (params.startAfter) {
+				conditions.push(
+					gte(calendarEvents.startTime, new Date(params.startAfter)),
+				);
+			}
+			if (params.startBefore) {
+				conditions.push(
+					lt(calendarEvents.startTime, new Date(params.startBefore)),
+				);
+			}
+			if (params.accountId) {
+				conditions.push(eq(calendarEvents.calendarAccountId, params.accountId));
+			}
+			if (params.cursor) {
+				conditions.push(gte(calendarEvents.startTime, new Date(params.cursor)));
+			}
+
+			const pageSize = params.limit ?? 100;
+
+			const events = await db.query.calendarEvents.findMany({
+				where: and(...conditions),
+				orderBy: [asc(calendarEvents.startTime)],
+				limit: pageSize + 1,
+			});
+
+			const hasMore = events.length > pageSize;
+			const page = hasMore ? events.slice(0, pageSize) : events;
+
+			return {
+				ok: true as const,
+				data: {
+					events: page.map(serializeEvent),
+					hasMore,
+					nextCursor: hasMore
+						? page[page.length - 1]?.startTime.toISOString()
+						: undefined,
+				},
+			};
+		} catch (err) {
+			console.error("[calendar] listEvents failed:", err);
+			return {
+				ok: false as const,
+				error: "Failed to load events",
+				status: 500,
+			};
+		}
+	},
+
+	async getEvent(userId: string, eventId: string) {
+		try {
+			const event = await db.query.calendarEvents.findFirst({
+				where: and(
+					eq(calendarEvents.id, eventId),
+					eq(calendarEvents.userId, userId),
+				),
+			});
+
+			if (!event) {
+				return { ok: false as const, error: "Event not found", status: 404 };
+			}
+
+			return { ok: true as const, data: serializeEvent(event) };
+		} catch (err) {
+			console.error("[calendar] getEvent failed:", err);
+			return { ok: false as const, error: "Failed to load event", status: 500 };
+		}
+	},
+
+	async getModuleData(userId: string) {
+		try {
+			const now = new Date();
+			const todayStart = new Date(now);
+			todayStart.setHours(0, 0, 0, 0);
+			const todayEnd = new Date(now);
+			todayEnd.setHours(23, 59, 59, 999);
+
+			// Next upcoming event
+			const nextEvent = await db.query.calendarEvents.findFirst({
+				where: and(
+					eq(calendarEvents.userId, userId),
+					gte(calendarEvents.startTime, now),
+					eq(calendarEvents.status, "confirmed"),
+				),
+				orderBy: [asc(calendarEvents.startTime)],
+			});
+
+			// Today's event count
+			const [todayCount] = await db
+				.select({ count: count() })
+				.from(calendarEvents)
+				.where(
+					and(
+						eq(calendarEvents.userId, userId),
+						gte(calendarEvents.startTime, todayStart),
+						lte(calendarEvents.startTime, todayEnd),
+						eq(calendarEvents.status, "confirmed"),
+					),
+				);
+
+			// Find conflicts (overlapping events today)
+			const todayEvents = await db.query.calendarEvents.findMany({
+				where: and(
+					eq(calendarEvents.userId, userId),
+					gte(calendarEvents.startTime, todayStart),
+					lte(calendarEvents.startTime, todayEnd),
+					eq(calendarEvents.status, "confirmed"),
+				),
+				orderBy: [asc(calendarEvents.startTime)],
+			});
+
+			let conflictCount = 0;
+			for (let i = 0; i < todayEvents.length - 1; i++) {
+				const current = todayEvents[i]!;
+				const next = todayEvents[i + 1]!;
+				if (current.isAllDay || next.isAllDay) continue;
+				if (current.endTime > next.startTime) {
+					conflictCount++;
+				}
+			}
+
+			// Minutes until next event
+			let minutesUntilNext: number | null = null;
+			if (nextEvent) {
+				minutesUntilNext = Math.round(
+					(nextEvent.startTime.getTime() - now.getTime()) / 60000,
+				);
+			}
+
+			return {
+				ok: true as const,
+				data: {
+					nextEvent: nextEvent ? serializeEvent(nextEvent) : null,
+					minutesUntilNext,
+					todayCount: todayCount?.count ?? 0,
+					conflictCount,
+				},
+			};
+		} catch (err) {
+			console.error("[calendar] getModuleData failed:", err);
+			return {
+				ok: false as const,
+				error: "Failed to load calendar data",
+				status: 500,
+			};
+		}
+	},
+
+	async disconnectAccount(
+		userId: string,
+		accountId: string,
+	): Promise<DisconnectResult> {
+		try {
+			const [deleted] = await db
+				.delete(calendarAccounts)
+				.where(
+					and(
+						eq(calendarAccounts.id, accountId),
+						eq(calendarAccounts.userId, userId),
+					),
+				)
+				.returning();
+
+			if (!deleted) {
+				return { ok: false, error: "Account not found", status: 404 };
+			}
+
+			return { ok: true, message: "Account disconnected" };
+		} catch (err) {
+			console.error("[calendar] disconnectAccount failed:", err);
+			return {
+				ok: false,
+				error: "Failed to disconnect account",
+				status: 500,
+			};
+		}
+	},
+};
