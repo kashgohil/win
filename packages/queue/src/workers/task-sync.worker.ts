@@ -12,6 +12,7 @@ import {
 } from "@wingmnn/db";
 import {
 	getTaskProvider,
+	jiraProvider,
 	linearProvider,
 	registerProvider,
 } from "@wingmnn/tasks";
@@ -23,6 +24,7 @@ import type { TaskSyncJobData } from "../jobs/task-sync";
 
 // Register providers
 registerProvider(linearProvider);
+registerProvider(jiraProvider);
 
 async function processFullSync(connectionId: string, userId: string) {
 	const conn = await db.query.taskConnections.findFirst({

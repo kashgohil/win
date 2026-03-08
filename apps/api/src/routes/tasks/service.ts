@@ -33,12 +33,14 @@ import {
 } from "@wingmnn/queue";
 import {
 	getTaskProvider,
+	jiraProvider,
 	linearProvider,
 	registerProvider,
 } from "@wingmnn/tasks";
 
-// Register the Linear provider on import
+// Register providers on import
 registerProvider(linearProvider);
+registerProvider(jiraProvider);
 
 /* ── Priority scoring ── */
 
