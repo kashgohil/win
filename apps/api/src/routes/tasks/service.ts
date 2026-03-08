@@ -582,11 +582,16 @@ export const taskService = {
 					updates.completedAt = new Date();
 				} else if (input.statusKey !== "done" && existing.completedAt) {
 					updates.completedAt = null;
+					// Reset overdue tracking when re-opening a task
+					updates.overdueNotifiedAt = null;
 				}
 			}
 			if (input.priority !== undefined) updates.priority = input.priority;
-			if (input.dueAt !== undefined)
+			if (input.dueAt !== undefined) {
 				updates.dueAt = input.dueAt ? new Date(input.dueAt) : null;
+				// Reset overdue tracking so automation can re-trigger for new deadline
+				updates.overdueNotifiedAt = null;
+			}
 			if (input.projectId !== undefined) {
 				updates.projectId = input.projectId;
 				// Clear suggestion when project is explicitly set
