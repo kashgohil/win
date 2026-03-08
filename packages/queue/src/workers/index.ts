@@ -1,7 +1,9 @@
 import { scheduleWebhookRenewal } from "../jobs/calendar-sync";
+import { scheduleMeetingPrepCheck } from "../jobs/contact-meeting-prep";
 import { scheduleContactScoring } from "../jobs/contact-score";
 import { createCalendarSyncWorker } from "./calendar-sync.worker";
 import { createContactDiscoveryWorker } from "./contact-discovery.worker";
+import { createContactMeetingPrepWorker } from "./contact-meeting-prep.worker";
 import { createContactScoreWorker } from "./contact-score.worker";
 import { createMailAiWorker } from "./mail-ai.worker";
 import { createMailAutoHandleWorker } from "./mail-autohandle.worker";
@@ -18,6 +20,7 @@ console.log("[workers] Starting workers...");
 
 const calendarSyncWorker = createCalendarSyncWorker();
 const contactDiscoveryWorker = createContactDiscoveryWorker();
+const contactMeetingPrepWorker = createContactMeetingPrepWorker();
 const contactScoreWorker = createContactScoreWorker();
 const mailSyncWorker = createMailSyncWorker();
 const mailAiWorker = createMailAiWorker();
@@ -37,6 +40,9 @@ scheduleWebhookRenewal().catch((err) =>
 scheduleContactScoring().catch((err) =>
 	console.error("[workers] Failed to schedule contact scoring:", err),
 );
+scheduleMeetingPrepCheck().catch((err) =>
+	console.error("[workers] Failed to schedule meeting prep check:", err),
+);
 
 console.log("[workers] All workers started");
 
@@ -45,6 +51,7 @@ async function shutdown() {
 	await Promise.all([
 		calendarSyncWorker.close(),
 		contactDiscoveryWorker.close(),
+		contactMeetingPrepWorker.close(),
 		contactScoreWorker.close(),
 		mailSyncWorker.close(),
 		mailAiWorker.close(),
