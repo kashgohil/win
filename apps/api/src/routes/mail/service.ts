@@ -224,6 +224,8 @@ type SerializedEmail = {
 	category: (typeof emailCategoryEnum.enumValues)[number];
 	priorityScore: number;
 	aiSummary: string | null;
+	relatedTaskId: string | null;
+	relatedTaskReason: string | null;
 };
 
 type SerializedAttachment = {
@@ -346,6 +348,8 @@ function serializeEmail(e: typeof emails.$inferSelect): SerializedEmail {
 		category: e.category,
 		priorityScore: e.priorityScore,
 		aiSummary: e.aiSummary,
+		relatedTaskId: e.relatedTaskId,
+		relatedTaskReason: e.relatedTaskReason,
 	};
 }
 

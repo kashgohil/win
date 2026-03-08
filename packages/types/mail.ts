@@ -76,6 +76,8 @@ export type SerializedEmail = {
 	category: EmailCategory;
 	priorityScore: number;
 	aiSummary: string | null;
+	relatedTaskId?: string | null;
+	relatedTaskReason?: string | null;
 };
 
 export type SerializedAttachment = {

@@ -86,6 +86,8 @@ export const emailSchema = t.Object({
 	]),
 	priorityScore: t.Number(),
 	aiSummary: t.Union([t.String(), t.Null()]),
+	relatedTaskId: t.Optional(t.Nullable(t.String())),
+	relatedTaskReason: t.Optional(t.Nullable(t.String())),
 });
 
 export const attachmentSchema = t.Object({
