@@ -217,6 +217,7 @@ async function getContact(
 			avgResponseTimeMins: number | null;
 			avgYourResponseTimeMins: number | null;
 			introducedBy: string | null;
+			introducedByName: string | null;
 			introducedAt: string | null;
 			recentInteractions: {
 				id: string;
@@ -260,6 +261,16 @@ async function getContact(
 			.orderBy(desc(contactInteractions.occurredAt))
 			.limit(5);
 
+		// Fetch introducer name if present
+		let introducedByName: string | null = null;
+		if (contact.introducedBy) {
+			const introducer = await db.query.contacts.findFirst({
+				where: eq(contacts.id, contact.introducedBy),
+				columns: { name: true, primaryEmail: true },
+			});
+			introducedByName = introducer?.name ?? introducer?.primaryEmail ?? null;
+		}
+
 		const base = serializeContact({
 			...contact,
 			tags: tagRows.map((t) => ({
@@ -276,6 +287,7 @@ async function getContact(
 				avgResponseTimeMins: contact.avgResponseTimeMins ?? null,
 				avgYourResponseTimeMins: contact.avgYourResponseTimeMins ?? null,
 				introducedBy: contact.introducedBy ?? null,
+				introducedByName,
 				introducedAt: contact.introducedAt?.toISOString() ?? null,
 				recentInteractions: recentInteractions.map((i) => ({
 					id: i.id,
@@ -1996,6 +2008,181 @@ async function getTagSuggestions(userId: string): Promise<
 	}
 }
 
+/* ── Suggest CC ── */
+
+type SuggestedContact = {
+	id: string;
+	name: string | null;
+	email: string;
+};
+
+async function suggestCc(
+	userId: string,
+	toEmail: string,
+): Promise<ServiceResult<SuggestedContact[]>> {
+	try {
+		// Find contacts frequently CC'd alongside this recipient
+		type CcRow = {
+			contact_id: string;
+			name: string | null;
+			email: string;
+			co_count: number;
+		};
+
+		const results = (await db.execute(sql`
+			WITH target_threads AS (
+				SELECT DISTINCT e.provider_thread_id
+				FROM emails e
+				WHERE e.user_id = ${userId}
+					AND e.provider_thread_id IS NOT NULL
+					AND (
+						${toEmail} = ANY(e.to_addresses)
+						OR ${toEmail} = ANY(e.cc_addresses)
+						OR lower(e.from_address) = lower(${toEmail})
+					)
+				LIMIT 200
+			),
+			co_participants AS (
+				SELECT unnest(e.to_addresses) AS addr
+				FROM emails e
+				INNER JOIN target_threads tt ON e.provider_thread_id = tt.provider_thread_id
+				WHERE e.user_id = ${userId}
+				UNION ALL
+				SELECT unnest(e.cc_addresses)
+				FROM emails e
+				INNER JOIN target_threads tt ON e.provider_thread_id = tt.provider_thread_id
+				WHERE e.user_id = ${userId}
+			)
+			SELECT
+				c.id AS contact_id,
+				c.name,
+				c.primary_email AS email,
+				count(*)::int AS co_count
+			FROM co_participants cp
+			INNER JOIN contacts c ON lower(c.primary_email) = lower(cp.addr) AND c.user_id = ${userId}
+			WHERE lower(cp.addr) != lower(${toEmail})
+				AND c.archived = false
+			GROUP BY c.id, c.name, c.primary_email
+			HAVING count(*) >= 2
+			ORDER BY count(*) DESC
+			LIMIT 5
+		`)) as unknown as CcRow[];
+
+		return {
+			ok: true,
+			data: results.map((r) => ({
+				id: r.contact_id,
+				name: r.name,
+				email: r.email,
+			})),
+		};
+	} catch (err) {
+		const message = err instanceof Error ? err.message : "Failed to suggest CC";
+		console.error("[contacts] suggestCc error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Suggest attendees ── */
+
+async function suggestAttendees(
+	userId: string,
+	topic: string,
+): Promise<ServiceResult<SuggestedContact[]>> {
+	try {
+		// Find contacts from past meetings with similar subjects
+		type AttendeeRow = {
+			contact_id: string;
+			name: string | null;
+			email: string;
+			relevance: number;
+		};
+
+		const searchTerm = `%${topic.replace(/[%_]/g, "")}%`;
+
+		const results = (await db.execute(sql`
+			SELECT
+				c.id AS contact_id,
+				c.name,
+				c.primary_email AS email,
+				count(*)::int AS relevance
+			FROM contact_interactions ci
+			INNER JOIN contacts c ON c.id = ci.contact_id
+			WHERE ci.user_id = ${userId}
+				AND ci.type = 'meeting'
+				AND ci.title ILIKE ${searchTerm}
+				AND c.archived = false
+			GROUP BY c.id, c.name, c.primary_email
+			ORDER BY count(*) DESC
+			LIMIT 8
+		`)) as unknown as AttendeeRow[];
+
+		return {
+			ok: true,
+			data: results.map((r) => ({
+				id: r.contact_id,
+				name: r.name,
+				email: r.email,
+			})),
+		};
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to suggest attendees";
+		console.error("[contacts] suggestAttendees error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
+/* ── Suggest assignee ── */
+
+async function suggestAssignee(
+	userId: string,
+	context: string,
+): Promise<ServiceResult<SuggestedContact[]>> {
+	try {
+		// Find contacts from email threads matching context
+		type AssigneeRow = {
+			contact_id: string;
+			name: string | null;
+			email: string;
+			relevance: number;
+		};
+
+		const searchTerm = `%${context.replace(/[%_]/g, "")}%`;
+
+		const results = (await db.execute(sql`
+			SELECT
+				c.id AS contact_id,
+				c.name,
+				c.primary_email AS email,
+				count(*)::int AS relevance
+			FROM contact_interactions ci
+			INNER JOIN contacts c ON c.id = ci.contact_id
+			WHERE ci.user_id = ${userId}
+				AND ci.type IN ('email_sent', 'email_received')
+				AND ci.title ILIKE ${searchTerm}
+				AND c.archived = false
+			GROUP BY c.id, c.name, c.primary_email
+			ORDER BY count(*) DESC
+			LIMIT 5
+		`)) as unknown as AssigneeRow[];
+
+		return {
+			ok: true,
+			data: results.map((r) => ({
+				id: r.contact_id,
+				name: r.name,
+				email: r.email,
+			})),
+		};
+	} catch (err) {
+		const message =
+			err instanceof Error ? err.message : "Failed to suggest assignee";
+		console.error("[contacts] suggestAssignee error:", message);
+		return { ok: false, error: message, status: 500 };
+	}
+}
+
 export const contactService = {
 	listContacts,
 	getContact,
@@ -2024,4 +2211,7 @@ export const contactService = {
 	triggerDiscover,
 	getMeetingPrep,
 	getTagSuggestions,
+	suggestCc,
+	suggestAttendees,
+	suggestAssignee,
 };

@@ -49,6 +49,7 @@ const contactDetailSchema = t.Object({
 	avgResponseTimeMins: t.Nullable(t.Number()),
 	avgYourResponseTimeMins: t.Nullable(t.Number()),
 	introducedBy: t.Nullable(t.String()),
+	introducedByName: t.Nullable(t.String()),
 	introducedAt: t.Nullable(t.String()),
 	recentInteractions: t.Array(
 		t.Object({
@@ -279,6 +280,16 @@ export const applyTagSuggestionBody = t.Object({
 	contactIds: t.Array(t.String(), { minItems: 1 }),
 	color: t.Optional(t.String()),
 });
+
+/* ── Contextual suggestions ── */
+
+export const suggestedContactsResponse = t.Array(
+	t.Object({
+		id: t.String(),
+		name: t.Nullable(t.String()),
+		email: t.String(),
+	}),
+);
 
 export const updateContactBody = t.Object({
 	name: t.Optional(t.Nullable(t.String())),

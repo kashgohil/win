@@ -19,6 +19,7 @@ import {
 	messageResponse,
 	moduleDataResponse,
 	snoozeBody,
+	suggestedContactsResponse,
 	suggestionsResponse,
 	tagListResponse,
 	tagResponse,
@@ -501,6 +502,83 @@ export const contactsRoutes = new Elysia({
 				500: errorResponse,
 			},
 			detail: { tags: ["Contacts"], summary: "Get meeting prep brief" },
+		},
+	)
+
+	/* ── Contextual suggestions ── */
+
+	.get(
+		"/suggest-cc",
+		async ({ query, user, set }) => {
+			const result = await contactService.suggestCc(user.id, query.to);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			query: t.Object({ to: t.String() }),
+			response: {
+				200: suggestedContactsResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Contacts"], summary: "Suggest CC contacts" },
+		},
+	)
+
+	.get(
+		"/suggest-attendees",
+		async ({ query, user, set }) => {
+			const result = await contactService.suggestAttendees(
+				user.id,
+				query.topic,
+			);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			query: t.Object({ topic: t.String() }),
+			response: {
+				200: suggestedContactsResponse,
+				500: errorResponse,
+			},
+			detail: {
+				tags: ["Contacts"],
+				summary: "Suggest attendees for calendar event",
+			},
+		},
+	)
+
+	.get(
+		"/suggest-assignee",
+		async ({ query, user, set }) => {
+			const result = await contactService.suggestAssignee(
+				user.id,
+				query.context,
+			);
+
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			query: t.Object({ context: t.String() }),
+			response: {
+				200: suggestedContactsResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Contacts"], summary: "Suggest task assignee" },
 		},
 	)
 
