@@ -367,6 +367,233 @@ async function processFullScan(userId: string) {
 	);
 }
 
+/* ── Introduction detection patterns ── */
+
+const INTRO_PATTERNS = [
+	/i(?:'d| would) like (?:to )?introduce you to/i,
+	/i(?:'m| am) connecting you with/i,
+	/meet [\w]+ [\w]+/i,
+	/(?:introducing|let me introduce) [\w]+/i,
+	/i wanted to connect (?:you (?:two|both)|[\w]+) (?:with|and)/i,
+	/putting you (?:two |both )?in touch/i,
+	/i(?:'d| would) like you to meet/i,
+	/connecting you (?:two|both)/i,
+	/allow me to introduce/i,
+];
+
+function hasIntroLanguage(text: string): boolean {
+	return INTRO_PATTERNS.some((p) => p.test(text));
+}
+
+/* ── Detect introductions from emails ── */
+
+async function detectIntroductions(userId: string, emailIds: string[]) {
+	if (emailIds.length === 0) return;
+
+	// Get user's own emails to identify sender vs third-party
+	const userAccounts = await db
+		.select({ email: emailAccounts.email })
+		.from(emailAccounts)
+		.where(eq(emailAccounts.userId, userId));
+	const ownEmails = new Set(userAccounts.map((a) => a.email.toLowerCase()));
+
+	// Fetch emails with body for intro detection
+	const batch = await db
+		.select({
+			id: emails.id,
+			fromAddress: emails.fromAddress,
+			toAddresses: emails.toAddresses,
+			ccAddresses: emails.ccAddresses,
+			subject: emails.subject,
+			bodyPlain: emails.bodyPlain,
+			receivedAt: emails.receivedAt,
+			labels: emails.labels,
+		})
+		.from(emails)
+		.where(and(eq(emails.userId, userId), inArray(emails.id, emailIds)));
+
+	for (const email of batch) {
+		const isSent = email.labels?.includes("SENT") ?? false;
+		// Only process received emails (introductions come from others)
+		if (isSent) continue;
+
+		const text = `${email.subject ?? ""} ${email.bodyPlain ?? ""}`;
+		if (!hasIntroLanguage(text)) continue;
+
+		const senderEmail = email.fromAddress?.toLowerCase();
+		if (!senderEmail || ownEmails.has(senderEmail)) continue;
+
+		// The sender is the introducer; recipients (other than user) are introduced
+		const allRecipients = [
+			...(email.toAddresses ?? []),
+			...(email.ccAddresses ?? []),
+		]
+			.map((e) => e.toLowerCase().trim())
+			.filter((e) => e && !ownEmails.has(e) && e !== senderEmail);
+
+		if (allRecipients.length === 0) continue;
+
+		// Find the introducer contact
+		const introducer = await db.query.contacts.findFirst({
+			where: and(
+				eq(contacts.userId, userId),
+				eq(contacts.primaryEmail, senderEmail),
+			),
+			columns: { id: true },
+		});
+		if (!introducer) continue;
+
+		// Update introduced contacts
+		for (const recipientEmail of allRecipients) {
+			await db
+				.update(contacts)
+				.set({
+					introducedBy: introducer.id,
+					introducedAt: email.receivedAt,
+				})
+				.where(
+					and(
+						eq(contacts.userId, userId),
+						eq(contacts.primaryEmail, recipientEmail),
+						sql`${contacts.introducedBy} IS NULL`,
+					),
+				);
+		}
+
+		console.log(
+			`[contact-discovery] Detected introduction from ${senderEmail} for ${allRecipients.length} recipient(s)`,
+		);
+	}
+}
+
+/* ── Response time computation ── */
+
+async function computeResponseTimes(userId: string, emailIds: string[]) {
+	if (emailIds.length === 0) return;
+
+	// Get user's own email addresses
+	const userAccounts = await db
+		.select({ email: emailAccounts.email })
+		.from(emailAccounts)
+		.where(eq(emailAccounts.userId, userId));
+	const ownEmails = new Set(userAccounts.map((a) => a.email.toLowerCase()));
+	if (ownEmails.size === 0) return;
+
+	// Get threads involved in these emails
+	const threadEmails = await db
+		.select({
+			providerThreadId: emails.providerThreadId,
+			fromAddress: emails.fromAddress,
+			toAddresses: emails.toAddresses,
+			receivedAt: emails.receivedAt,
+			labels: emails.labels,
+		})
+		.from(emails)
+		.where(
+			and(
+				eq(emails.userId, userId),
+				inArray(emails.id, emailIds),
+				sql`${emails.providerThreadId} IS NOT NULL`,
+			),
+		);
+
+	// Collect unique thread IDs
+	const threadIds = [
+		...new Set(
+			threadEmails
+				.map((e) => e.providerThreadId)
+				.filter((t): t is string => !!t),
+		),
+	];
+	if (threadIds.length === 0) return;
+
+	// For each thread, get all emails sorted by time to measure response gaps
+	type ResponseTimeRow = {
+		contact_email: string;
+		avg_their_response_mins: number | null;
+		avg_your_response_mins: number | null;
+	};
+
+	const results = (await db.execute(sql`
+		WITH thread_msgs AS (
+			SELECT
+				e.provider_thread_id,
+				e.from_address,
+				e.received_at,
+				CASE WHEN 'SENT' = ANY(e.labels) THEN true ELSE false END AS is_sent,
+				LAG(e.received_at) OVER (
+					PARTITION BY e.provider_thread_id ORDER BY e.received_at
+				) AS prev_received_at,
+				LAG(
+					CASE WHEN 'SENT' = ANY(e.labels) THEN true ELSE false END
+				) OVER (
+					PARTITION BY e.provider_thread_id ORDER BY e.received_at
+				) AS prev_is_sent,
+				LAG(e.from_address) OVER (
+					PARTITION BY e.provider_thread_id ORDER BY e.received_at
+				) AS prev_from
+			FROM emails e
+			WHERE e.user_id = ${userId}
+				AND e.provider_thread_id = ANY(${threadIds})
+		),
+		response_pairs AS (
+			SELECT
+				CASE
+					WHEN tm.is_sent AND NOT tm.prev_is_sent THEN lower(tm.prev_from)
+					WHEN NOT tm.is_sent AND tm.prev_is_sent THEN lower(tm.from_address)
+				END AS contact_email,
+				CASE
+					WHEN tm.is_sent AND NOT tm.prev_is_sent THEN 'your_response'
+					WHEN NOT tm.is_sent AND tm.prev_is_sent THEN 'their_response'
+				END AS response_type,
+				EXTRACT(EPOCH FROM (tm.received_at - tm.prev_received_at)) / 60.0 AS response_mins
+			FROM thread_msgs tm
+			WHERE tm.prev_received_at IS NOT NULL
+				AND tm.prev_is_sent IS NOT NULL
+				AND tm.is_sent != tm.prev_is_sent
+		)
+		SELECT
+			rp.contact_email,
+			AVG(CASE WHEN rp.response_type = 'their_response' THEN rp.response_mins END)::int AS avg_their_response_mins,
+			AVG(CASE WHEN rp.response_type = 'your_response' THEN rp.response_mins END)::int AS avg_your_response_mins
+		FROM response_pairs rp
+		WHERE rp.contact_email IS NOT NULL
+			AND rp.response_mins > 0
+			AND rp.response_mins < 43200
+		GROUP BY rp.contact_email
+	`)) as unknown as ResponseTimeRow[];
+
+	// Update contacts with response times
+	for (const row of results) {
+		if (!row.contact_email || ownEmails.has(row.contact_email)) continue;
+
+		const updates: Record<string, unknown> = {};
+		if (row.avg_their_response_mins != null) {
+			updates.avgResponseTimeMins = row.avg_their_response_mins;
+		}
+		if (row.avg_your_response_mins != null) {
+			updates.avgYourResponseTimeMins = row.avg_your_response_mins;
+		}
+		if (Object.keys(updates).length === 0) continue;
+
+		await db
+			.update(contacts)
+			.set(updates)
+			.where(
+				and(
+					eq(contacts.userId, userId),
+					eq(contacts.primaryEmail, row.contact_email),
+				),
+			);
+	}
+
+	if (results.length > 0) {
+		console.log(
+			`[contact-discovery] Updated response times for ${results.length} contact(s)`,
+		);
+	}
+}
+
 /* ── Extract from specific email IDs ── */
 
 async function processExtractFromEmails(userId: string, emailIds: string[]) {
@@ -432,6 +659,26 @@ async function processExtractFromEmails(userId: string, emailIds: string[]) {
 		await upsertContacts(userId, candidates);
 		console.log(
 			`[contact-discovery] Extracted ${candidates.length} contact candidates from ${emailIds.length} emails`,
+		);
+	}
+
+	// Detect introductions (runs after contacts are upserted)
+	try {
+		await detectIntroductions(userId, emailIds);
+	} catch (err) {
+		console.error(
+			"[contact-discovery] Introduction detection error:",
+			err instanceof Error ? err.message : "Unknown error",
+		);
+	}
+
+	// Compute response times
+	try {
+		await computeResponseTimes(userId, emailIds);
+	} catch (err) {
+		console.error(
+			"[contact-discovery] Response time computation error:",
+			err instanceof Error ? err.message : "Unknown error",
 		);
 	}
 }
