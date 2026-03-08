@@ -33,12 +33,15 @@ import { Route as AuthenticatedAppModuleCrmRouteImport } from './routes/_authent
 import { Route as AuthenticatedAppModuleCalRouteImport } from './routes/_authenticated/_app/module/cal'
 import { Route as AuthenticatedAppModuleTaskIndexRouteImport } from './routes/_authenticated/_app/module/task/index'
 import { Route as AuthenticatedAppModuleMailIndexRouteImport } from './routes/_authenticated/_app/module/mail/index'
+import { Route as AuthenticatedAppModuleCalIndexRouteImport } from './routes/_authenticated/_app/module/cal/index'
 import { Route as AuthenticatedAppModuleTaskListIndexRouteImport } from './routes/_authenticated/_app/module/task/list.index'
 import { Route as AuthenticatedAppModuleTaskCalendarIndexRouteImport } from './routes/_authenticated/_app/module/task/calendar.index'
 import { Route as AuthenticatedAppModuleMailSentIndexRouteImport } from './routes/_authenticated/_app/module/mail/sent.index'
 import { Route as AuthenticatedAppModuleMailInboxIndexRouteImport } from './routes/_authenticated/_app/module/mail/inbox.index'
 import { Route as AuthenticatedAppModuleMailDraftsIndexRouteImport } from './routes/_authenticated/_app/module/mail/drafts.index'
 import { Route as AuthenticatedAppModuleMailAttachmentsIndexRouteImport } from './routes/_authenticated/_app/module/mail/attachments.index'
+import { Route as AuthenticatedAppModuleCalWeekIndexRouteImport } from './routes/_authenticated/_app/module/cal/week.index'
+import { Route as AuthenticatedAppModuleCalMonthIndexRouteImport } from './routes/_authenticated/_app/module/cal/month.index'
 import { Route as AuthenticatedAppModuleTaskProjectProjectIdRouteImport } from './routes/_authenticated/_app/module/task/project.$projectId'
 import { Route as AuthenticatedAppModuleMailInboxEmailIdRouteImport } from './routes/_authenticated/_app/module/mail/inbox.$emailId'
 
@@ -178,6 +181,12 @@ const AuthenticatedAppModuleMailIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedAppModuleMailRoute,
   } as any)
+const AuthenticatedAppModuleCalIndexRoute =
+  AuthenticatedAppModuleCalIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAppModuleCalRoute,
+  } as any)
 const AuthenticatedAppModuleTaskListIndexRoute =
   AuthenticatedAppModuleTaskListIndexRouteImport.update({
     id: '/list/',
@@ -214,6 +223,18 @@ const AuthenticatedAppModuleMailAttachmentsIndexRoute =
     path: '/attachments/',
     getParentRoute: () => AuthenticatedAppModuleMailRoute,
   } as any)
+const AuthenticatedAppModuleCalWeekIndexRoute =
+  AuthenticatedAppModuleCalWeekIndexRouteImport.update({
+    id: '/week/',
+    path: '/week/',
+    getParentRoute: () => AuthenticatedAppModuleCalRoute,
+  } as any)
+const AuthenticatedAppModuleCalMonthIndexRoute =
+  AuthenticatedAppModuleCalMonthIndexRouteImport.update({
+    id: '/month/',
+    path: '/month/',
+    getParentRoute: () => AuthenticatedAppModuleCalRoute,
+  } as any)
 const AuthenticatedAppModuleTaskProjectProjectIdRoute =
   AuthenticatedAppModuleTaskProjectProjectIdRouteImport.update({
     id: '/project/$projectId',
@@ -238,7 +259,7 @@ export interface FileRoutesByFullPath {
   '/onboarding/step3': typeof AuthenticatedOnboardingStep3Route
   '/onboarding/step4': typeof AuthenticatedOnboardingStep4Route
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
-  '/module/cal': typeof AuthenticatedAppModuleCalRoute
+  '/module/cal': typeof AuthenticatedAppModuleCalRouteWithChildren
   '/module/crm': typeof AuthenticatedAppModuleCrmRoute
   '/module/files': typeof AuthenticatedAppModuleFilesRoute
   '/module/fin': typeof AuthenticatedAppModuleFinRoute
@@ -248,10 +269,13 @@ export interface FileRoutesByFullPath {
   '/module/social': typeof AuthenticatedAppModuleSocialRoute
   '/module/task': typeof AuthenticatedAppModuleTaskRouteWithChildren
   '/module/travel': typeof AuthenticatedAppModuleTravelRoute
+  '/module/cal/': typeof AuthenticatedAppModuleCalIndexRoute
   '/module/mail/': typeof AuthenticatedAppModuleMailIndexRoute
   '/module/task/': typeof AuthenticatedAppModuleTaskIndexRoute
   '/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
   '/module/task/project/$projectId': typeof AuthenticatedAppModuleTaskProjectProjectIdRoute
+  '/module/cal/month/': typeof AuthenticatedAppModuleCalMonthIndexRoute
+  '/module/cal/week/': typeof AuthenticatedAppModuleCalWeekIndexRoute
   '/module/mail/attachments/': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/module/mail/drafts/': typeof AuthenticatedAppModuleMailDraftsIndexRoute
   '/module/mail/inbox/': typeof AuthenticatedAppModuleMailInboxIndexRoute
@@ -269,7 +293,6 @@ export interface FileRoutesByTo {
   '/onboarding/step3': typeof AuthenticatedOnboardingStep3Route
   '/onboarding/step4': typeof AuthenticatedOnboardingStep4Route
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
-  '/module/cal': typeof AuthenticatedAppModuleCalRoute
   '/module/crm': typeof AuthenticatedAppModuleCrmRoute
   '/module/files': typeof AuthenticatedAppModuleFilesRoute
   '/module/fin': typeof AuthenticatedAppModuleFinRoute
@@ -277,10 +300,13 @@ export interface FileRoutesByTo {
   '/module/notes': typeof AuthenticatedAppModuleNotesRoute
   '/module/social': typeof AuthenticatedAppModuleSocialRoute
   '/module/travel': typeof AuthenticatedAppModuleTravelRoute
+  '/module/cal': typeof AuthenticatedAppModuleCalIndexRoute
   '/module/mail': typeof AuthenticatedAppModuleMailIndexRoute
   '/module/task': typeof AuthenticatedAppModuleTaskIndexRoute
   '/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
   '/module/task/project/$projectId': typeof AuthenticatedAppModuleTaskProjectProjectIdRoute
+  '/module/cal/month': typeof AuthenticatedAppModuleCalMonthIndexRoute
+  '/module/cal/week': typeof AuthenticatedAppModuleCalWeekIndexRoute
   '/module/mail/attachments': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/module/mail/drafts': typeof AuthenticatedAppModuleMailDraftsIndexRoute
   '/module/mail/inbox': typeof AuthenticatedAppModuleMailInboxIndexRoute
@@ -302,7 +328,7 @@ export interface FileRoutesById {
   '/_authenticated/onboarding/step4': typeof AuthenticatedOnboardingStep4Route
   '/_authenticated/_app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
-  '/_authenticated/_app/module/cal': typeof AuthenticatedAppModuleCalRoute
+  '/_authenticated/_app/module/cal': typeof AuthenticatedAppModuleCalRouteWithChildren
   '/_authenticated/_app/module/crm': typeof AuthenticatedAppModuleCrmRoute
   '/_authenticated/_app/module/files': typeof AuthenticatedAppModuleFilesRoute
   '/_authenticated/_app/module/fin': typeof AuthenticatedAppModuleFinRoute
@@ -312,10 +338,13 @@ export interface FileRoutesById {
   '/_authenticated/_app/module/social': typeof AuthenticatedAppModuleSocialRoute
   '/_authenticated/_app/module/task': typeof AuthenticatedAppModuleTaskRouteWithChildren
   '/_authenticated/_app/module/travel': typeof AuthenticatedAppModuleTravelRoute
+  '/_authenticated/_app/module/cal/': typeof AuthenticatedAppModuleCalIndexRoute
   '/_authenticated/_app/module/mail/': typeof AuthenticatedAppModuleMailIndexRoute
   '/_authenticated/_app/module/task/': typeof AuthenticatedAppModuleTaskIndexRoute
   '/_authenticated/_app/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
   '/_authenticated/_app/module/task/project/$projectId': typeof AuthenticatedAppModuleTaskProjectProjectIdRoute
+  '/_authenticated/_app/module/cal/month/': typeof AuthenticatedAppModuleCalMonthIndexRoute
+  '/_authenticated/_app/module/cal/week/': typeof AuthenticatedAppModuleCalWeekIndexRoute
   '/_authenticated/_app/module/mail/attachments/': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/_authenticated/_app/module/mail/drafts/': typeof AuthenticatedAppModuleMailDraftsIndexRoute
   '/_authenticated/_app/module/mail/inbox/': typeof AuthenticatedAppModuleMailInboxIndexRoute
@@ -346,10 +375,13 @@ export interface FileRouteTypes {
     | '/module/social'
     | '/module/task'
     | '/module/travel'
+    | '/module/cal/'
     | '/module/mail/'
     | '/module/task/'
     | '/module/mail/inbox/$emailId'
     | '/module/task/project/$projectId'
+    | '/module/cal/month/'
+    | '/module/cal/week/'
     | '/module/mail/attachments/'
     | '/module/mail/drafts/'
     | '/module/mail/inbox/'
@@ -367,7 +399,6 @@ export interface FileRouteTypes {
     | '/onboarding/step3'
     | '/onboarding/step4'
     | '/onboarding'
-    | '/module/cal'
     | '/module/crm'
     | '/module/files'
     | '/module/fin'
@@ -375,10 +406,13 @@ export interface FileRouteTypes {
     | '/module/notes'
     | '/module/social'
     | '/module/travel'
+    | '/module/cal'
     | '/module/mail'
     | '/module/task'
     | '/module/mail/inbox/$emailId'
     | '/module/task/project/$projectId'
+    | '/module/cal/month'
+    | '/module/cal/week'
     | '/module/mail/attachments'
     | '/module/mail/drafts'
     | '/module/mail/inbox'
@@ -409,10 +443,13 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/module/social'
     | '/_authenticated/_app/module/task'
     | '/_authenticated/_app/module/travel'
+    | '/_authenticated/_app/module/cal/'
     | '/_authenticated/_app/module/mail/'
     | '/_authenticated/_app/module/task/'
     | '/_authenticated/_app/module/mail/inbox/$emailId'
     | '/_authenticated/_app/module/task/project/$projectId'
+    | '/_authenticated/_app/module/cal/month/'
+    | '/_authenticated/_app/module/cal/week/'
     | '/_authenticated/_app/module/mail/attachments/'
     | '/_authenticated/_app/module/mail/drafts/'
     | '/_authenticated/_app/module/mail/inbox/'
@@ -596,6 +633,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppModuleMailIndexRouteImport
       parentRoute: typeof AuthenticatedAppModuleMailRoute
     }
+    '/_authenticated/_app/module/cal/': {
+      id: '/_authenticated/_app/module/cal/'
+      path: '/'
+      fullPath: '/module/cal/'
+      preLoaderRoute: typeof AuthenticatedAppModuleCalIndexRouteImport
+      parentRoute: typeof AuthenticatedAppModuleCalRoute
+    }
     '/_authenticated/_app/module/task/list/': {
       id: '/_authenticated/_app/module/task/list/'
       path: '/list'
@@ -638,6 +682,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppModuleMailAttachmentsIndexRouteImport
       parentRoute: typeof AuthenticatedAppModuleMailRoute
     }
+    '/_authenticated/_app/module/cal/week/': {
+      id: '/_authenticated/_app/module/cal/week/'
+      path: '/week'
+      fullPath: '/module/cal/week/'
+      preLoaderRoute: typeof AuthenticatedAppModuleCalWeekIndexRouteImport
+      parentRoute: typeof AuthenticatedAppModuleCalRoute
+    }
+    '/_authenticated/_app/module/cal/month/': {
+      id: '/_authenticated/_app/module/cal/month/'
+      path: '/month'
+      fullPath: '/module/cal/month/'
+      preLoaderRoute: typeof AuthenticatedAppModuleCalMonthIndexRouteImport
+      parentRoute: typeof AuthenticatedAppModuleCalRoute
+    }
     '/_authenticated/_app/module/task/project/$projectId': {
       id: '/_authenticated/_app/module/task/project/$projectId'
       path: '/project/$projectId'
@@ -654,6 +712,26 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AuthenticatedAppModuleCalRouteChildren {
+  AuthenticatedAppModuleCalIndexRoute: typeof AuthenticatedAppModuleCalIndexRoute
+  AuthenticatedAppModuleCalMonthIndexRoute: typeof AuthenticatedAppModuleCalMonthIndexRoute
+  AuthenticatedAppModuleCalWeekIndexRoute: typeof AuthenticatedAppModuleCalWeekIndexRoute
+}
+
+const AuthenticatedAppModuleCalRouteChildren: AuthenticatedAppModuleCalRouteChildren =
+  {
+    AuthenticatedAppModuleCalIndexRoute: AuthenticatedAppModuleCalIndexRoute,
+    AuthenticatedAppModuleCalMonthIndexRoute:
+      AuthenticatedAppModuleCalMonthIndexRoute,
+    AuthenticatedAppModuleCalWeekIndexRoute:
+      AuthenticatedAppModuleCalWeekIndexRoute,
+  }
+
+const AuthenticatedAppModuleCalRouteWithChildren =
+  AuthenticatedAppModuleCalRoute._addFileChildren(
+    AuthenticatedAppModuleCalRouteChildren,
+  )
 
 interface AuthenticatedAppModuleMailRouteChildren {
   AuthenticatedAppModuleMailIndexRoute: typeof AuthenticatedAppModuleMailIndexRoute
@@ -710,7 +788,7 @@ const AuthenticatedAppModuleTaskRouteWithChildren =
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppProfileRoute: typeof AuthenticatedAppProfileRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
-  AuthenticatedAppModuleCalRoute: typeof AuthenticatedAppModuleCalRoute
+  AuthenticatedAppModuleCalRoute: typeof AuthenticatedAppModuleCalRouteWithChildren
   AuthenticatedAppModuleCrmRoute: typeof AuthenticatedAppModuleCrmRoute
   AuthenticatedAppModuleFilesRoute: typeof AuthenticatedAppModuleFilesRoute
   AuthenticatedAppModuleFinRoute: typeof AuthenticatedAppModuleFinRoute
@@ -725,7 +803,7 @@ interface AuthenticatedAppRouteChildren {
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppProfileRoute: AuthenticatedAppProfileRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
-  AuthenticatedAppModuleCalRoute: AuthenticatedAppModuleCalRoute,
+  AuthenticatedAppModuleCalRoute: AuthenticatedAppModuleCalRouteWithChildren,
   AuthenticatedAppModuleCrmRoute: AuthenticatedAppModuleCrmRoute,
   AuthenticatedAppModuleFilesRoute: AuthenticatedAppModuleFilesRoute,
   AuthenticatedAppModuleFinRoute: AuthenticatedAppModuleFinRoute,
