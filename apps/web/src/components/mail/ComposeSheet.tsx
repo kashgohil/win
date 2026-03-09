@@ -11,7 +11,9 @@ import { useAiCompose, useAiDraft } from "@/hooks/use-ai";
 import { useSuggestCc } from "@/hooks/use-contacts";
 import {
 	useCancelSend,
+	useComposeDelayed,
 	useForwardDelayed,
+	useMailAccounts,
 	useReplyDelayed,
 } from "@/hooks/use-mail";
 import { ChevronDown, Loader2, Sparkles } from "lucide-react";
@@ -19,64 +21,124 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-interface ComposeSheetProps {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	mode: "reply" | "forward";
-	emailId: string;
-	fromAddress: string | null;
-	subject: string | null;
-	originalBody: string | null;
-}
+type ComposeSheetProps =
+	| {
+			open: boolean;
+			onOpenChange: (open: boolean) => void;
+			mode: "reply" | "forward";
+			emailId: string;
+			fromAddress: string | null;
+			subject: string | null;
+			originalBody: string | null;
+			defaultAccountId?: undefined;
+	  }
+	| {
+			open: boolean;
+			onOpenChange: (open: boolean) => void;
+			mode: "compose";
+			emailId?: undefined;
+			fromAddress?: undefined;
+			subject?: undefined;
+			originalBody?: undefined;
+			defaultAccountId?: string;
+	  };
 
-export function ComposeSheet({
-	open,
-	onOpenChange,
-	mode,
-	emailId,
-	fromAddress,
-	subject,
-	originalBody,
-}: ComposeSheetProps) {
+export function ComposeSheet(props: ComposeSheetProps) {
+	const { open, onOpenChange, mode } = props;
+
 	const [to, setTo] = useState("");
 	const [body, setBody] = useState("");
 	const [cc, setCc] = useState<string[]>([]);
+	const [bcc, setBcc] = useState<string[]>([]);
+	const [composeSubject, setComposeSubject] = useState("");
+	const [showBcc, setShowBcc] = useState(false);
 	const [showOriginal, setShowOriginal] = useState(false);
+	const [selectedAccountId, setSelectedAccountId] = useState(
+		props.defaultAccountId ?? "",
+	);
+
+	const { data: accountsData } = useMailAccounts();
+	const accounts = accountsData?.accounts ?? [];
+
+	// Auto-select first account when accounts load
+	useEffect(() => {
+		if (!selectedAccountId && accounts.length > 0) {
+			setSelectedAccountId(accounts[0].id);
+		}
+	}, [accounts, selectedAccountId]);
+
 	const { data: ccSuggestions } = useSuggestCc(
-		mode === "reply" ? fromAddress : null,
+		mode === "reply" ? (props.fromAddress ?? null) : null,
 	);
 
 	const reply = useReplyDelayed();
 	const forward = useForwardDelayed();
+	const compose = useComposeDelayed();
 	const cancelSend = useCancelSend();
 
-	const isPending = reply.isPending || forward.isPending;
+	const isPending = reply.isPending || forward.isPending || compose.isPending;
+
+	const showUndoToast = (label: string, jobId: string | undefined) => {
+		if (jobId) {
+			toast(label, {
+				duration: 10500,
+				action: {
+					label: "Undo",
+					onClick: () => {
+						cancelSend.mutate(jobId, {
+							onSuccess: () => toast("Send cancelled"),
+							onError: () => toast.error("Could not undo — already sent"),
+						});
+					},
+				},
+			});
+		} else {
+			toast(label);
+		}
+	};
 
 	const handleSend = async () => {
-		if (mode === "reply") {
-			reply.mutate(
-				{ id: emailId, body, cc: cc.length > 0 ? cc : undefined },
+		if (mode === "compose") {
+			const recipients = to
+				.split(",")
+				.map((s) => s.trim())
+				.filter(Boolean);
+			if (recipients.length === 0) {
+				toast.error("Please enter at least one recipient");
+				return;
+			}
+			if (!selectedAccountId) {
+				toast.error("Please select an account");
+				return;
+			}
+			compose.mutate(
+				{
+					accountId: selectedAccountId,
+					to: recipients,
+					cc: cc.length > 0 ? cc : undefined,
+					bcc: bcc.length > 0 ? bcc : undefined,
+					subject: composeSubject,
+					body,
+				},
 				{
 					onSuccess: (data) => {
 						resetAndClose();
-						const jobId = data?.jobId;
-						if (jobId) {
-							toast("Reply sent", {
-								duration: 10500,
-								action: {
-									label: "Undo",
-									onClick: () => {
-										cancelSend.mutate(jobId, {
-											onSuccess: () => toast("Send cancelled"),
-											onError: () =>
-												toast.error("Could not undo — already sent"),
-										});
-									},
-								},
-							});
-						} else {
-							toast("Reply sent");
-						}
+						showUndoToast("Email sent", data?.jobId);
+					},
+					onError: () => toast.error("Failed to send email"),
+				},
+			);
+		} else if (mode === "reply") {
+			reply.mutate(
+				{
+					id: props.emailId,
+					body,
+					cc: cc.length > 0 ? cc : undefined,
+				},
+				{
+					onSuccess: (data) => {
+						resetAndClose();
+						showUndoToast("Reply sent", data?.jobId);
 					},
 					onError: () => toast.error("Failed to send reply"),
 				},
@@ -91,28 +153,11 @@ export function ComposeSheet({
 				return;
 			}
 			forward.mutate(
-				{ id: emailId, to: recipients, body },
+				{ id: props.emailId, to: recipients, body },
 				{
 					onSuccess: (data) => {
 						resetAndClose();
-						const jobId = data?.jobId;
-						if (jobId) {
-							toast("Email forwarded", {
-								duration: 10500,
-								action: {
-									label: "Undo",
-									onClick: () => {
-										cancelSend.mutate(jobId, {
-											onSuccess: () => toast("Send cancelled"),
-											onError: () =>
-												toast.error("Could not undo — already sent"),
-										});
-									},
-								},
-							});
-						} else {
-							toast("Email forwarded");
-						}
+						showUndoToast("Email forwarded", data?.jobId);
 					},
 					onError: () => toast.error("Failed to forward email"),
 				},
@@ -124,12 +169,35 @@ export function ComposeSheet({
 		setTo("");
 		setBody("");
 		setCc([]);
+		setBcc([]);
+		setComposeSubject("");
+		setShowBcc(false);
 		setShowOriginal(false);
 		onOpenChange(false);
 	};
 
 	const title =
-		mode === "reply" ? `Re: ${subject ?? ""}` : `Fwd: ${subject ?? ""}`;
+		mode === "compose"
+			? "new message"
+			: mode === "reply"
+				? `Re: ${props.subject ?? ""}`
+				: `Fwd: ${props.subject ?? ""}`;
+
+	const description =
+		mode === "compose"
+			? "Compose a new email"
+			: mode === "reply"
+				? "Reply to email"
+				: "Forward email";
+
+	const sendLabel =
+		mode === "compose" ? "Send" : mode === "reply" ? "Send reply" : "Forward";
+
+	const recipientForSuggestion =
+		mode === "compose" || mode === "forward" ? to : (props.fromAddress ?? null);
+
+	const subjectForSuggestion =
+		mode === "compose" ? composeSubject : (props.subject ?? null);
 
 	return (
 		<Sheet open={open} onOpenChange={onOpenChange}>
@@ -138,39 +206,51 @@ export function ComposeSheet({
 					<SheetTitle className="font-display text-[15px] lowercase">
 						{title}
 					</SheetTitle>
-					<SheetDescription className="sr-only">
-						{mode === "reply" ? "Reply to email" : "Forward email"}
-					</SheetDescription>
+					<SheetDescription className="sr-only">{description}</SheetDescription>
 				</SheetHeader>
 
 				<div className="flex flex-col gap-3 flex-1 px-4 overflow-y-auto">
-					{mode === "reply" ? (
+					{/* From account selector (compose mode) */}
+					{mode === "compose" && accounts.length > 1 && (
+						<div>
+							<label
+								htmlFor="compose-from"
+								className="font-body text-[11px] uppercase tracking-wider text-grey-3 mb-1 block"
+							>
+								From
+							</label>
+							<select
+								id="compose-from"
+								value={selectedAccountId}
+								onChange={(e) => setSelectedAccountId(e.target.value)}
+								className="w-full rounded-md border border-border/50 bg-secondary/10 px-3 py-2 font-body text-[13px] text-foreground outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
+							>
+								{accounts.map((a) => (
+									<option key={a.id} value={a.id}>
+										{a.email}
+									</option>
+								))}
+							</select>
+						</div>
+					)}
+
+					{/* Reply mode: show To as static text */}
+					{mode === "reply" && (
 						<div>
 							<div className="font-body text-[13px]">
 								<span className="text-grey-2">To: </span>
-								<span className="text-foreground">{fromAddress ?? ""}</span>
+								<span className="text-foreground">
+									{props.fromAddress ?? ""}
+								</span>
 							</div>
 							{cc.length > 0 && (
-								<div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-									<span className="font-body text-[12px] text-grey-2">Cc:</span>
-									{cc.map((email) => (
-										<span
-											key={email}
-											className="inline-flex items-center gap-1 rounded-full bg-secondary/40 px-2 py-0.5 font-mono text-[10px] text-foreground"
-										>
-											{email}
-											<button
-												type="button"
-												className="hover:text-red-500 cursor-pointer"
-												onClick={() =>
-													setCc((prev) => prev.filter((e) => e !== email))
-												}
-											>
-												×
-											</button>
-										</span>
-									))}
-								</div>
+								<RecipientChips
+									label="Cc"
+									values={cc}
+									onRemove={(email) =>
+										setCc((prev) => prev.filter((e) => e !== email))
+									}
+								/>
 							)}
 							{ccSuggestions &&
 								ccSuggestions.length > 0 &&
@@ -194,16 +274,19 @@ export function ComposeSheet({
 									</div>
 								)}
 						</div>
-					) : (
+					)}
+
+					{/* Forward / Compose: To input */}
+					{(mode === "forward" || mode === "compose") && (
 						<div>
 							<label
-								htmlFor="forward-to"
+								htmlFor="compose-to"
 								className="font-body text-[11px] uppercase tracking-wider text-grey-3 mb-1 block"
 							>
 								To
 							</label>
 							<input
-								id="forward-to"
+								id="compose-to"
 								type="text"
 								value={to}
 								onChange={(e) => setTo(e.target.value)}
@@ -213,11 +296,133 @@ export function ComposeSheet({
 						</div>
 					)}
 
+					{/* Compose mode: Cc/Bcc toggle + fields */}
+					{mode === "compose" && (
+						<>
+							<div className="flex items-center gap-2">
+								{cc.length === 0 && !bcc.length && (
+									<button
+										type="button"
+										onClick={() => setCc([])}
+										className="font-mono text-[10px] text-grey-3 hover:text-foreground transition-colors cursor-pointer"
+									>
+										+ Cc
+									</button>
+								)}
+								{!showBcc && bcc.length === 0 && (
+									<button
+										type="button"
+										onClick={() => setShowBcc(true)}
+										className="font-mono text-[10px] text-grey-3 hover:text-foreground transition-colors cursor-pointer"
+									>
+										+ Bcc
+									</button>
+								)}
+							</div>
+							{(cc.length > 0 || mode === "compose") && (
+								<div>
+									<label
+										htmlFor="compose-cc"
+										className="font-body text-[11px] uppercase tracking-wider text-grey-3 mb-1 block"
+									>
+										Cc
+									</label>
+									<input
+										id="compose-cc"
+										type="text"
+										placeholder="cc@example.com"
+										className="w-full rounded-md border border-border/50 bg-secondary/10 px-3 py-2 font-body text-[13px] text-foreground placeholder:text-grey-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
+										onKeyDown={(e) => {
+											if (
+												(e.key === "Enter" || e.key === ",") &&
+												e.currentTarget.value.trim()
+											) {
+												e.preventDefault();
+												const val = e.currentTarget.value.trim();
+												if (val && !cc.includes(val)) {
+													setCc((prev) => [...prev, val]);
+												}
+												e.currentTarget.value = "";
+											}
+										}}
+									/>
+									{cc.length > 0 && (
+										<RecipientChips
+											label="Cc"
+											values={cc}
+											onRemove={(email) =>
+												setCc((prev) => prev.filter((e) => e !== email))
+											}
+										/>
+									)}
+								</div>
+							)}
+							{showBcc && (
+								<div>
+									<label
+										htmlFor="compose-bcc"
+										className="font-body text-[11px] uppercase tracking-wider text-grey-3 mb-1 block"
+									>
+										Bcc
+									</label>
+									<input
+										id="compose-bcc"
+										type="text"
+										placeholder="bcc@example.com"
+										className="w-full rounded-md border border-border/50 bg-secondary/10 px-3 py-2 font-body text-[13px] text-foreground placeholder:text-grey-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
+										onKeyDown={(e) => {
+											if (
+												(e.key === "Enter" || e.key === ",") &&
+												e.currentTarget.value.trim()
+											) {
+												e.preventDefault();
+												const val = e.currentTarget.value.trim();
+												if (val && !bcc.includes(val)) {
+													setBcc((prev) => [...prev, val]);
+												}
+												e.currentTarget.value = "";
+											}
+										}}
+									/>
+									{bcc.length > 0 && (
+										<RecipientChips
+											label="Bcc"
+											values={bcc}
+											onRemove={(email) =>
+												setBcc((prev) => prev.filter((e) => e !== email))
+											}
+										/>
+									)}
+								</div>
+							)}
+						</>
+					)}
+
+					{/* Compose mode: Subject */}
+					{mode === "compose" && (
+						<div>
+							<label
+								htmlFor="compose-subject"
+								className="font-body text-[11px] uppercase tracking-wider text-grey-3 mb-1 block"
+							>
+								Subject
+							</label>
+							<input
+								id="compose-subject"
+								type="text"
+								value={composeSubject}
+								onChange={(e) => setComposeSubject(e.target.value)}
+								placeholder="Subject"
+								className="w-full rounded-md border border-border/50 bg-secondary/10 px-3 py-2 font-body text-[13px] text-foreground placeholder:text-grey-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
+							/>
+						</div>
+					)}
+
 					{mode === "reply" && !body.trim() && (
 						<AiDraftButton
-							subject={subject}
-							fromAddress={fromAddress}
-							originalBody={originalBody}
+							subject={props.subject}
+							fromAddress={props.fromAddress}
+							originalBody={props.originalBody}
 							onDraft={setBody}
 						/>
 					)}
@@ -225,11 +430,11 @@ export function ComposeSheet({
 					<ComposeWithSuggestion
 						body={body}
 						onBodyChange={setBody}
-						subject={subject}
-						recipient={mode === "reply" ? fromAddress : to}
+						subject={subjectForSuggestion}
+						recipient={recipientForSuggestion}
 					/>
 
-					{originalBody && (
+					{mode !== "compose" && props.originalBody && (
 						<div>
 							<button
 								type="button"
@@ -263,7 +468,7 @@ export function ComposeSheet({
 										className="overflow-hidden"
 									>
 										<div className="mt-2 rounded-md border border-border/30 bg-secondary/5 p-3 font-mono text-[11px] text-grey-2 whitespace-pre-wrap max-h-48 overflow-y-auto">
-											{originalBody}
+											{props.originalBody}
 										</div>
 									</motion.div>
 								)}
@@ -279,15 +484,44 @@ export function ComposeSheet({
 						className="w-full"
 						size="sm"
 					>
-						{isPending
-							? "Sending..."
-							: mode === "reply"
-								? "Send reply"
-								: "Forward"}
+						{isPending ? "Sending..." : sendLabel}
 					</Button>
 				</div>
 			</SheetContent>
 		</Sheet>
+	);
+}
+
+/* ── Recipient chips ── */
+
+function RecipientChips({
+	label,
+	values,
+	onRemove,
+}: {
+	label: string;
+	values: string[];
+	onRemove: (email: string) => void;
+}) {
+	return (
+		<div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+			<span className="font-body text-[12px] text-grey-2">{label}:</span>
+			{values.map((email) => (
+				<span
+					key={email}
+					className="inline-flex items-center gap-1 rounded-full bg-secondary/40 px-2 py-0.5 font-mono text-[10px] text-foreground"
+				>
+					{email}
+					<button
+						type="button"
+						className="hover:text-red-500 cursor-pointer"
+						onClick={() => onRemove(email)}
+					>
+						×
+					</button>
+				</span>
+			))}
+		</div>
 	);
 }
 
@@ -304,12 +538,12 @@ function ComposeWithSuggestion({
 	subject: string | null;
 	recipient: string | null;
 }) {
-	const compose = useAiCompose();
+	const aiCompose = useAiCompose();
 	const [suggestion, setSuggestion] = useState<string | null>(null);
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const lastBodyRef = useRef(body);
-	const mutateRef = useRef(compose.mutate);
-	mutateRef.current = compose.mutate;
+	const mutateRef = useRef(aiCompose.mutate);
+	mutateRef.current = aiCompose.mutate;
 
 	// Debounced AI completion — trigger after 1.5s pause with 10+ chars
 	useEffect(() => {
