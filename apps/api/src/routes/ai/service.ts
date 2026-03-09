@@ -1,0 +1,336 @@
+import {
+	and,
+	calendarAccounts,
+	calendarEvents,
+	db,
+	emails,
+	eq,
+	gte,
+	lt,
+	lte,
+	sql,
+	tasks,
+} from "@wingmnn/db";
+import {
+	DRAFT_SYSTEM_PROMPT,
+	THREAD_SUMMARY_SYSTEM_PROMPT,
+	getAiProvider,
+} from "@wingmnn/queue";
+
+const BODY_LIMIT = 3000;
+
+interface ThreadMessage {
+	from: string;
+	body: string;
+	date?: string;
+}
+
+interface DraftInput {
+	subject: string;
+	fromAddress: string;
+	fromName: string;
+	snippet: string;
+	bodyPlain: string;
+	toAddresses: string[];
+	aiSummary?: string;
+}
+
+export const aiService = {
+	async summarizeThread(
+		messages: ThreadMessage[],
+	): Promise<
+		{ ok: true; data: string } | { ok: false; error: string; status: number }
+	> {
+		const provider = getAiProvider();
+		if (!provider) {
+			return { ok: false, error: "AI provider not configured", status: 503 };
+		}
+
+		const formatted = messages
+			.map((m) => {
+				const date = m.date ? ` (${m.date})` : "";
+				const body = m.body.slice(0, BODY_LIMIT);
+				return `From: ${m.from}${date}\n${body}`;
+			})
+			.join("\n---\n");
+
+		try {
+			const summary = await provider.complete(
+				THREAD_SUMMARY_SYSTEM_PROMPT,
+				formatted,
+			);
+			return { ok: true, data: summary };
+		} catch (err) {
+			console.error(
+				"[ai] Thread summarization failed:",
+				err instanceof Error ? err.message : "Unknown error",
+			);
+			return { ok: false, error: "AI summarization failed", status: 500 };
+		}
+	},
+
+	async getDailyBriefing(userId: string): Promise<
+		| {
+				ok: true;
+				data: {
+					events: { time: string; title: string; detail: string | null }[];
+					overdueTasks: { id: string; title: string }[];
+					todayTasks: { id: string; title: string }[];
+					unreadCount: number;
+					triageCount: number;
+					aiSummary: string | null;
+				};
+		  }
+		| { ok: false; error: string; status: number }
+	> {
+		const now = new Date();
+		const todayStart = new Date(now);
+		todayStart.setHours(0, 0, 0, 0);
+		const todayEnd = new Date(now);
+		todayEnd.setHours(23, 59, 59, 999);
+
+		try {
+			// Parallel queries for all briefing data
+			const [events, overdueTasks, todayTasks, unreadResult, triageResult] =
+				await Promise.all([
+					// Today's calendar events
+					db
+						.select({
+							title: calendarEvents.title,
+							startTime: calendarEvents.startTime,
+							endTime: calendarEvents.endTime,
+							location: calendarEvents.location,
+						})
+						.from(calendarEvents)
+						.innerJoin(
+							calendarAccounts,
+							eq(calendarEvents.calendarAccountId, calendarAccounts.id),
+						)
+						.where(
+							and(
+								eq(calendarAccounts.userId, userId),
+								gte(calendarEvents.startTime, todayStart),
+								lt(calendarEvents.startTime, todayEnd),
+							),
+						)
+						.orderBy(calendarEvents.startTime)
+						.limit(10),
+
+					// Overdue tasks
+					db
+						.select({
+							id: tasks.id,
+							title: tasks.title,
+						})
+						.from(tasks)
+						.where(
+							and(
+								eq(tasks.userId, userId),
+								lt(tasks.dueAt, now),
+								sql`${tasks.completedAt} IS NULL`,
+							),
+						)
+						.limit(5),
+
+					// Today's tasks (due today)
+					db
+						.select({
+							id: tasks.id,
+							title: tasks.title,
+						})
+						.from(tasks)
+						.where(
+							and(
+								eq(tasks.userId, userId),
+								gte(tasks.dueAt, todayStart),
+								lte(tasks.dueAt, todayEnd),
+								sql`${tasks.completedAt} IS NULL`,
+							),
+						)
+						.limit(10),
+
+					// Unread email count
+					db
+						.select({ count: sql<number>`count(*)::int` })
+						.from(emails)
+						.where(and(eq(emails.userId, userId), eq(emails.isRead, false))),
+
+					// Triage count (pending items)
+					db
+						.select({ count: sql<number>`count(*)::int` })
+						.from(emails)
+						.where(
+							and(
+								eq(emails.userId, userId),
+								eq(emails.triageStatus, "pending"),
+							),
+						),
+				]);
+
+			const formattedEvents = events.map((e) => {
+				const start = new Date(e.startTime);
+				const end = e.endTime ? new Date(e.endTime) : null;
+				const time = start.toLocaleTimeString("en-US", {
+					hour: "numeric",
+					minute: "2-digit",
+					hour12: true,
+				});
+				const duration = end
+					? `${Math.round((end.getTime() - start.getTime()) / 60000)} min`
+					: null;
+				const detail = [duration, e.location].filter(Boolean).join(" · ");
+				return { time, title: e.title ?? "(untitled)", detail: detail || null };
+			});
+
+			const unreadCount = unreadResult[0]?.count ?? 0;
+			const triageCount = triageResult[0]?.count ?? 0;
+
+			// Generate AI summary if provider is available
+			let aiSummary: string | null = null;
+			const provider = getAiProvider();
+			if (
+				provider &&
+				(formattedEvents.length > 0 ||
+					overdueTasks.length > 0 ||
+					unreadCount > 0)
+			) {
+				try {
+					const lines = [
+						`Today's date: ${now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}`,
+						`Meetings today: ${formattedEvents.length}`,
+						...formattedEvents.map(
+							(e) =>
+								`  - ${e.time}: ${e.title}${e.detail ? ` (${e.detail})` : ""}`,
+						),
+						`Overdue tasks: ${overdueTasks.length}`,
+						...overdueTasks.map((t) => `  - ${t.title}`),
+						`Tasks due today: ${todayTasks.length}`,
+						...todayTasks.map((t) => `  - ${t.title}`),
+						`Unread emails: ${unreadCount}`,
+						`Emails needing attention: ${triageCount}`,
+					].join("\n");
+
+					aiSummary = await provider.complete(DAILY_BRIEFING_PROMPT, lines);
+				} catch (err) {
+					console.error(
+						"[ai] Daily briefing failed:",
+						err instanceof Error ? err.message : "Unknown error",
+					);
+				}
+			}
+
+			return {
+				ok: true,
+				data: {
+					events: formattedEvents,
+					overdueTasks,
+					todayTasks,
+					unreadCount,
+					triageCount,
+					aiSummary,
+				},
+			};
+		} catch (err) {
+			console.error(
+				"[ai] Briefing data fetch failed:",
+				err instanceof Error ? err.message : "Unknown error",
+			);
+			return { ok: false, error: "Failed to fetch briefing data", status: 500 };
+		}
+	},
+
+	async completeCompose(
+		body: string,
+		subject?: string,
+		recipient?: string,
+	): Promise<
+		{ ok: true; data: string } | { ok: false; error: string; status: number }
+	> {
+		const provider = getAiProvider();
+		if (!provider) {
+			return { ok: false, error: "AI provider not configured", status: 503 };
+		}
+
+		const context = [
+			subject ? `Subject: ${subject}` : null,
+			recipient ? `To: ${recipient}` : null,
+		]
+			.filter(Boolean)
+			.join("\n");
+
+		const userMessage = context ? `${context}\n\nEmail so far:\n${body}` : body;
+
+		try {
+			const suggestion = await provider.complete(
+				COMPOSE_COMPLETE_PROMPT,
+				userMessage,
+			);
+			return { ok: true, data: suggestion };
+		} catch (err) {
+			console.error(
+				"[ai] Compose completion failed:",
+				err instanceof Error ? err.message : "Unknown error",
+			);
+			return { ok: false, error: "AI completion failed", status: 500 };
+		}
+	},
+
+	async generateDraft(
+		input: DraftInput,
+	): Promise<
+		{ ok: true; data: string } | { ok: false; error: string; status: number }
+	> {
+		const provider = getAiProvider();
+		if (!provider) {
+			return { ok: false, error: "AI provider not configured", status: 503 };
+		}
+
+		try {
+			const draft = await provider.generateDraft(
+				{
+					subject: input.subject,
+					fromAddress: input.fromAddress,
+					fromName: input.fromName,
+					snippet: input.snippet,
+					bodyPlain: input.bodyPlain,
+					toAddresses: input.toAddresses,
+					aiSummary: input.aiSummary ?? input.snippet,
+				},
+				DRAFT_SYSTEM_PROMPT,
+			);
+			return { ok: true, data: draft };
+		} catch (err) {
+			console.error(
+				"[ai] Draft generation failed:",
+				err instanceof Error ? err.message : "Unknown error",
+			);
+			return { ok: false, error: "AI draft generation failed", status: 500 };
+		}
+	},
+};
+
+const COMPOSE_COMPLETE_PROMPT = `You are an email writing assistant. Continue the user's email naturally.
+
+## Rules
+
+- Output ONLY the suggested continuation text — no quotes, no labels, no explanation
+- Write 1-2 sentences max
+- Match the tone and formality of what's already written
+- Don't repeat what's already written
+- If the email seems complete, return an empty string
+- Keep it concise and natural`;
+
+const DAILY_BRIEFING_PROMPT = `You are a personal productivity assistant. Generate a brief, natural morning briefing based on the user's schedule and task data.
+
+## Guidelines
+
+- Write 2-3 sentences max
+- Be specific — reference actual meeting names and task titles
+- Mention overdue tasks gently but clearly
+- Note the shape of the day (busy, light, focused)
+- Warm, professional tone — like a chief of staff giving a morning summary
+- Do NOT use bullet points or markdown — just plain text
+
+## Output
+
+Return ONLY the briefing text, no JSON wrapping.`;

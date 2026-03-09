@@ -10,6 +10,7 @@ const isDev = process.env.NODE_ENV !== "production";
 
 import { betterAuthHandler } from "./auth";
 import { betterAuthPlugin } from "./plugins/auth";
+import { aiRoutes } from "./routes/ai";
 import { calendarRoutes } from "./routes/calendar";
 import { contactsRoutes } from "./routes/contacts";
 import { health } from "./routes/health";
@@ -61,6 +62,10 @@ const app = new Elysia({ name: "wingmnn-api" })
 						name: "Notifications",
 						description: "In-app notifications",
 					},
+					{
+						name: "AI",
+						description: "AI-powered features — summarization, drafting",
+					},
 					{ name: "Waitlist", description: "Waitlist signup" },
 					{ name: "Onboarding", description: "User onboarding flow" },
 				],
@@ -90,6 +95,7 @@ const app = new Elysia({ name: "wingmnn-api" })
 	.use(calendarRoutes)
 	.use(tasksRoutes)
 	.use(contactsRoutes)
+	.use(aiRoutes)
 	.use(notificationsRoutes)
 	.use(me)
 	.use(onboarding)
