@@ -109,6 +109,7 @@ export type SerializedAccount = {
 	syncStatus: SyncStatus;
 	lastSyncAt: string | null;
 	active: boolean;
+	signature: string | null;
 	createdAt: string;
 };
 
