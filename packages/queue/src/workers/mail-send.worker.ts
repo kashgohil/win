@@ -24,6 +24,7 @@ async function processDelayedSend(data: MailSendJobData) {
 			bcc: data.bcc,
 			subject: data.subject,
 			body: data.body,
+			attachments: data.attachments,
 		});
 		console.log(`[mail-send] Sent new email to ${data.to.join(", ")}`);
 		return;
@@ -42,6 +43,7 @@ async function processDelayedSend(data: MailSendJobData) {
 			body: data.body,
 			threadId: email.providerThreadId ?? undefined,
 			inReplyTo: email.providerMessageId,
+			attachments: data.attachments,
 		});
 	} else {
 		await provider.sendDraft(accessToken, {
@@ -49,6 +51,7 @@ async function processDelayedSend(data: MailSendJobData) {
 			subject: `Fwd: ${email.subject ?? ""}`,
 			body: data.body,
 			threadId: email.providerThreadId ?? undefined,
+			attachments: data.attachments,
 		});
 	}
 

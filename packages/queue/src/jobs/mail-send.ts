@@ -1,5 +1,12 @@
 import { mailSendQueue } from "../queues";
 
+export type JobAttachment = {
+	filename: string;
+	mimeType: string;
+	/** Base64-encoded content */
+	content: string;
+};
+
 export type MailSendJobData =
 	| {
 			type: "reply";
@@ -8,6 +15,7 @@ export type MailSendJobData =
 			emailAccountId: string;
 			body: string;
 			cc?: string[];
+			attachments?: JobAttachment[];
 	  }
 	| {
 			type: "forward";
@@ -16,6 +24,7 @@ export type MailSendJobData =
 			emailAccountId: string;
 			to: string[];
 			body: string;
+			attachments?: JobAttachment[];
 	  }
 	| {
 			type: "compose";
@@ -26,6 +35,7 @@ export type MailSendJobData =
 			bcc?: string[];
 			subject: string;
 			body: string;
+			attachments?: JobAttachment[];
 	  };
 
 const UNDO_DELAY_MS = 10_000;
