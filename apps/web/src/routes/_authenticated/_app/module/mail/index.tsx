@@ -253,7 +253,11 @@ function MailModule() {
 }
 
 function MailHeaderActions() {
-	const { data: accounts, isLoading } = useLiveQuery(mailAccountsCollection);
+	const {
+		data: accounts,
+		isLoading,
+		isError,
+	} = useLiveQuery(mailAccountsCollection);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 
 	if (isLoading) {
@@ -262,7 +266,7 @@ function MailHeaderActions() {
 		);
 	}
 
-	if (accounts.length === 0) {
+	if (!isError && accounts.length === 0) {
 		return (
 			<>
 				<button

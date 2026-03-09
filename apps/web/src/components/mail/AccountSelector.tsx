@@ -17,7 +17,11 @@ import { Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export function AccountSelector() {
-	const { data: accounts, isLoading } = useLiveQuery(mailAccountsCollection);
+	const {
+		data: accounts,
+		isLoading,
+		isError,
+	} = useLiveQuery(mailAccountsCollection);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const { activeAccountIds, toggle, resetToAll } = useMailAccountFilter();
 	const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
@@ -75,7 +79,23 @@ export function AccountSelector() {
 		}
 	}, [focusedIndex]);
 
-	if (isLoading || accounts.length === 0) return null;
+	if (isLoading || (!isError && accounts.length === 0)) return null;
+
+	if (isError && accounts.length === 0) {
+		return (
+			<>
+				<button
+					type="button"
+					onClick={() => setSettingsOpen(true)}
+					className="inline-flex items-center gap-1.5 font-mono text-[10px] text-accent-red hover:text-accent-red/80 transition-colors cursor-pointer"
+				>
+					<Plus className="size-3" />
+					connect
+				</button>
+				<SettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} />
+			</>
+		);
+	}
 
 	const activeCount = isFiltered ? activeAccountIds.size : accounts.length;
 	const filterLabel = isFiltered
