@@ -1,4 +1,5 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
+import { ContactCardLazy } from "@/components/contacts/ContactCard";
 import { AccountSelector } from "@/components/mail/AccountSelector";
 import { AiSummary } from "@/components/mail/AiSummary";
 import { AttachmentList } from "@/components/mail/AttachmentList";
@@ -504,9 +505,21 @@ function ConversationView({
 							</div>
 
 							<div className="flex-1 min-w-0">
-								<span className="font-body text-[13px] text-foreground font-medium truncate block">
-									{msg.fromName || msg.fromAddress || "Unknown"}
-								</span>
+								{msg.fromAddress ? (
+									<ContactCardLazy
+										email={msg.fromAddress}
+										side="bottom"
+										align="start"
+									>
+										<span className="font-body text-[13px] text-foreground font-medium truncate block">
+											{msg.fromName || msg.fromAddress || "Unknown"}
+										</span>
+									</ContactCardLazy>
+								) : (
+									<span className="font-body text-[13px] text-foreground font-medium truncate block">
+										Unknown
+									</span>
+								)}
 								{!isExpanded && msg.snippet && (
 									<span className="font-body text-[12px] text-grey-3 truncate block mt-0.5">
 										{msg.snippet}
