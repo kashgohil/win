@@ -1,4 +1,5 @@
 import { AccountSelector } from "@/components/mail/AccountSelector";
+import { ComposeSheet } from "@/components/mail/ComposeSheet";
 import {
 	KeyboardShortcutBar,
 	MAIL_HUB_SHORTCUTS,
@@ -25,7 +26,7 @@ import { useLiveQuery } from "@tanstack/react-db";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { TriageAction } from "@wingmnn/types";
-import { ArrowRight, Inbox, Paperclip, Send } from "lucide-react";
+import { ArrowRight, Inbox, Paperclip, PenSquare, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -85,6 +86,15 @@ function MailModule() {
 		}
 	}, [connected, error, navigate, queryClient]);
 
+	const [composeOpen, setComposeOpen] = useState(false);
+
+	// Listen for compose events from header actions
+	useEffect(() => {
+		const handler = () => setComposeOpen(true);
+		document.addEventListener("mail:compose", handler);
+		return () => document.removeEventListener("mail:compose", handler);
+	}, []);
+
 	// Keyboard shortcuts for mail hub
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
@@ -101,6 +111,10 @@ function MailModule() {
 			}
 
 			switch (e.key) {
+				case "c":
+					e.preventDefault();
+					setComposeOpen(true);
+					break;
 				case "i":
 					e.preventDefault();
 					navigate({
@@ -229,6 +243,11 @@ function MailModule() {
 			</ModulePage>
 
 			<KeyboardShortcutBar shortcuts={MAIL_HUB_SHORTCUTS} />
+			<ComposeSheet
+				mode="compose"
+				open={composeOpen}
+				onOpenChange={setComposeOpen}
+			/>
 		</>
 	);
 }
@@ -260,6 +279,22 @@ function MailHeaderActions() {
 
 	return (
 		<div className="flex items-center gap-3">
+			<button
+				type="button"
+				onClick={() => {
+					document.dispatchEvent(
+						new CustomEvent("mail:compose", { detail: true }),
+					);
+				}}
+				className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent-red/40 bg-accent-red/10 hover:bg-accent-red/20 hover:border-accent-red/60 text-accent-red transition-all duration-150 cursor-pointer"
+			>
+				<PenSquare className="size-3" />
+				<span className="font-body text-[12px]">Compose</span>
+				<Kbd>C</Kbd>
+			</button>
+
+			<div className="w-px h-3.5 bg-border/40" />
+
 			<Link
 				to="/module/mail/inbox"
 				search={{

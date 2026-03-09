@@ -2,6 +2,7 @@ import { MOTION_CONSTANTS } from "@/components/constant";
 import { AccountSelector } from "@/components/mail/AccountSelector";
 import { CATEGORIES } from "@/components/mail/category-colors";
 import { CategoryFilter } from "@/components/mail/CategoryFilter";
+import { ComposeSheet } from "@/components/mail/ComposeSheet";
 import {
 	INBOX_INLINE_SHORTCUTS,
 	INBOX_SHORTCUTS,
@@ -48,6 +49,7 @@ import {
 	MailOpen,
 	Merge,
 	Paperclip,
+	PenSquare,
 	Rows2,
 	Search,
 	Send,
@@ -184,6 +186,7 @@ function MailInbox() {
 	} = useSidepanelWidth();
 	const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
 	const [peekedThreadId, setPeekedThreadId] = useState<string | null>(null);
+	const [composeOpen, setComposeOpen] = useState(false);
 
 	const activeCategory = category ?? null;
 	const activeAccountIds = useMailAccountFilter((s) => s.activeAccountIds);
@@ -560,6 +563,7 @@ function MailInbox() {
 		onSelectEmail: handleKeyboardSelectThread,
 		onActivateHeader: handleActivateHeader,
 		onOpenSearch: handleOpenSearch,
+		onCompose: useCallback(() => setComposeOpen(true), []),
 		onNavigateAttachments: handleNavigateAttachments,
 		onNavigateSent: handleNavigateSent,
 		onToggleView: handleToggleView,
@@ -1014,6 +1018,18 @@ function MailInbox() {
 				</Link>
 
 				<div className="flex items-center gap-3">
+					<button
+						type="button"
+						onClick={() => setComposeOpen(true)}
+						className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent-red/40 bg-accent-red/10 hover:bg-accent-red/20 hover:border-accent-red/60 text-accent-red transition-all duration-150 cursor-pointer"
+					>
+						<PenSquare className="size-3" />
+						<span className="font-body text-[12px]">Compose</span>
+						<Kbd>C</Kbd>
+					</button>
+
+					<div className="w-px h-3.5 bg-border/40" />
+
 					<Link
 						to="/module/mail/attachments"
 						className={cn(
@@ -1252,6 +1268,11 @@ function MailInbox() {
 						: INBOX_SHORTCUTS
 				}
 				visible={!searchOpen}
+			/>
+			<ComposeSheet
+				mode="compose"
+				open={composeOpen}
+				onOpenChange={setComposeOpen}
 			/>
 		</div>
 	);

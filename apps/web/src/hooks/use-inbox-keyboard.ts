@@ -16,6 +16,7 @@ type UseInboxKeyboardOptions = {
 	onSelectEmail: (index: number) => void;
 	onActivateHeader: (index: number) => void;
 	onOpenSearch?: () => void;
+	onCompose?: () => void;
 	onNavigateAttachments?: () => void;
 	onNavigateSent?: () => void;
 	onToggleView?: () => void;
@@ -65,6 +66,7 @@ export function useInboxKeyboard({
 	onSelectEmail,
 	onActivateHeader,
 	onOpenSearch,
+	onCompose,
 	onNavigateAttachments,
 	onNavigateSent,
 	onToggleView,
@@ -162,6 +164,13 @@ export function useInboxKeyboard({
 			if (key === "/") {
 				e.preventDefault();
 				onOpenSearch?.();
+				return;
+			}
+
+			// Global shortcut: c to compose new email
+			if (key === "c") {
+				e.preventDefault();
+				onCompose?.();
 				return;
 			}
 
@@ -391,6 +400,7 @@ export function useInboxKeyboard({
 		onSelectEmail,
 		onActivateHeader,
 		onOpenSearch,
+		onCompose,
 		onNavigateAttachments,
 		onNavigateSent,
 		onToggleView,

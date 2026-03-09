@@ -41,6 +41,7 @@ export const INBOX_SHORTCUTS: ShortcutGroup[] = [
 		{ keys: ["X"], label: "select" },
 	],
 	[
+		{ keys: ["C"], label: "compose" },
 		{ keys: ["H"], label: "snooze" },
 		{ keys: ["/"], label: "search" },
 		{ keys: ["["], label: "back" },
@@ -64,6 +65,7 @@ export const EMAIL_DETAIL_SHORTCUTS: ShortcutGroup[] = [
 
 export const MAIL_HUB_SHORTCUTS: ShortcutGroup[] = [
 	[
+		{ keys: ["C"], label: "compose" },
 		{ keys: ["I"], label: "inbox" },
 		{ keys: ["S"], label: "sent" },
 		{ keys: ["A"], label: "attachments" },
