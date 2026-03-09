@@ -1,4 +1,5 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
+import { RecipientInput } from "@/components/mail/RecipientInput";
 import { Button } from "@/components/ui/button";
 import {
 	Sheet,
@@ -8,15 +9,21 @@ import {
 	SheetTitle,
 } from "@/components/ui/sheet";
 import { useAiCompose, useAiDraft } from "@/hooks/use-ai";
+import {
+	clearComposeDraft,
+	getSavedDraft,
+	useComposeDraftAutoSave,
+} from "@/hooks/use-compose-draft";
 import { useSuggestCc } from "@/hooks/use-contacts";
 import {
+	type SendAttachmentInput,
 	useCancelSend,
 	useComposeDelayed,
 	useForwardDelayed,
 	useMailAccounts,
 	useReplyDelayed,
 } from "@/hooks/use-mail";
-import { ChevronDown, Loader2, Sparkles } from "lucide-react";
+import { ChevronDown, Loader2, Paperclip, Sparkles, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -46,13 +53,15 @@ type ComposeSheetProps =
 export function ComposeSheet(props: ComposeSheetProps) {
 	const { open, onOpenChange, mode } = props;
 
-	const [to, setTo] = useState("");
+	const [to, setTo] = useState<string[]>([]);
 	const [body, setBody] = useState("");
 	const [cc, setCc] = useState<string[]>([]);
 	const [bcc, setBcc] = useState<string[]>([]);
 	const [composeSubject, setComposeSubject] = useState("");
+	const [attachments, setAttachments] = useState<SendAttachmentInput[]>([]);
 	const [showBcc, setShowBcc] = useState(false);
 	const [showOriginal, setShowOriginal] = useState(false);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [selectedAccountId, setSelectedAccountId] = useState(
 		props.defaultAccountId ?? "",
 	);
@@ -67,6 +76,36 @@ export function ComposeSheet(props: ComposeSheetProps) {
 		}
 	}, [accounts, selectedAccountId]);
 
+	// Restore saved draft when compose sheet opens
+	useEffect(() => {
+		if (mode === "compose" && open) {
+			const saved = getSavedDraft();
+			if (saved && !body && !composeSubject && to.length === 0) {
+				setTo(saved.to);
+				setCc(saved.cc);
+				setBcc(saved.bcc);
+				setComposeSubject(saved.subject);
+				setBody(saved.body);
+				if (saved.accountId) setSelectedAccountId(saved.accountId);
+				if (saved.bcc.length > 0) setShowBcc(true);
+			}
+		}
+	}, [mode, open]);
+
+	// Auto-save compose draft
+	useComposeDraftAutoSave(
+		mode === "compose"
+			? {
+					to,
+					cc,
+					bcc,
+					subject: composeSubject,
+					body,
+					accountId: selectedAccountId,
+				}
+			: { to: [], cc: [], bcc: [], subject: "", body: "", accountId: "" },
+	);
+
 	const { data: ccSuggestions } = useSuggestCc(
 		mode === "reply" ? (props.fromAddress ?? null) : null,
 	);
@@ -77,6 +116,47 @@ export function ComposeSheet(props: ComposeSheetProps) {
 	const cancelSend = useCancelSend();
 
 	const isPending = reply.isPending || forward.isPending || compose.isPending;
+
+	const MAX_TOTAL_SIZE = 10 * 1024 * 1024; // 10MB
+
+	const handleFileSelect = useCallback(
+		async (e: React.ChangeEvent<HTMLInputElement>) => {
+			const files = e.target.files;
+			if (!files) return;
+
+			const currentSize = attachments.reduce(
+				(sum, a) => sum + a.content.length * 0.75,
+				0,
+			);
+			const newAttachments: SendAttachmentInput[] = [];
+
+			for (const file of files) {
+				if (currentSize + file.size > MAX_TOTAL_SIZE) {
+					toast.error("Total attachment size exceeds 10MB limit");
+					break;
+				}
+				const buffer = await file.arrayBuffer();
+				const bytes = new Uint8Array(buffer);
+				let binary = "";
+				for (let i = 0; i < bytes.length; i++) {
+					binary += String.fromCharCode(bytes[i]);
+				}
+				newAttachments.push({
+					filename: file.name,
+					mimeType: file.type || "application/octet-stream",
+					content: btoa(binary),
+				});
+			}
+
+			setAttachments((prev) => [...prev, ...newAttachments]);
+			e.target.value = "";
+		},
+		[attachments],
+	);
+
+	const removeAttachment = useCallback((index: number) => {
+		setAttachments((prev) => prev.filter((_, i) => i !== index));
+	}, []);
 
 	const showUndoToast = (label: string, jobId: string | undefined) => {
 		if (jobId) {
@@ -97,13 +177,12 @@ export function ComposeSheet(props: ComposeSheetProps) {
 		}
 	};
 
+	const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+	const signature = selectedAccount?.signature ?? null;
+
 	const handleSend = async () => {
 		if (mode === "compose") {
-			const recipients = to
-				.split(",")
-				.map((s) => s.trim())
-				.filter(Boolean);
-			if (recipients.length === 0) {
+			if (to.length === 0) {
 				toast.error("Please enter at least one recipient");
 				return;
 			}
@@ -111,14 +190,16 @@ export function ComposeSheet(props: ComposeSheetProps) {
 				toast.error("Please select an account");
 				return;
 			}
+			const bodyWithSig = signature ? `${body}\n\n--\n${signature}` : body;
 			compose.mutate(
 				{
 					accountId: selectedAccountId,
-					to: recipients,
+					to,
 					cc: cc.length > 0 ? cc : undefined,
 					bcc: bcc.length > 0 ? bcc : undefined,
 					subject: composeSubject,
-					body,
+					body: bodyWithSig,
+					attachments: attachments.length > 0 ? attachments : undefined,
 				},
 				{
 					onSuccess: (data) => {
@@ -134,6 +215,7 @@ export function ComposeSheet(props: ComposeSheetProps) {
 					id: props.emailId,
 					body,
 					cc: cc.length > 0 ? cc : undefined,
+					attachments: attachments.length > 0 ? attachments : undefined,
 				},
 				{
 					onSuccess: (data) => {
@@ -144,16 +226,17 @@ export function ComposeSheet(props: ComposeSheetProps) {
 				},
 			);
 		} else {
-			const recipients = to
-				.split(",")
-				.map((s) => s.trim())
-				.filter(Boolean);
-			if (recipients.length === 0) {
+			if (to.length === 0) {
 				toast.error("Please enter at least one recipient");
 				return;
 			}
 			forward.mutate(
-				{ id: props.emailId, to: recipients, body },
+				{
+					id: props.emailId,
+					to,
+					body,
+					attachments: attachments.length > 0 ? attachments : undefined,
+				},
 				{
 					onSuccess: (data) => {
 						resetAndClose();
@@ -166,13 +249,15 @@ export function ComposeSheet(props: ComposeSheetProps) {
 	};
 
 	const resetAndClose = () => {
-		setTo("");
+		setTo([]);
 		setBody("");
 		setCc([]);
 		setBcc([]);
+		setAttachments([]);
 		setComposeSubject("");
 		setShowBcc(false);
 		setShowOriginal(false);
+		clearComposeDraft();
 		onOpenChange(false);
 	};
 
@@ -194,7 +279,9 @@ export function ComposeSheet(props: ComposeSheetProps) {
 		mode === "compose" ? "Send" : mode === "reply" ? "Send reply" : "Forward";
 
 	const recipientForSuggestion =
-		mode === "compose" || mode === "forward" ? to : (props.fromAddress ?? null);
+		mode === "compose" || mode === "forward"
+			? (to[0] ?? null)
+			: (props.fromAddress ?? null);
 
 	const subjectForSuggestion =
 		mode === "compose" ? composeSubject : (props.subject ?? null);
@@ -276,40 +363,16 @@ export function ComposeSheet(props: ComposeSheetProps) {
 						</div>
 					)}
 
-					{/* Forward / Compose: To input */}
+					{/* Forward / Compose: To input with autocomplete */}
 					{(mode === "forward" || mode === "compose") && (
-						<div>
-							<label
-								htmlFor="compose-to"
-								className="font-body text-[11px] uppercase tracking-wider text-grey-3 mb-1 block"
-							>
-								To
-							</label>
-							<input
-								id="compose-to"
-								type="text"
-								value={to}
-								onChange={(e) => setTo(e.target.value)}
-								placeholder="recipient@example.com"
-								className="w-full rounded-md border border-border/50 bg-secondary/10 px-3 py-2 font-body text-[13px] text-foreground placeholder:text-grey-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
-							/>
-						</div>
+						<RecipientInput label="To" values={to} onChange={setTo} />
 					)}
 
-					{/* Compose mode: Cc/Bcc toggle + fields */}
+					{/* Compose mode: Cc/Bcc fields */}
 					{mode === "compose" && (
 						<>
-							<div className="flex items-center gap-2">
-								{cc.length === 0 && !bcc.length && (
-									<button
-										type="button"
-										onClick={() => setCc([])}
-										className="font-mono text-[10px] text-grey-3 hover:text-foreground transition-colors cursor-pointer"
-									>
-										+ Cc
-									</button>
-								)}
-								{!showBcc && bcc.length === 0 && (
+							{!showBcc && bcc.length === 0 && (
+								<div className="flex items-center gap-2">
 									<button
 										type="button"
 										onClick={() => setShowBcc(true)}
@@ -317,83 +380,21 @@ export function ComposeSheet(props: ComposeSheetProps) {
 									>
 										+ Bcc
 									</button>
-								)}
-							</div>
-							{(cc.length > 0 || mode === "compose") && (
-								<div>
-									<label
-										htmlFor="compose-cc"
-										className="font-body text-[11px] uppercase tracking-wider text-grey-3 mb-1 block"
-									>
-										Cc
-									</label>
-									<input
-										id="compose-cc"
-										type="text"
-										placeholder="cc@example.com"
-										className="w-full rounded-md border border-border/50 bg-secondary/10 px-3 py-2 font-body text-[13px] text-foreground placeholder:text-grey-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
-										onKeyDown={(e) => {
-											if (
-												(e.key === "Enter" || e.key === ",") &&
-												e.currentTarget.value.trim()
-											) {
-												e.preventDefault();
-												const val = e.currentTarget.value.trim();
-												if (val && !cc.includes(val)) {
-													setCc((prev) => [...prev, val]);
-												}
-												e.currentTarget.value = "";
-											}
-										}}
-									/>
-									{cc.length > 0 && (
-										<RecipientChips
-											label="Cc"
-											values={cc}
-											onRemove={(email) =>
-												setCc((prev) => prev.filter((e) => e !== email))
-											}
-										/>
-									)}
 								</div>
 							)}
+							<RecipientInput
+								label="Cc"
+								values={cc}
+								onChange={setCc}
+								placeholder="cc@example.com"
+							/>
 							{showBcc && (
-								<div>
-									<label
-										htmlFor="compose-bcc"
-										className="font-body text-[11px] uppercase tracking-wider text-grey-3 mb-1 block"
-									>
-										Bcc
-									</label>
-									<input
-										id="compose-bcc"
-										type="text"
-										placeholder="bcc@example.com"
-										className="w-full rounded-md border border-border/50 bg-secondary/10 px-3 py-2 font-body text-[13px] text-foreground placeholder:text-grey-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
-										onKeyDown={(e) => {
-											if (
-												(e.key === "Enter" || e.key === ",") &&
-												e.currentTarget.value.trim()
-											) {
-												e.preventDefault();
-												const val = e.currentTarget.value.trim();
-												if (val && !bcc.includes(val)) {
-													setBcc((prev) => [...prev, val]);
-												}
-												e.currentTarget.value = "";
-											}
-										}}
-									/>
-									{bcc.length > 0 && (
-										<RecipientChips
-											label="Bcc"
-											values={bcc}
-											onRemove={(email) =>
-												setBcc((prev) => prev.filter((e) => e !== email))
-											}
-										/>
-									)}
-								</div>
+								<RecipientInput
+									label="Bcc"
+									values={bcc}
+									onChange={setBcc}
+									placeholder="bcc@example.com"
+								/>
 							)}
 						</>
 					)}
@@ -433,6 +434,18 @@ export function ComposeSheet(props: ComposeSheetProps) {
 						subject={subjectForSuggestion}
 						recipient={recipientForSuggestion}
 					/>
+
+					{/* Signature preview (compose mode) */}
+					{mode === "compose" && signature && (
+						<div className="rounded-md border border-border/30 bg-secondary/5 px-3 py-2">
+							<span className="font-mono text-[9px] text-grey-3 uppercase tracking-wider block mb-1">
+								Signature
+							</span>
+							<p className="font-body text-[11px] text-grey-2 whitespace-pre-wrap">
+								{signature}
+							</p>
+						</div>
+					)}
 
 					{mode !== "compose" && props.originalBody && (
 						<div>
@@ -477,19 +490,72 @@ export function ComposeSheet(props: ComposeSheetProps) {
 					)}
 				</div>
 
-				<div className="p-4 border-t border-border/30">
-					<Button
-						onClick={handleSend}
-						disabled={isPending || !body.trim()}
-						className="w-full"
-						size="sm"
-					>
-						{isPending ? "Sending..." : sendLabel}
-					</Button>
+				<div className="p-4 border-t border-border/30 space-y-3">
+					{/* Attachments */}
+					{attachments.length > 0 && (
+						<div className="space-y-1.5">
+							{attachments.map((att, i) => (
+								<div
+									key={`${att.filename}-${i}`}
+									className="flex items-center gap-2 rounded-md bg-secondary/10 border border-border/30 px-2.5 py-1.5"
+								>
+									<Paperclip className="size-3 text-grey-3 shrink-0" />
+									<span className="font-body text-[11px] text-foreground truncate flex-1">
+										{att.filename}
+									</span>
+									<span className="font-mono text-[9px] text-grey-3 shrink-0">
+										{formatFileSize(att.content.length * 0.75)}
+									</span>
+									<button
+										type="button"
+										onClick={() => removeAttachment(i)}
+										className="size-4 flex items-center justify-center text-grey-3 hover:text-foreground cursor-pointer"
+									>
+										<X className="size-3" />
+									</button>
+								</div>
+							))}
+						</div>
+					)}
+
+					<div className="flex items-center gap-2">
+						<Button
+							onClick={handleSend}
+							disabled={isPending || !body.trim()}
+							className="flex-1"
+							size="sm"
+						>
+							{isPending ? "Sending..." : sendLabel}
+						</Button>
+						<input
+							ref={fileInputRef}
+							type="file"
+							multiple
+							className="hidden"
+							onChange={handleFileSelect}
+						/>
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={() => fileInputRef.current?.click()}
+							className="shrink-0"
+						>
+							<Paperclip className="size-3.5" />
+						</Button>
+					</div>
 				</div>
 			</SheetContent>
 		</Sheet>
 	);
+}
+
+/* ── Helpers ── */
+
+function formatFileSize(bytes: number): string {
+	if (bytes < 1024) return `${bytes}B`;
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
+	return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
 /* ── Recipient chips ── */
