@@ -2183,8 +2183,55 @@ async function suggestAssignee(
 	}
 }
 
+async function lookupByEmail(
+	userId: string,
+	email: string,
+): Promise<ServiceResult<ReturnType<typeof serializeContact> | null>> {
+	try {
+		const contact = await db.query.contacts.findFirst({
+			where: and(
+				eq(contacts.userId, userId),
+				or(
+					eq(contacts.primaryEmail, email.toLowerCase()),
+					sql`${email.toLowerCase()} = ANY(${contacts.additionalEmails})`,
+				),
+			),
+		});
+
+		if (!contact) {
+			return { ok: true, data: null };
+		}
+
+		const tagRows = await db
+			.select({
+				id: contactTags.id,
+				name: contactTags.name,
+				color: contactTags.color,
+			})
+			.from(contactTagAssignments)
+			.innerJoin(contactTags, eq(contactTagAssignments.tagId, contactTags.id))
+			.where(eq(contactTagAssignments.contactId, contact.id));
+
+		return {
+			ok: true,
+			data: serializeContact({
+				...contact,
+				tags: tagRows.map((t) => ({
+					id: t.id,
+					name: t.name,
+					color: t.color ?? null,
+				})),
+			}),
+		};
+	} catch (err) {
+		console.error("[contacts] lookupByEmail failed:", err);
+		return { ok: false, error: "Failed to lookup contact", status: 500 };
+	}
+}
+
 export const contactService = {
 	listContacts,
+	lookupByEmail,
 	getContact,
 	createContact,
 	updateContact,

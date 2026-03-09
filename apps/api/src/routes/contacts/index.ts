@@ -7,6 +7,7 @@ import {
 	contactEmailsResponse,
 	contactEventsResponse,
 	contactListResponse,
+	contactLookupResponse,
 	contactResponse,
 	createContactBody,
 	createTagBody,
@@ -75,6 +76,31 @@ export const contactsRoutes = new Elysia({
 				500: errorResponse,
 			},
 			detail: { tags: ["Contacts"], summary: "List contacts" },
+		},
+	)
+
+	/* ── Lookup by email ── */
+
+	.get(
+		"/lookup",
+		async ({ query, user, set }) => {
+			const result = await contactService.lookupByEmail(user.id, query.email);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return result.data;
+		},
+		{
+			auth: true,
+			query: t.Object({
+				email: t.String(),
+			}),
+			response: {
+				200: contactLookupResponse,
+				500: errorResponse,
+			},
+			detail: { tags: ["Contacts"], summary: "Lookup contact by email" },
 		},
 	)
 

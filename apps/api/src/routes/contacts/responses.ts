@@ -74,6 +74,10 @@ export const contactListResponse = t.Object({
 
 export const contactResponse = contactSchema;
 
+/* ── Lookup by email ── */
+
+export const contactLookupResponse = t.Union([contactSchema, t.Null()]);
+
 /* ── Detail ── */
 
 export const contactDetailResponse = contactDetailSchema;
