@@ -1,3 +1,4 @@
+import { ContactCardLazy } from "@/components/contacts/ContactCard";
 import { ActivityLog } from "@/components/tasks/ActivityLog";
 import { ConfirmDialog } from "@/components/tasks/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -707,7 +708,17 @@ export function TaskDetailDrawer({
 													{email.subject ?? "(no subject)"}
 												</p>
 												<p className="font-mono text-[10px] text-grey-3 truncate">
-													{email.fromName ?? email.fromAddress}
+													{email.fromAddress ? (
+														<ContactCardLazy
+															email={email.fromAddress}
+															side="bottom"
+															align="start"
+														>
+															<span>{email.fromName ?? email.fromAddress}</span>
+														</ContactCardLazy>
+													) : (
+														(email.fromName ?? "Unknown")
+													)}
 													{email.reason && (
 														<>
 															{" · "}
