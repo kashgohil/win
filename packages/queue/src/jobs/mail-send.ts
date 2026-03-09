@@ -16,6 +16,16 @@ export type MailSendJobData =
 			emailAccountId: string;
 			to: string[];
 			body: string;
+	  }
+	| {
+			type: "compose";
+			userId: string;
+			emailAccountId: string;
+			to: string[];
+			cc?: string[];
+			bcc?: string[];
+			subject: string;
+			body: string;
 	  };
 
 const UNDO_DELAY_MS = 10_000;

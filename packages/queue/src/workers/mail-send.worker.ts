@@ -5,11 +5,6 @@ import { connection } from "../connection";
 import type { MailSendJobData } from "../jobs/mail-send";
 
 async function processDelayedSend(data: MailSendJobData) {
-	const email = await db.query.emails.findFirst({
-		where: eq(emails.id, data.emailId),
-	});
-	if (!email) throw new Error(`Email ${data.emailId} not found`);
-
 	const account = await db.query.emailAccounts.findFirst({
 		where: eq(emailAccounts.id, data.emailAccountId),
 	});
@@ -21,6 +16,23 @@ async function processDelayedSend(data: MailSendJobData) {
 
 	const provider = getProvider(account.provider);
 	if (!provider) throw new Error(`Unknown provider: ${account.provider}`);
+
+	if (data.type === "compose") {
+		await provider.sendDraft(accessToken, {
+			to: data.to,
+			cc: data.cc,
+			bcc: data.bcc,
+			subject: data.subject,
+			body: data.body,
+		});
+		console.log(`[mail-send] Sent new email to ${data.to.join(", ")}`);
+		return;
+	}
+
+	const email = await db.query.emails.findFirst({
+		where: eq(emails.id, data.emailId),
+	});
+	if (!email) throw new Error(`Email ${data.emailId} not found`);
 
 	if (data.type === "reply") {
 		await provider.sendDraft(accessToken, {
