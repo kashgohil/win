@@ -233,6 +233,12 @@ export class OutlookProvider implements EmailProvider {
 				}));
 			}
 
+			if (params.bcc?.length) {
+				message.bccRecipients = params.bcc.map((addr) => ({
+					emailAddress: { address: addr },
+				}));
+			}
+
 			const res = await this.graphFetch(
 				accessToken,
 				`${GRAPH_API}/me/sendMail`,

@@ -48,6 +48,7 @@ export interface SyncResult {
 export interface SendParams {
 	to: string[];
 	cc?: string[];
+	bcc?: string[];
 	subject: string;
 	body: string;
 	threadId?: string;

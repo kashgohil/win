@@ -193,9 +193,11 @@ export class GmailProvider implements EmailProvider {
 	async sendDraft(accessToken: string, params: SendParams): Promise<void> {
 		const to = params.to.join(", ");
 		const cc = params.cc?.join(", ") ?? "";
+		const bcc = params.bcc?.join(", ") ?? "";
 		const lines = [
 			`To: ${to}`,
 			...(cc ? [`Cc: ${cc}`] : []),
+			...(bcc ? [`Bcc: ${bcc}`] : []),
 			`Subject: ${params.subject}`,
 			...(params.inReplyTo
 				? [
