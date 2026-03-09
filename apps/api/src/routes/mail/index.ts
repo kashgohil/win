@@ -37,6 +37,7 @@ import {
 	triageActionResponse,
 	unsubscribeResponse,
 	updateDraftBody,
+	updateSignatureBody,
 	vipSenderBody,
 } from "./responses";
 import { mailService } from "./service";
@@ -723,6 +724,35 @@ export const mail = new Elysia({
 		},
 	)
 	.patch(
+		"/accounts/:id/signature",
+		async ({ user, params, body, set }) => {
+			const result = await mailService.updateSignature(
+				user.id,
+				params.id,
+				body.signature,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { message: result.message };
+		},
+		{
+			auth: true,
+			body: updateSignatureBody,
+			response: {
+				200: messageResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Update email signature",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.patch(
 		"/emails/:id/star",
 		async ({ user, params, set }) => {
 			const result = await mailService.toggleStar(user.id, params.id);
@@ -1172,6 +1202,7 @@ export const mail = new Elysia({
 				params.id,
 				body.body,
 				body.cc,
+				body.attachments,
 			);
 			if (!result.ok) {
 				set.status = result.status;
@@ -1202,6 +1233,7 @@ export const mail = new Elysia({
 				params.id,
 				body.to,
 				body.body,
+				body.attachments,
 			);
 			if (!result.ok) {
 				set.status = result.status;
@@ -1235,6 +1267,7 @@ export const mail = new Elysia({
 				body.body,
 				body.cc,
 				body.bcc,
+				body.attachments,
 			);
 			if (!result.ok) {
 				set.status = result.status;

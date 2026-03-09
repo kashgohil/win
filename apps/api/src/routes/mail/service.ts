@@ -273,6 +273,7 @@ type SerializedAccount = {
 	syncStatus: (typeof syncStatusEnum.enumValues)[number];
 	lastSyncAt: string | null;
 	active: boolean;
+	signature: string | null;
 	createdAt: string;
 };
 
@@ -363,6 +364,7 @@ function serializeAccount(
 		syncStatus: a.syncStatus,
 		lastSyncAt: a.lastSyncAt?.toISOString() ?? null,
 		active: a.active,
+		signature: a.signature ?? null,
 		createdAt: a.createdAt.toISOString(),
 	};
 }
@@ -1081,6 +1083,36 @@ class MailService {
 		} catch (err) {
 			console.error("[mail] getAccounts failed:", err);
 			return { ok: false, error: "Failed to load accounts", status: 500 };
+		}
+	}
+
+	async updateSignature(
+		userId: string,
+		accountId: string,
+		signature: string | null,
+	): Promise<
+		| { ok: true; message: string }
+		| { ok: false; error: string; status: 404 | 500 }
+	> {
+		try {
+			const result = await db
+				.update(emailAccounts)
+				.set({ signature })
+				.where(
+					and(
+						eq(emailAccounts.id, accountId),
+						eq(emailAccounts.userId, userId),
+					),
+				)
+				.returning({ id: emailAccounts.id });
+
+			if (result.length === 0) {
+				return { ok: false, error: "Account not found", status: 404 };
+			}
+			return { ok: true, message: "Signature updated" };
+		} catch (err) {
+			console.error("[mail] updateSignature failed:", err);
+			return { ok: false, error: "Failed to update signature", status: 500 };
 		}
 	}
 
@@ -2400,6 +2432,7 @@ class MailService {
 		emailId: string,
 		body: string,
 		cc?: string[],
+		attachments?: { filename: string; mimeType: string; content: string }[],
 	): Promise<
 		| { ok: true; jobId: string; message: string }
 		| { ok: false; error: string; status: 404 | 500 }
@@ -2418,6 +2451,7 @@ class MailService {
 				emailAccountId: ctx.email.emailAccountId,
 				body,
 				cc,
+				attachments,
 			});
 
 			return { ok: true, jobId, message: "Queued" };
@@ -2432,6 +2466,7 @@ class MailService {
 		emailId: string,
 		to: string[],
 		body: string,
+		attachments?: { filename: string; mimeType: string; content: string }[],
 	): Promise<
 		| { ok: true; jobId: string; message: string }
 		| { ok: false; error: string; status: 404 | 500 }
@@ -2450,6 +2485,7 @@ class MailService {
 				emailAccountId: ctx.email.emailAccountId,
 				to,
 				body,
+				attachments,
 			});
 
 			return { ok: true, jobId, message: "Queued" };
@@ -2467,6 +2503,7 @@ class MailService {
 		body: string,
 		cc?: string[],
 		bcc?: string[],
+		attachments?: { filename: string; mimeType: string; content: string }[],
 	): Promise<
 		| { ok: true; jobId: string; message: string }
 		| { ok: false; error: string; status: 404 | 500 }
@@ -2495,6 +2532,7 @@ class MailService {
 				bcc,
 				subject,
 				body,
+				attachments,
 			});
 
 			return { ok: true, jobId, message: "Queued" };

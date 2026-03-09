@@ -165,7 +165,12 @@ export const emailAccountSchema = t.Object({
 	]),
 	lastSyncAt: t.Union([t.String({ format: "date-time" }), t.Null()]),
 	active: t.Boolean(),
+	signature: t.Union([t.String(), t.Null()]),
 	createdAt: t.String({ format: "date-time" }),
+});
+
+export const updateSignatureBody = t.Object({
+	signature: t.Union([t.String(), t.Null()]),
 });
 
 export const accountListResponse = t.Object({
@@ -334,18 +339,28 @@ export const updateDraftBody = t.Object({
 	draftResponse: t.String(),
 });
 
+/* ── Send attachment ── */
+
+export const sendAttachmentSchema = t.Object({
+	filename: t.String(),
+	mimeType: t.String(),
+	content: t.String({ description: "Base64-encoded file content" }),
+});
+
 /* ── Delayed send ── */
 
 export const delayedComposeBody = t.Object({
 	body: t.String(),
 	cc: t.Optional(t.Array(t.String())),
 	delayed: t.Optional(t.Boolean()),
+	attachments: t.Optional(t.Array(sendAttachmentSchema)),
 });
 
 export const delayedForwardBody = t.Object({
 	to: t.Array(t.String()),
 	body: t.String(),
 	delayed: t.Optional(t.Boolean()),
+	attachments: t.Optional(t.Array(sendAttachmentSchema)),
 });
 
 export const delayedSendResponse = t.Object({
@@ -362,6 +377,7 @@ export const composeNewBody = t.Object({
 	bcc: t.Optional(t.Array(t.String())),
 	subject: t.String(),
 	body: t.String(),
+	attachments: t.Optional(t.Array(sendAttachmentSchema)),
 });
 
 /* ── Sender mute / VIP ── */
