@@ -1,6 +1,17 @@
+import { ContactCardLazy } from "@/components/contacts/ContactCard";
 import { CATEGORY_CONFIG } from "@/components/mail/category-colors";
 import { cn, formatDate } from "@/lib/utils";
 import type { SerializedEmailDetail } from "@wingmnn/types";
+
+function AddressWithCard({ address }: { address: string }) {
+	return (
+		<ContactCardLazy email={address} side="bottom" align="start">
+			<span className="hover:underline decoration-dotted underline-offset-2 cursor-pointer">
+				{address}
+			</span>
+		</ContactCardLazy>
+	);
+}
 
 export function MessageMetadata({ email }: { email: SerializedEmailDetail }) {
 	return (
@@ -10,14 +21,24 @@ export function MessageMetadata({ email }: { email: SerializedEmailDetail }) {
 					From
 				</dt>
 				<dd className="font-body text-[13px] text-foreground min-w-0">
-					{email.fromName && (
-						<span className="font-medium">{email.fromName}</span>
-					)}
-					{email.fromAddress && (
-						<span className="text-grey-2 font-mono text-[12px]">
-							{email.fromName ? " " : ""}
-							&lt;{email.fromAddress}&gt;
-						</span>
+					{email.fromAddress ? (
+						<ContactCardLazy
+							email={email.fromAddress}
+							side="bottom"
+							align="start"
+						>
+							<span className="inline">
+								{email.fromName && (
+									<span className="font-medium">{email.fromName}</span>
+								)}
+								<span className="text-grey-2 font-mono text-[12px]">
+									{email.fromName ? " " : ""}
+									&lt;{email.fromAddress}&gt;
+								</span>
+							</span>
+						</ContactCardLazy>
+					) : (
+						<span className="text-grey-3">Unknown sender</span>
 					)}
 				</dd>
 			</div>
@@ -26,8 +47,13 @@ export function MessageMetadata({ email }: { email: SerializedEmailDetail }) {
 					<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
 						To
 					</dt>
-					<dd className="font-mono text-[12px] text-grey-2 min-w-0 break-all">
-						{email.toAddresses.join(", ")}
+					<dd className="font-mono text-[12px] text-grey-2 min-w-0 break-all flex flex-wrap gap-x-1">
+						{email.toAddresses.map((addr, i) => (
+							<span key={addr}>
+								<AddressWithCard address={addr} />
+								{i < email.toAddresses!.length - 1 && ","}
+							</span>
+						))}
 					</dd>
 				</div>
 			)}
@@ -36,8 +62,13 @@ export function MessageMetadata({ email }: { email: SerializedEmailDetail }) {
 					<dt className="font-body text-[11px] uppercase tracking-wider text-grey-3 shrink-0 w-9 text-left">
 						Cc
 					</dt>
-					<dd className="font-mono text-[12px] text-grey-2 min-w-0 break-all">
-						{email.ccAddresses.join(", ")}
+					<dd className="font-mono text-[12px] text-grey-2 min-w-0 break-all flex flex-wrap gap-x-1">
+						{email.ccAddresses.map((addr, i) => (
+							<span key={addr}>
+								<AddressWithCard address={addr} />
+								{i < email.ccAddresses!.length - 1 && ","}
+							</span>
+						))}
 					</dd>
 				</div>
 			)}
