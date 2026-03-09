@@ -45,6 +45,13 @@ export interface SyncResult {
 	hasMore: boolean;
 }
 
+export interface SendAttachment {
+	filename: string;
+	mimeType: string;
+	/** Base64-encoded file content */
+	content: string;
+}
+
 export interface SendParams {
 	to: string[];
 	cc?: string[];
@@ -53,6 +60,7 @@ export interface SendParams {
 	body: string;
 	threadId?: string;
 	inReplyTo?: string;
+	attachments?: SendAttachment[];
 }
 
 export interface EmailProvider {

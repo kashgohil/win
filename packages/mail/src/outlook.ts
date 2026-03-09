@@ -239,6 +239,15 @@ export class OutlookProvider implements EmailProvider {
 				}));
 			}
 
+			if (params.attachments?.length) {
+				message.attachments = params.attachments.map((att) => ({
+					"@odata.type": "#microsoft.graph.fileAttachment",
+					name: att.filename,
+					contentType: att.mimeType,
+					contentBytes: att.content,
+				}));
+			}
+
 			const res = await this.graphFetch(
 				accessToken,
 				`${GRAPH_API}/me/sendMail`,

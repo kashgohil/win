@@ -194,23 +194,67 @@ export class GmailProvider implements EmailProvider {
 		const to = params.to.join(", ");
 		const cc = params.cc?.join(", ") ?? "";
 		const bcc = params.bcc?.join(", ") ?? "";
-		const lines = [
-			`To: ${to}`,
-			...(cc ? [`Cc: ${cc}`] : []),
-			...(bcc ? [`Bcc: ${bcc}`] : []),
-			`Subject: ${params.subject}`,
-			...(params.inReplyTo
-				? [
-						`In-Reply-To: ${params.inReplyTo}`,
-						`References: ${params.inReplyTo}`,
-					]
-				: []),
-			"Content-Type: text/plain; charset=utf-8",
-			"",
-			params.body,
-		];
+		const hasAttachments = params.attachments && params.attachments.length > 0;
 
-		const raw = btoa(lines.join("\r\n"))
+		let rawMessage: string;
+
+		if (hasAttachments) {
+			const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+			const headers = [
+				`To: ${to}`,
+				...(cc ? [`Cc: ${cc}`] : []),
+				...(bcc ? [`Bcc: ${bcc}`] : []),
+				`Subject: ${params.subject}`,
+				...(params.inReplyTo
+					? [
+							`In-Reply-To: ${params.inReplyTo}`,
+							`References: ${params.inReplyTo}`,
+						]
+					: []),
+				"MIME-Version: 1.0",
+				`Content-Type: multipart/mixed; boundary="${boundary}"`,
+				"",
+				`--${boundary}`,
+				"Content-Type: text/plain; charset=utf-8",
+				"",
+				params.body,
+			];
+
+			const attachmentParts = params.attachments!.map((att) =>
+				[
+					`--${boundary}`,
+					`Content-Type: ${att.mimeType}; name="${att.filename}"`,
+					"Content-Transfer-Encoding: base64",
+					`Content-Disposition: attachment; filename="${att.filename}"`,
+					"",
+					att.content,
+				].join("\r\n"),
+			);
+
+			rawMessage = [
+				headers.join("\r\n"),
+				...attachmentParts,
+				`--${boundary}--`,
+			].join("\r\n");
+		} else {
+			rawMessage = [
+				`To: ${to}`,
+				...(cc ? [`Cc: ${cc}`] : []),
+				...(bcc ? [`Bcc: ${bcc}`] : []),
+				`Subject: ${params.subject}`,
+				...(params.inReplyTo
+					? [
+							`In-Reply-To: ${params.inReplyTo}`,
+							`References: ${params.inReplyTo}`,
+						]
+					: []),
+				"Content-Type: text/plain; charset=utf-8",
+				"",
+				params.body,
+			].join("\r\n");
+		}
+
+		const raw = btoa(rawMessage)
 			.replace(/\+/g, "-")
 			.replace(/\//g, "_")
 			.replace(/=+$/, "");
