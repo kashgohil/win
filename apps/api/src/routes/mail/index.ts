@@ -6,6 +6,7 @@ import {
 	accountListResponse,
 	attachmentListResponse,
 	composeBody,
+	composeNewBody,
 	connectResponse,
 	createSenderRuleBody,
 	createSenderRuleResponse,
@@ -1218,6 +1219,39 @@ export const mail = new Elysia({
 			},
 			detail: {
 				summary: "Forward with undo delay",
+				tags: ["Mail"],
+				security: [{ bearerAuth: [] }],
+			},
+		},
+	)
+	.post(
+		"/compose-delayed",
+		async ({ user, body, set }) => {
+			const result = await mailService.composeEmailDelayed(
+				user.id,
+				body.accountId,
+				body.to,
+				body.subject,
+				body.body,
+				body.cc,
+				body.bcc,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { jobId: result.jobId, message: result.message };
+		},
+		{
+			auth: true,
+			body: composeNewBody,
+			response: {
+				200: delayedSendResponse,
+				404: errorResponse,
+				500: errorResponse,
+			},
+			detail: {
+				summary: "Compose and send new email with undo delay",
 				tags: ["Mail"],
 				security: [{ bearerAuth: [] }],
 			},

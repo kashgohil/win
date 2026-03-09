@@ -353,6 +353,17 @@ export const delayedSendResponse = t.Object({
 	message: t.String(),
 });
 
+/* ── Compose new email ── */
+
+export const composeNewBody = t.Object({
+	accountId: t.String({ format: "uuid" }),
+	to: t.Array(t.String(), { minItems: 1 }),
+	cc: t.Optional(t.Array(t.String())),
+	bcc: t.Optional(t.Array(t.String())),
+	subject: t.String(),
+	body: t.String(),
+});
+
 /* ── Sender mute / VIP ── */
 
 export const muteSenderBody = t.Object({

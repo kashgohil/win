@@ -2459,6 +2459,51 @@ class MailService {
 		}
 	}
 
+	async composeEmailDelayed(
+		userId: string,
+		accountId: string,
+		to: string[],
+		subject: string,
+		body: string,
+		cc?: string[],
+		bcc?: string[],
+	): Promise<
+		| { ok: true; jobId: string; message: string }
+		| { ok: false; error: string; status: 404 | 500 }
+	> {
+		try {
+			const account = await db.query.emailAccounts.findFirst({
+				where: and(
+					eq(emailAccounts.id, accountId),
+					eq(emailAccounts.userId, userId),
+				),
+			});
+			if (!account || !account.active)
+				return {
+					ok: false,
+					error: "Account not found or inactive",
+					status: 404,
+				};
+
+			const { enqueueDelayedSend } = await import("@wingmnn/queue");
+			const jobId = await enqueueDelayedSend({
+				type: "compose",
+				userId,
+				emailAccountId: accountId,
+				to,
+				cc,
+				bcc,
+				subject,
+				body,
+			});
+
+			return { ok: true, jobId, message: "Queued" };
+		} catch (err) {
+			console.error("[mail] composeEmailDelayed failed:", err);
+			return { ok: false, error: "Failed to queue email", status: 500 };
+		}
+	}
+
 	async cancelDelayedSend(
 		jobId: string,
 	): Promise<
