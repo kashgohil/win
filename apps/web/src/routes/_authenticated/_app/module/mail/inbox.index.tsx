@@ -1017,14 +1017,13 @@ function MailInbox() {
 					Mail
 				</Link>
 
-				<div className="flex items-center gap-3">
+				<div className="flex items-center gap-1.5">
 					<button
 						type="button"
 						onClick={() => setComposeOpen(true)}
-						className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent-red/40 bg-accent-red/10 hover:bg-accent-red/20 hover:border-accent-red/60 text-accent-red transition-all duration-150 cursor-pointer"
+						className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-accent-red/40 bg-accent-red/10 hover:bg-accent-red/20 hover:border-accent-red/60 text-accent-red transition-all duration-150 cursor-pointer"
 					>
 						<PenSquare className="size-3" />
-						<span className="font-body text-[12px]">Compose</span>
 						<Kbd>C</Kbd>
 					</button>
 
@@ -1033,7 +1032,7 @@ function MailInbox() {
 					<Link
 						to="/module/mail/attachments"
 						className={cn(
-							"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
+							"inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
 							keyboard.isActive &&
 								keyboard.activeSection === "header" &&
 								keyboard.focusedHeaderIndex === 1 &&
@@ -1041,7 +1040,6 @@ function MailInbox() {
 						)}
 					>
 						<Paperclip className="size-3" />
-						<span className="font-body text-[12px]">Attachments</span>
 						<Kbd>A</Kbd>
 					</Link>
 
@@ -1049,7 +1047,7 @@ function MailInbox() {
 						to="/module/mail/sent"
 						search={{ starred: undefined, attachment: undefined }}
 						className={cn(
-							"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
+							"inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
 							keyboard.isActive &&
 								keyboard.activeSection === "header" &&
 								keyboard.focusedHeaderIndex === 2 &&
@@ -1057,7 +1055,6 @@ function MailInbox() {
 						)}
 					>
 						<Send className="size-3" />
-						<span className="font-body text-[12px]">Sent</span>
 						<Kbd>S</Kbd>
 					</Link>
 
@@ -1065,7 +1062,7 @@ function MailInbox() {
 						type="button"
 						onClick={() => setSearchOpen(true)}
 						className={cn(
-							"inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer",
+							"inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer",
 							keyboard.isActive &&
 								keyboard.activeSection === "header" &&
 								keyboard.focusedHeaderIndex === 3 &&
@@ -1073,7 +1070,6 @@ function MailInbox() {
 						)}
 					>
 						<Search className="size-3" />
-						<span className="font-body text-[12px]">Search</span>
 						<Kbd>/</Kbd>
 					</button>
 
@@ -1117,7 +1113,7 @@ function MailInbox() {
 								<button
 									type="button"
 									onClick={toggleViewMode}
-									className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer"
+									className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer"
 								>
 									{viewMode === "inline" ? (
 										<Columns2 className="size-3.5" />
@@ -1135,7 +1131,7 @@ function MailInbox() {
 						</Tooltip>
 					</TooltipProvider>
 
-					<div className="w-px h-3.5 bg-border/40" />
+					<div className="w-px h-3 bg-border/40" />
 
 					<AccountSelector />
 				</div>
