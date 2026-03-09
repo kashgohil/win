@@ -9,13 +9,15 @@ import {
 	SheetDescription,
 	SheetTitle,
 } from "@/components/ui/sheet";
-import { useConnectAccount } from "@/hooks/use-mail";
+import { useConnectAccount, useUpdateSignature } from "@/hooks/use-mail";
 import { api } from "@/lib/api";
 import { mailAccountsCollection } from "@/lib/mail-collections";
 import { useLiveQuery } from "@tanstack/react-db";
 import type { EmailProvider } from "@wingmnn/types";
-import { Settings2 } from "lucide-react";
+import { Check, Pen, Settings2 } from "lucide-react";
 import { motion } from "motion/react";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import { MOTION_CONSTANTS } from "../constant";
 
 const PROVIDERS: ProviderConfig[] = [
@@ -131,6 +133,28 @@ export function SettingsSheet({
 					</div>
 				)}
 
+				{/* Signatures */}
+				{hasAccounts && !isPending && (
+					<div className="px-6 pt-5 pb-2">
+						<div className="flex items-center gap-3 mb-4">
+							<span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-grey-3">
+								Signatures
+							</span>
+							<div className="flex-1 h-px bg-border/50" />
+						</div>
+						<div className="space-y-3">
+							{accounts.map((account) => (
+								<SignatureEditor
+									key={account.id}
+									accountId={account.id}
+									email={account.email}
+									signature={account.signature ?? null}
+								/>
+							))}
+						</div>
+					</div>
+				)}
+
 				{/* Add provider */}
 				<div className="px-6 pt-5 pb-8">
 					{!hasAccounts && !isPending ? (
@@ -171,6 +195,95 @@ export function SettingsSheet({
 				</div>
 			</SheetContent>
 		</Sheet>
+	);
+}
+
+function SignatureEditor({
+	accountId,
+	email,
+	signature,
+}: {
+	accountId: string;
+	email: string;
+	signature: string | null;
+}) {
+	const [editing, setEditing] = useState(false);
+	const [value, setValue] = useState(signature ?? "");
+	const updateSignature = useUpdateSignature();
+
+	const handleSave = useCallback(() => {
+		const trimmed = value.trim();
+		updateSignature.mutate(
+			{ accountId, signature: trimmed || null },
+			{
+				onSuccess: () => {
+					setEditing(false);
+					toast("Signature updated");
+				},
+				onError: () => toast.error("Failed to update signature"),
+			},
+		);
+	}, [accountId, value, updateSignature]);
+
+	if (!editing) {
+		return (
+			<div className="rounded-lg border border-border/40 bg-background px-4 py-3">
+				<div className="flex items-center justify-between gap-2">
+					<span className="font-body text-[12px] text-grey-2 truncate">
+						{email}
+					</span>
+					<button
+						type="button"
+						onClick={() => {
+							setValue(signature ?? "");
+							setEditing(true);
+						}}
+						className="inline-flex items-center gap-1 font-mono text-[10px] text-grey-3 hover:text-foreground transition-colors cursor-pointer shrink-0"
+					>
+						<Pen className="size-2.5" />
+						{signature ? "Edit" : "Add"}
+					</button>
+				</div>
+				{signature && (
+					<p className="font-body text-[11px] text-grey-3 mt-1.5 whitespace-pre-wrap line-clamp-3">
+						{signature}
+					</p>
+				)}
+			</div>
+		);
+	}
+
+	return (
+		<div className="rounded-lg border border-ring/50 bg-background px-4 py-3">
+			<span className="font-body text-[12px] text-grey-2 block mb-2">
+				{email}
+			</span>
+			<textarea
+				value={value}
+				onChange={(e) => setValue(e.target.value)}
+				placeholder="Your email signature..."
+				rows={4}
+				className="w-full resize-none rounded-md border border-border/50 bg-secondary/10 px-3 py-2 font-body text-[12px] text-foreground placeholder:text-grey-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
+			/>
+			<div className="flex items-center gap-2 mt-2">
+				<button
+					type="button"
+					onClick={handleSave}
+					disabled={updateSignature.isPending}
+					className="inline-flex items-center gap-1 rounded-md bg-foreground text-background px-3 py-1.5 font-body text-[11px] hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+				>
+					<Check className="size-3" />
+					Save
+				</button>
+				<button
+					type="button"
+					onClick={() => setEditing(false)}
+					className="font-body text-[11px] text-grey-3 hover:text-foreground transition-colors cursor-pointer px-2 py-1.5"
+				>
+					Cancel
+				</button>
+			</div>
+		</div>
 	);
 }
 
