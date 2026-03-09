@@ -1,51 +1,17 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
 import { getIcon } from "@/components/onboarding/icons";
+import { useDailyBriefing } from "@/hooks/use-ai";
 import { useOnboardingProfile } from "@/hooks/use-onboarding";
 import { authClient } from "@/lib/auth-client";
-import { MODULES, getActiveModules } from "@/lib/onboarding-data";
-import { createFileRoute } from "@tanstack/react-router";
+import { getActiveModules, MODULES } from "@/lib/onboarding-data";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/_app/")({
 	component: Dashboard,
 });
-
-/* ── Placeholder data — replace with real API calls ── */
-
-const MOCK_TIMELINE = [
-	{ time: "09:00", label: "Morning review", done: true },
-	{ time: "10:30", label: "Client call — Acme Inc", done: true },
-	{
-		time: "14:30",
-		label: "Team standup",
-		done: false,
-		detail: "Google Meet · 30 min",
-	},
-	{ time: "16:00", label: "Review Q4 report", done: false },
-];
-
-const MOCK_ACTIONS: { text: string; moduleKey: string; urgent?: boolean }[] = [
-	{ text: "Reply to Sarah's proposal", moduleKey: "mail" },
-	{ text: "Invoice #1042 is 3 days overdue", moduleKey: "fin", urgent: true },
-	{ text: "Follow up with Alex Chen", moduleKey: "crm" },
-];
-
-const MOCK_PULSE: Record<
-	string,
-	{ status: string; signal?: "good" | "warn" | "neutral" }
-> = {
-	mail: { status: "3 unread", signal: "neutral" },
-	cal: { status: "2 left today", signal: "neutral" },
-	task: { status: "5 of 8 done", signal: "good" },
-	fin: { status: "1 overdue", signal: "warn" },
-	notes: { status: "edited 2h ago", signal: "neutral" },
-	crm: { status: "1 follow-up", signal: "neutral" },
-	social: { status: "12 new", signal: "good" },
-	files: { status: "synced", signal: "good" },
-	travel: { status: "no trips", signal: "neutral" },
-	health: { status: "3-day streak", signal: "good" },
-};
 
 /* ── Helpers ── */
 
@@ -66,10 +32,6 @@ function useCurrentTime() {
 	return now;
 }
 
-function getModuleCode(key: string): string | undefined {
-	return MODULES.find((m) => m.key === key)?.code;
-}
-
 function getDayProgress(now: Date): number {
 	const mins = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
 	return Math.max(0, Math.min(1, (mins - 420) / 960));
@@ -80,8 +42,8 @@ function getDayProgress(now: Date): number {
 function Dashboard() {
 	const now = useCurrentTime();
 	const { data: session } = authClient.useSession();
-
 	const { data: profileData } = useOnboardingProfile();
+	const { data: briefing, isPending: briefingLoading } = useDailyBriefing();
 
 	const firstName = session?.user?.name?.split(" ")[0] ?? "";
 	const enabledModules = profileData?.profile?.enabledModules ?? [];
@@ -99,11 +61,74 @@ function Dashboard() {
 		day: "numeric",
 	});
 
-	const visibleActions = MOCK_ACTIONS.filter((a) =>
+	const events = briefing?.events ?? [];
+	const overdueTasks = briefing?.overdueTasks ?? [];
+	const todayTasks = briefing?.todayTasks ?? [];
+	const unreadCount = briefing?.unreadCount ?? 0;
+	const triageCount = briefing?.triageCount ?? 0;
+
+	// Build dispatch items from real data
+	const dispatchItems: { text: string; moduleKey: string; urgent?: boolean }[] =
+		[];
+	if (overdueTasks.length > 0) {
+		for (const t of overdueTasks.slice(0, 3)) {
+			dispatchItems.push({
+				text: t.title,
+				moduleKey: "task",
+				urgent: true,
+			});
+		}
+	}
+	if (triageCount > 0) {
+		dispatchItems.push({
+			text: `${triageCount} email${triageCount > 1 ? "s" : ""} need${triageCount === 1 ? "s" : ""} attention`,
+			moduleKey: "mail",
+		});
+	}
+	if (todayTasks.length > 0) {
+		for (const t of todayTasks.slice(0, 2)) {
+			dispatchItems.push({ text: t.title, moduleKey: "task" });
+		}
+	}
+
+	const visibleDispatch = dispatchItems.filter((a) =>
 		enabledModules.includes(a.moduleKey),
 	);
-	const timeline = enabledModules.includes("cal") ? MOCK_TIMELINE : [];
-	const nextEvent = timeline.find((e) => !e.done);
+
+	// Build systems pulse from real data
+	const systemsPulse: Record<
+		string,
+		{ status: string; signal: "good" | "warn" | "neutral" }
+	> = {};
+	if (enabledModules.includes("mail")) {
+		systemsPulse.mail = {
+			status: unreadCount > 0 ? `${unreadCount} unread` : "all clear",
+			signal: triageCount > 0 ? "warn" : unreadCount > 0 ? "neutral" : "good",
+		};
+	}
+	if (enabledModules.includes("cal")) {
+		systemsPulse.cal = {
+			status:
+				events.length > 0
+					? `${events.length} event${events.length > 1 ? "s" : ""} today`
+					: "no events",
+			signal: events.length > 3 ? "warn" : "neutral",
+		};
+	}
+	if (enabledModules.includes("task")) {
+		const totalDue = overdueTasks.length + todayTasks.length;
+		systemsPulse.task = {
+			status:
+				overdueTasks.length > 0
+					? `${overdueTasks.length} overdue`
+					: todayTasks.length > 0
+						? `${todayTasks.length} due today`
+						: "on track",
+			signal:
+				overdueTasks.length > 0 ? "warn" : totalDue > 0 ? "neutral" : "good",
+		};
+	}
+
 	const progress = getDayProgress(now);
 
 	return (
@@ -118,6 +143,25 @@ function Dashboard() {
 				<h1 className="font-display text-[clamp(2.25rem,5vw,3.5rem)] text-foreground tracking-[0.01em] leading-[1.05] lowercase mt-1">
 					{getGreeting()}, {firstName}.
 				</h1>
+
+				{/* AI briefing summary */}
+				{briefing?.aiSummary && (
+					<motion.div
+						initial={{ opacity: 0, y: 8 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{
+							duration: 0.5,
+							delay: 0.15,
+							ease: MOTION_CONSTANTS.EASE,
+						}}
+						className="mt-4 flex items-start gap-2.5"
+					>
+						<Sparkles className="size-3.5 text-grey-3 shrink-0 mt-1" />
+						<p className="font-serif text-[15px] text-foreground/70 italic leading-relaxed">
+							{briefing.aiSummary}
+						</p>
+					</motion.div>
+				)}
 
 				{/* ─ Day progress rail ─ */}
 				<div className="mt-8 relative">
@@ -142,7 +186,7 @@ function Dashboard() {
 				{/* ─── Main column ─── */}
 				<div className="min-w-0 space-y-10">
 					{/* ── Next ── */}
-					{nextEvent && (
+					{events.length > 0 && (
 						<section
 							className="dash-fade-up"
 							style={{ animationDelay: "100ms" }}
@@ -150,14 +194,14 @@ function Dashboard() {
 							<SectionRule label="Next" />
 							<div className="mt-4 pl-0.5">
 								<span className="font-mono text-[13px] text-accent-red tracking-[0.02em]">
-									{nextEvent.time.replace(/^0/, "")}
+									{events[0].time}
 								</span>
 								<h2 className="font-display text-[clamp(1.25rem,2.5vw,1.75rem)] text-foreground leading-tight mt-1 lowercase">
-									{nextEvent.label}
+									{events[0].title}
 								</h2>
-								{nextEvent.detail && (
+								{events[0].detail && (
 									<p className="font-mono text-[12px] text-grey-2 mt-1 tracking-[0.02em]">
-										{nextEvent.detail}
+										{events[0].detail}
 									</p>
 								)}
 							</div>
@@ -169,16 +213,24 @@ function Dashboard() {
 						<SectionRule
 							label="Dispatch"
 							count={
-								visibleActions.length > 0 ? visibleActions.length : undefined
+								visibleDispatch.length > 0 ? visibleDispatch.length : undefined
 							}
 						/>
-						{visibleActions.length > 0 ? (
+						{briefingLoading ? (
+							<div className="mt-4 space-y-3 animate-pulse">
+								<div className="h-4 w-64 bg-secondary/30 rounded" />
+								<div className="h-4 w-48 bg-secondary/25 rounded" />
+								<div className="h-4 w-56 bg-secondary/20 rounded" />
+							</div>
+						) : visibleDispatch.length > 0 ? (
 							<ol className="mt-4">
-								{visibleActions.map((action, i) => {
-									const code = getModuleCode(action.moduleKey);
+								{visibleDispatch.map((action, i) => {
+									const code = MODULES.find(
+										(m) => m.key === action.moduleKey,
+									)?.code;
 									return (
 										<li
-											key={action.text}
+											key={`${action.moduleKey}-${action.text}`}
 											className="group flex items-baseline gap-4 py-3 border-b border-border/25 last:border-0 cursor-default hover:bg-secondary/30 -mx-2 px-2 rounded-lg transition-colors duration-150"
 										>
 											<span className="font-mono text-[11px] text-grey-2 tabular-nums w-5 text-right shrink-0">
@@ -207,7 +259,7 @@ function Dashboard() {
 					</section>
 
 					{/* ── Today's schedule ── */}
-					{timeline.length > 0 && (
+					{events.length > 0 && (
 						<section
 							className="dash-fade-up"
 							style={{ animationDelay: "300ms" }}
@@ -216,31 +268,28 @@ function Dashboard() {
 							<div className="mt-4 relative">
 								{/* Vertical connector line */}
 								<div className="absolute left-[61px] top-2 bottom-2 w-px bg-border/50" />
-								{timeline.map((event) => (
+								{events.map((event) => (
 									<div
-										key={event.time + event.label}
-										className={`relative flex items-baseline gap-4 py-2 ${event.done ? "opacity-50" : ""}`}
+										key={`${event.time}-${event.title}`}
+										className="relative flex items-baseline gap-4 py-2"
 									>
 										<span className="font-mono text-[12px] text-grey-2 tabular-nums w-10 text-right shrink-0">
-											{event.time.replace(/^0/, "")}
+											{event.time}
 										</span>
-										{/* Timeline dot — cream ring masks connector line */}
+										{/* Timeline dot */}
 										<span className="relative z-10 shrink-0 size-3 rounded-full bg-background flex items-center justify-center">
-											<span
-												className={`size-[5px] rounded-full ${
-													event.done ? "bg-grey-3" : "bg-foreground"
-												}`}
-											/>
+											<span className="size-[5px] rounded-full bg-foreground" />
 										</span>
-										<span
-											className={`font-body text-[14px] tracking-[0.01em] leading-snug ${
-												event.done
-													? "text-muted-foreground line-through decoration-muted-foreground/50"
-													: "text-foreground"
-											}`}
-										>
-											{event.label}
-										</span>
+										<div className="flex-1 min-w-0">
+											<span className="font-body text-[14px] tracking-[0.01em] leading-snug text-foreground">
+												{event.title}
+											</span>
+											{event.detail && (
+												<span className="font-mono text-[11px] text-grey-3 ml-2">
+													{event.detail}
+												</span>
+											)}
+										</div>
 									</div>
 								))}
 							</div>
@@ -259,12 +308,13 @@ function Dashboard() {
 						<div className="mt-4">
 							{activeModules.map((mod, i) => {
 								const Icon = getIcon(mod.icon);
-								const pulse = MOCK_PULSE[mod.key];
+								const pulse = systemsPulse[mod.key];
 								const signal = pulse?.signal;
 								return (
-									<div
+									<Link
 										key={mod.key}
-										className="dash-card-in group flex items-center gap-3 py-[9px] cursor-default hover:bg-secondary/30 -mx-2 px-2 rounded-lg transition-colors duration-150"
+										to={`/module/${mod.key}`}
+										className="dash-card-in group flex items-center gap-3 py-[9px] hover:bg-secondary/30 -mx-2 px-2 rounded-lg transition-colors duration-150"
 										style={
 											{
 												"--card-i": i,
@@ -289,7 +339,7 @@ function Dashboard() {
 										{Icon && (
 											<Icon className="h-3.5 w-3.5 text-transparent group-hover:text-grey-3 transition-colors duration-200 shrink-0" />
 										)}
-									</div>
+									</Link>
 								);
 							})}
 						</div>
