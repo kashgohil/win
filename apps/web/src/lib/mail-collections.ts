@@ -50,7 +50,10 @@ export const mailBriefingCollection = createCollection(
 
 async function fetchMailAccounts() {
 	const { data, error } = await api.mail.accounts.get();
-	if (error) throw new Error("Failed to load accounts");
+	if (error) {
+		console.error("[mail] fetchMailAccounts error:", error);
+		throw new Error("Failed to load accounts");
+	}
 	return data;
 }
 
