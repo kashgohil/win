@@ -30,6 +30,7 @@ export const contactKeys = {
 	suggestions: () => [...contactKeys.all, "suggestions"] as const,
 	meetingPrep: (eventId: string) =>
 		[...contactKeys.all, "meeting-prep", eventId] as const,
+	lookup: (email: string) => [...contactKeys.all, "lookup", email] as const,
 };
 
 /* ── Types ── */
@@ -133,6 +134,21 @@ export function useContactDetail(id: string) {
 			return data;
 		},
 		enabled: !!id,
+	});
+}
+
+export function useContactLookup(email: string | null) {
+	return useQuery({
+		queryKey: contactKeys.lookup(email ?? ""),
+		queryFn: async () => {
+			const { data, error } = await api.contacts.lookup.get({
+				query: { email: email! },
+			});
+			if (error) throw new Error("Failed to lookup contact");
+			return data;
+		},
+		enabled: !!email,
+		staleTime: 5 * 60 * 1000,
 	});
 }
 

@@ -40,19 +40,13 @@ type ContactLookupResult = {
 
 function useContactByEmail(email: string, enabled: boolean) {
 	return useQuery({
-		queryKey: ["contacts", "by-email", email],
+		queryKey: ["contacts", "lookup", email],
 		queryFn: async () => {
-			const { data, error } = await api.contacts.get({
-				query: { q: email, limit: "1" },
+			const { data, error } = await api.contacts.lookup.get({
+				query: { email },
 			});
 			if (error) return null;
-			const contacts = (data as { contacts: ContactLookupResult[] })?.contacts;
-			if (!contacts || contacts.length === 0) return null;
-			// Verify exact email match
-			const match = contacts.find(
-				(c) => c.primaryEmail.toLowerCase() === email.toLowerCase(),
-			);
-			return match ?? null;
+			return (data as ContactLookupResult) ?? null;
 		},
 		enabled,
 		staleTime: 5 * 60 * 1000,
