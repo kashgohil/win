@@ -10,6 +10,7 @@ import {
 	KeyboardShortcutBar,
 } from "@/components/mail/KeyboardShortcutBar";
 import { MessageMetadata } from "@/components/mail/MessageMetadata";
+import { useAiSummarize } from "@/hooks/use-ai";
 import { useEmailDetailKeyboard } from "@/hooks/use-email-detail-keyboard";
 import { mailKeys, useMailThreadDetail } from "@/hooks/use-mail";
 import { recordThreadVisit } from "@/hooks/use-merge-suggestions";
@@ -18,7 +19,13 @@ import { cn, formatDate } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { SerializedEmailDetail } from "@wingmnn/types";
-import { ArrowLeft, ChevronRight, Unlink } from "lucide-react";
+import {
+	ArrowLeft,
+	ChevronRight,
+	Loader2,
+	Sparkles,
+	Unlink,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -345,6 +352,11 @@ function EmailDetail() {
 				/>
 			)}
 
+			{/* Thread AI summary — only for multi-message threads */}
+			{!isSingleMessage && messages.length > 1 && (
+				<ThreadSummaryButton messages={messages} />
+			)}
+
 			<ComposeSheet
 				open={composeMode !== null}
 				onOpenChange={(open) => {
@@ -560,6 +572,70 @@ function ConversationView({
 				);
 			})}
 		</div>
+	);
+}
+
+/* ── Thread AI summary button ── */
+
+function ThreadSummaryButton({
+	messages,
+}: {
+	messages: SerializedEmailDetail[];
+}) {
+	const summarize = useAiSummarize();
+	const [summary, setSummary] = useState<string | null>(null);
+
+	const handleSummarize = useCallback(() => {
+		summarize.mutate(
+			messages.map((m) => ({
+				from: m.fromName || m.fromAddress || "Unknown",
+				body: m.bodyPlain ?? m.snippet ?? "",
+				date: m.receivedAt,
+			})),
+			{
+				onSuccess: (data) => setSummary(data.summary),
+				onError: () => toast.error("Failed to summarize thread"),
+			},
+		);
+	}, [messages, summarize]);
+
+	return (
+		<motion.div
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			transition={{ duration: 0.3, delay: 0.2 }}
+			className="mt-6"
+		>
+			{summary ? (
+				<div className="rounded-lg border border-border/40 bg-secondary/5 overflow-hidden">
+					<div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/30">
+						<Sparkles className="size-3.5 text-foreground/80" />
+						<span className="font-body text-[12px] text-grey-2">
+							Thread summary
+						</span>
+					</div>
+					<div className="px-4 py-4">
+						<p className="font-serif text-[14px] text-foreground/75 italic leading-relaxed border-l-2 border-grey-4/60 pl-3">
+							{summary}
+						</p>
+					</div>
+				</div>
+			) : (
+				<button
+					type="button"
+					onClick={handleSummarize}
+					disabled={summarize.isPending}
+					className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border/40 bg-secondary/10 hover:bg-secondary/25 text-grey-2 hover:text-foreground font-body text-[12px] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					{summarize.isPending ? (
+						<Loader2 className="size-3.5 animate-spin" />
+					) : (
+						<Sparkles className="size-3.5" />
+					)}
+					{summarize.isPending ? "Summarizing…" : "Summarize thread"}
+				</button>
+			)}
+		</motion.div>
 	);
 }
 
