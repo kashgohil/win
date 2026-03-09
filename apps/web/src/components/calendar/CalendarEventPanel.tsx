@@ -10,14 +10,18 @@ import {
 	type CalendarEvent,
 	useDeleteCalendarEvent,
 } from "@/hooks/use-calendar";
+import { useMeetingPrep } from "@/hooks/use-contacts";
 import { useCreateTask } from "@/hooks/use-tasks";
 import { cn } from "@/lib/utils";
 import {
 	Calendar,
 	CheckSquare,
+	ChevronDown,
 	ExternalLink,
 	Loader2,
+	Mail,
 	MapPin,
+	Sparkles,
 	Trash2,
 	Users,
 	Video,
@@ -220,6 +224,11 @@ export function CalendarEventPanel({
 						</div>
 					)}
 
+					{/* Meeting prep */}
+					{event.attendees.length > 0 && (
+						<MeetingPrepSection eventId={event.id} />
+					)}
+
 					{/* Description */}
 					{event.description && (
 						<div className="space-y-1">
@@ -312,5 +321,116 @@ export function CalendarEventPanel({
 				</div>
 			</SheetContent>
 		</Sheet>
+	);
+}
+
+/* ── Meeting prep section ── */
+
+function MeetingPrepSection({ eventId }: { eventId: string }) {
+	const [expanded, setExpanded] = useState(false);
+	const { data: prep, isPending } = useMeetingPrep(eventId);
+
+	if (!expanded) {
+		return (
+			<button
+				type="button"
+				onClick={() => setExpanded(true)}
+				className="flex items-center gap-2 w-full px-3 py-2 rounded-md border border-border/30 bg-secondary/10 hover:bg-secondary/25 font-mono text-[11px] text-grey-2 hover:text-foreground transition-colors cursor-pointer"
+			>
+				<Sparkles className="size-3" />
+				Meeting prep
+				<ChevronDown className="size-3 ml-auto" />
+			</button>
+		);
+	}
+
+	if (isPending) {
+		return (
+			<div className="space-y-2 animate-pulse">
+				<div className="h-3 w-24 bg-secondary/30 rounded" />
+				<div className="h-10 w-full bg-secondary/20 rounded" />
+				<div className="h-10 w-full bg-secondary/20 rounded" />
+			</div>
+		);
+	}
+
+	if (!prep?.attendees || prep.attendees.length === 0) {
+		return (
+			<div className="rounded-md border border-border/30 bg-secondary/5 px-3 py-2">
+				<div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3">
+					<Sparkles className="size-3" />
+					Meeting prep
+				</div>
+				<p className="font-body text-[12px] text-grey-3 mt-1.5 italic">
+					No contact data available for attendees.
+				</p>
+			</div>
+		);
+	}
+
+	return (
+		<div className="rounded-md border border-border/30 bg-secondary/5 overflow-hidden">
+			<div className="flex items-center gap-1.5 px-3 py-2 border-b border-border/20">
+				<Sparkles className="size-3 text-grey-3" />
+				<span className="font-mono text-[10px] uppercase tracking-[0.14em] text-grey-3">
+					Meeting prep
+				</span>
+			</div>
+			<div className="divide-y divide-border/15">
+				{prep.attendees.map((attendee) => (
+					<div key={attendee.email} className="px-3 py-2.5 space-y-1">
+						<div className="flex items-center justify-between">
+							<ContactCardLazy email={attendee.email} side="left" align="start">
+								<span className="font-body text-[13px] text-foreground font-medium">
+									{attendee.name ?? attendee.email}
+								</span>
+							</ContactCardLazy>
+							{attendee.relationshipScore != null &&
+								attendee.relationshipScore > 0 && (
+									<span className="font-mono text-[9px] text-grey-3 px-1.5 py-0.5 rounded-full bg-secondary/30">
+										{attendee.relationshipScore}
+									</span>
+								)}
+						</div>
+
+						{attendee.lastInteractionTitle && (
+							<div className="font-body text-[11px] text-grey-3">
+								Last: {attendee.lastInteractionTitle}
+								{attendee.lastInteractionAt && (
+									<span className="text-grey-3/60">
+										{" "}
+										·{" "}
+										{new Date(attendee.lastInteractionAt).toLocaleDateString()}
+									</span>
+								)}
+							</div>
+						)}
+
+						{attendee.recentEmailSubjects &&
+							attendee.recentEmailSubjects.length > 0 && (
+								<div className="flex items-start gap-1.5 mt-1">
+									<Mail className="size-3 text-grey-3 shrink-0 mt-0.5" />
+									<div className="space-y-0.5">
+										{attendee.recentEmailSubjects.slice(0, 3).map((subject) => (
+											<div
+												key={subject}
+												className="font-body text-[11px] text-grey-3 truncate max-w-[280px]"
+											>
+												{subject}
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+
+						{attendee.notes && (
+							<p className="font-body text-[11px] text-grey-3/80 italic mt-1">
+								{attendee.notes}
+							</p>
+						)}
+					</div>
+				))}
+			</div>
+		</div>
 	);
 }
