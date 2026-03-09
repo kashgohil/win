@@ -1,3 +1,4 @@
+import { CommandPalette } from "@/components/command-palette/CommandPalette";
 import type { Module } from "@/lib/onboarding-data";
 import NavPillExpandable from "./NavPillExpandable";
 import NavRail from "./NavRail";
@@ -24,6 +25,7 @@ export default function AppShell({
 			</main>
 
 			<NavPillExpandable modules={modules} />
+			<CommandPalette modules={modules} />
 		</div>
 	);
 }

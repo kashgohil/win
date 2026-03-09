@@ -13,7 +13,7 @@ import { useTheme } from "@/hooks/use-theme";
 import type { Module } from "@/lib/onboarding-data";
 import { cn } from "@/lib/utils";
 import { Link, useMatchRoute } from "@tanstack/react-router";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { LogOut, Moon, Search, Sun } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -172,6 +172,29 @@ export default function NavRail({
 					className="rail-item flex flex-col items-center gap-1 pt-3 pb-5"
 					style={{ "--rail-i": modules.length + 2 } as React.CSSProperties}
 				>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								className="text-grey-3 hover:text-foreground"
+								onClick={() =>
+									window.dispatchEvent(
+										new KeyboardEvent("keydown", {
+											key: "k",
+											metaKey: true,
+										}),
+									)
+								}
+							>
+								<Search className="h-3.5 w-3.5" />
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent side="right">
+							Search <span className="text-muted-foreground">⌘K</span>
+						</TooltipContent>
+					</Tooltip>
+
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<span>
