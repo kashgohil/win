@@ -13,7 +13,14 @@ import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
 import type { EmailCategory, SerializedThread } from "@wingmnn/types";
-import { Archive, Mail, MailOpen, Paperclip, Star } from "lucide-react";
+import {
+	Archive,
+	Mail,
+	MailOpen,
+	MessageSquare,
+	Paperclip,
+	Star,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { CATEGORY_CONFIG } from "./category-colors";
@@ -179,6 +186,61 @@ function RowAction({
 			</TooltipTrigger>
 			<TooltipContent side="bottom">{label}</TooltipContent>
 		</Tooltip>
+	);
+}
+
+/* ── Triage suggestion chips ── */
+
+const ARCHIVABLE_CATEGORIES = new Set([
+	"newsletter",
+	"promotional",
+	"spam",
+	"receipt",
+	"confirmation",
+]);
+
+function TriageChips({
+	category,
+	aiSummary,
+	onArchive,
+}: {
+	category: string;
+	aiSummary: string | null;
+	onArchive: () => void;
+}) {
+	const isArchivable = ARCHIVABLE_CATEGORIES.has(category);
+	const isActionable = category === "urgent" || category === "actionable";
+
+	if (!isArchivable && !isActionable) return null;
+
+	return (
+		<div className="flex items-center gap-1.5 mt-1">
+			{isArchivable && (
+				<button
+					type="button"
+					onClick={(e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						onArchive();
+					}}
+					className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-border/30 bg-secondary/10 hover:bg-secondary/30 text-grey-3 hover:text-foreground font-mono text-[10px] transition-colors cursor-pointer"
+				>
+					<Archive className="size-2.5" />
+					Archive
+				</button>
+			)}
+			{isActionable && (
+				<span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-border/30 bg-secondary/10 text-grey-3 font-mono text-[10px]">
+					<MessageSquare className="size-2.5" />
+					Reply needed
+				</span>
+			)}
+			{aiSummary && (
+				<span className="font-body text-[11px] text-grey-3 truncate max-w-[200px]">
+					{aiSummary}
+				</span>
+			)}
+		</div>
 	);
 }
 
@@ -440,6 +502,14 @@ export function ThreadRow({
 						</span>
 					)}
 				</p>
+				{/* Triage suggestion chips for unread emails */}
+				{!compact && isUnread && (
+					<TriageChips
+						category={thread.category}
+						aiSummary={thread.aiSummary}
+						onArchive={handleArchive}
+					/>
+				)}
 			</div>
 		</>
 	);
