@@ -615,6 +615,23 @@ export function useForwardDelayed() {
 	});
 }
 
+export function useComposeDelayed() {
+	return useMutation({
+		mutationFn: async (input: {
+			accountId: string;
+			to: string[];
+			cc?: string[];
+			bcc?: string[];
+			subject: string;
+			body: string;
+		}) => {
+			const { data, error } = await api.mail["compose-delayed"].post(input);
+			if (error) throw new Error("Failed to queue email");
+			return data;
+		},
+	});
+}
+
 export function useCancelSend() {
 	return useMutation({
 		mutationFn: async (jobId: string) => {
