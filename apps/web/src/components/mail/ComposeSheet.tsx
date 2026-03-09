@@ -1,3 +1,4 @@
+import { MOTION_CONSTANTS } from "@/components/constant";
 import { Button } from "@/components/ui/button";
 import {
 	Sheet,
@@ -6,18 +7,17 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@/components/ui/sheet";
+import { useAiCompose, useAiDraft } from "@/hooks/use-ai";
+import { useSuggestCc } from "@/hooks/use-contacts";
 import {
 	useCancelSend,
 	useForwardDelayed,
 	useReplyDelayed,
 } from "@/hooks/use-mail";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Loader2, Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-
-import { MOTION_CONSTANTS } from "@/components/constant";
-import { useSuggestCc } from "@/hooks/use-contacts";
 
 interface ComposeSheetProps {
 	open: boolean;
@@ -213,12 +213,20 @@ export function ComposeSheet({
 						</div>
 					)}
 
-					<textarea
-						value={body}
-						onChange={(e) => setBody(e.target.value)}
-						placeholder="Write your message..."
-						rows={8}
-						className="w-full flex-1 min-h-[120px] resize-none rounded-md border border-border/50 bg-secondary/10 px-3 py-2 font-body text-[13px] text-foreground placeholder:text-grey-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
+					{mode === "reply" && !body.trim() && (
+						<AiDraftButton
+							subject={subject}
+							fromAddress={fromAddress}
+							originalBody={originalBody}
+							onDraft={setBody}
+						/>
+					)}
+
+					<ComposeWithSuggestion
+						body={body}
+						onBodyChange={setBody}
+						subject={subject}
+						recipient={mode === "reply" ? fromAddress : to}
 					/>
 
 					{originalBody && (
@@ -280,5 +288,163 @@ export function ComposeSheet({
 				</div>
 			</SheetContent>
 		</Sheet>
+	);
+}
+
+/* ── Compose with AI suggestion ── */
+
+function ComposeWithSuggestion({
+	body,
+	onBodyChange,
+	subject,
+	recipient,
+}: {
+	body: string;
+	onBodyChange: (text: string) => void;
+	subject: string | null;
+	recipient: string | null;
+}) {
+	const compose = useAiCompose();
+	const [suggestion, setSuggestion] = useState<string | null>(null);
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const lastBodyRef = useRef(body);
+	const mutateRef = useRef(compose.mutate);
+	mutateRef.current = compose.mutate;
+
+	// Debounced AI completion — trigger after 1.5s pause with 10+ chars
+	useEffect(() => {
+		lastBodyRef.current = body;
+
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+		setSuggestion(null);
+
+		if (body.trim().length < 10) return;
+
+		debounceRef.current = setTimeout(() => {
+			if (lastBodyRef.current !== body) return;
+			mutateRef.current(
+				{
+					body,
+					subject: subject ?? undefined,
+					recipient: recipient ?? undefined,
+				},
+				{
+					onSuccess: (data) => {
+						if (lastBodyRef.current === body && data.suggestion) {
+							setSuggestion(data.suggestion);
+						}
+					},
+				},
+			);
+		}, 1500);
+
+		return () => {
+			if (debounceRef.current) clearTimeout(debounceRef.current);
+		};
+	}, [body, subject, recipient]);
+
+	const acceptSuggestion = useCallback(() => {
+		if (suggestion) {
+			const separator = body.endsWith(" ") || body.endsWith("\n") ? "" : " ";
+			onBodyChange(body + separator + suggestion);
+			setSuggestion(null);
+		}
+	}, [suggestion, body, onBodyChange]);
+
+	const handleKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Tab" && suggestion) {
+				e.preventDefault();
+				acceptSuggestion();
+			}
+		},
+		[suggestion, acceptSuggestion],
+	);
+
+	return (
+		<div className="relative flex-1 min-h-[120px]">
+			<textarea
+				value={body}
+				onChange={(e) => onBodyChange(e.target.value)}
+				onKeyDown={handleKeyDown}
+				placeholder="Write your message..."
+				rows={8}
+				className="w-full h-full min-h-[120px] resize-none rounded-md border border-border/50 bg-secondary/10 px-3 py-2 font-body text-[13px] text-foreground placeholder:text-grey-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
+			/>
+			<AnimatePresence>
+				{suggestion && (
+					<motion.div
+						initial={{ opacity: 0, y: 4 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: 4 }}
+						transition={{ duration: 0.2, ease: MOTION_CONSTANTS.EASE }}
+						className="absolute bottom-2 left-2 right-2"
+					>
+						<button
+							type="button"
+							onClick={acceptSuggestion}
+							className="flex items-start gap-2 w-full text-left rounded-md bg-secondary/40 backdrop-blur-sm border border-border/30 px-3 py-2 cursor-pointer hover:bg-secondary/60 transition-colors group"
+						>
+							<Sparkles className="size-3 text-grey-3 shrink-0 mt-0.5" />
+							<span className="font-body text-[12px] text-grey-2 leading-relaxed flex-1 line-clamp-2">
+								{suggestion}
+							</span>
+							<span className="font-mono text-[9px] text-grey-3 shrink-0 mt-0.5 px-1.5 py-0.5 rounded bg-secondary/50 border border-border/30 group-hover:text-foreground group-hover:border-border/60 transition-colors">
+								Tab
+							</span>
+						</button>
+					</motion.div>
+				)}
+			</AnimatePresence>
+		</div>
+	);
+}
+
+/* ── AI Draft Button ── */
+
+function AiDraftButton({
+	subject,
+	fromAddress,
+	originalBody,
+	onDraft,
+}: {
+	subject: string | null;
+	fromAddress: string | null;
+	originalBody: string | null;
+	onDraft: (text: string) => void;
+}) {
+	const draft = useAiDraft();
+
+	const handleDraft = () => {
+		draft.mutate(
+			{
+				subject: subject ?? "",
+				fromAddress: fromAddress ?? "",
+				fromName: fromAddress?.split("@")[0] ?? "",
+				snippet: (originalBody ?? "").slice(0, 200),
+				bodyPlain: originalBody ?? "",
+				toAddresses: [],
+			},
+			{
+				onSuccess: (data) => onDraft(data.draft),
+				onError: () => toast.error("Failed to generate draft"),
+			},
+		);
+	};
+
+	return (
+		<button
+			type="button"
+			onClick={handleDraft}
+			disabled={draft.isPending}
+			className="inline-flex items-center gap-1.5 self-start px-2.5 py-1.5 rounded-md border border-border/40 bg-secondary/10 hover:bg-secondary/25 text-grey-2 hover:text-foreground font-body text-[12px] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+		>
+			{draft.isPending ? (
+				<Loader2 className="size-3 animate-spin" />
+			) : (
+				<Sparkles className="size-3" />
+			)}
+			{draft.isPending ? "Drafting…" : "Draft with AI"}
+		</button>
 	);
 }
