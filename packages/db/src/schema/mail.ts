@@ -74,6 +74,7 @@ export const emailAccounts = pgTable(
 		syncError: text("sync_error"),
 		webhookChannelId: varchar("webhook_channel_id", { length: 255 }),
 		webhookExpiry: timestamp("webhook_expiry", { withTimezone: true }),
+		signature: text(),
 		active: boolean().default(true).notNull(),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.defaultNow()
