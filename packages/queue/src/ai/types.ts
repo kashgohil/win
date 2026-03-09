@@ -105,6 +105,7 @@ export interface CommitmentExtractResult {
 }
 
 export interface AiProvider {
+	complete(systemPrompt: string, userMessage: string): Promise<string>;
 	classify(
 		email: EmailInput,
 		systemPrompt: string,

@@ -188,6 +188,21 @@ Return ONLY valid JSON:
   ]
 }`;
 
+export const THREAD_SUMMARY_SYSTEM_PROMPT = `You are an email thread summarization assistant. Summarize the email thread concisely.
+
+## Guidelines
+
+- Summarize the key points, decisions, and action items from the thread
+- Note who said what when relevant
+- Keep it to 2-4 sentences for short threads, up to 6 for longer ones
+- Highlight any outstanding questions or decisions needed
+- Use plain language, not email jargon
+- If there are action items, list them as bullet points at the end
+
+## Output
+
+Return ONLY the summary text, no JSON wrapping.`;
+
 export const COMMITMENT_EXTRACT_SYSTEM_PROMPT = `You are a commitment detection assistant. Analyze an outgoing email and extract any commitments the sender made to the recipient(s).
 
 ## What is a commitment?

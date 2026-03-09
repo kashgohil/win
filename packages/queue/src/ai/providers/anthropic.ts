@@ -58,6 +58,26 @@ export class AnthropicProvider implements AiProvider {
 		this.model = model ?? "claude-haiku-4-5-20251001";
 	}
 
+	async complete(systemPrompt: string, userMessage: string): Promise<string> {
+		const response = await this.client.messages.create({
+			model: this.model,
+			max_tokens: 1024,
+			system: [
+				{
+					type: "text",
+					text: systemPrompt,
+					cache_control: { type: "ephemeral" },
+				},
+			],
+			messages: [{ role: "user", content: userMessage }],
+		});
+
+		const text =
+			response.content[0]?.type === "text" ? response.content[0].text : "";
+
+		return text.trim();
+	}
+
 	async classify(
 		email: EmailInput,
 		systemPrompt: string,
