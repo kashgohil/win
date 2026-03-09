@@ -575,20 +575,28 @@ export function useSendDraft() {
 
 /* ── Feature 3: Delayed Send (Undo) ── */
 
+export type SendAttachmentInput = {
+	filename: string;
+	mimeType: string;
+	content: string;
+};
+
 export function useReplyDelayed() {
 	return useMutation({
 		mutationFn: async ({
 			id,
 			body,
 			cc,
+			attachments,
 		}: {
 			id: string;
 			body: string;
 			cc?: string[];
+			attachments?: SendAttachmentInput[];
 		}) => {
 			const { data, error } = await api.mail
 				.emails({ id })
-				["reply-delayed"].post({ body, cc });
+				["reply-delayed"].post({ body, cc, attachments });
 			if (error) throw new Error("Failed to queue reply");
 			return data;
 		},
@@ -601,14 +609,16 @@ export function useForwardDelayed() {
 			id,
 			to,
 			body,
+			attachments,
 		}: {
 			id: string;
 			to: string[];
 			body: string;
+			attachments?: SendAttachmentInput[];
 		}) => {
 			const { data, error } = await api.mail
 				.emails({ id })
-				["forward-delayed"].post({ to, body });
+				["forward-delayed"].post({ to, body, attachments });
 			if (error) throw new Error("Failed to queue forward");
 			return data;
 		},
@@ -624,6 +634,7 @@ export function useComposeDelayed() {
 			bcc?: string[];
 			subject: string;
 			body: string;
+			attachments?: SendAttachmentInput[];
 		}) => {
 			const { data, error } = await api.mail["compose-delayed"].post(input);
 			if (error) throw new Error("Failed to queue email");
@@ -638,6 +649,31 @@ export function useCancelSend() {
 			const { data, error } = await api.mail.send({ jobId }).delete();
 			if (error) throw new Error("Failed to cancel send");
 			return data;
+		},
+	});
+}
+
+/* ── Feature: Signature ── */
+
+export function useUpdateSignature() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async ({
+			accountId,
+			signature,
+		}: {
+			accountId: string;
+			signature: string | null;
+		}) => {
+			const { data, error } = await api.mail
+				.accounts({ id: accountId })
+				.signature.patch({ signature });
+			if (error) throw new Error("Failed to update signature");
+			return data;
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: mailKeys.accounts() });
 		},
 	});
 }
