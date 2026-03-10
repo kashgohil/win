@@ -576,46 +576,57 @@ function SentPage() {
 				</Link>
 
 				<div className="flex items-center gap-3">
-					<Link
-						to="/module/mail/inbox"
-						search={{
-							view: undefined,
-							starred: undefined,
-							attachment: undefined,
-						}}
-						className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
-					>
-						<Inbox className="size-3" />
-						<span className="font-body text-[12px]">Inbox</span>
-						<Kbd>I</Kbd>
-					</Link>
+					<TooltipProvider sliding>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Link
+									to="/module/mail/inbox"
+									search={{
+										view: undefined,
+										starred: undefined,
+										attachment: undefined,
+									}}
+									className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
+								>
+									<Inbox className="size-3" />
+									<Kbd>I</Kbd>
+								</Link>
+							</TooltipTrigger>
+							<TooltipContent side="bottom">Inbox</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Link
+									to="/module/mail/attachments"
+									className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
+								>
+									<Paperclip className="size-3" />
+									<Kbd>A</Kbd>
+								</Link>
+							</TooltipTrigger>
+							<TooltipContent side="bottom">Attachments</TooltipContent>
+						</Tooltip>
 
-					<Link
-						to="/module/mail/attachments"
-						className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
-					>
-						<Paperclip className="size-3" />
-						<span className="font-body text-[12px]">Attachments</span>
-						<Kbd>A</Kbd>
-					</Link>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<button
+									type="button"
+									onClick={() => setSearchOpen(true)}
+									className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer"
+								>
+									<Search className="size-3" />
+									<Kbd>/</Kbd>
+								</button>
+							</TooltipTrigger>
+							<TooltipContent side="bottom">Search</TooltipContent>
+						</Tooltip>
 
-					<button
-						type="button"
-						onClick={() => setSearchOpen(true)}
-						className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer"
-					>
-						<Search className="size-3" />
-						<span className="font-body text-[12px]">Search</span>
-						<Kbd>/</Kbd>
-					</button>
-
-					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<button
 									type="button"
 									onClick={toggleViewMode}
-									className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer"
+									className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer"
 								>
 									{viewMode === "inline" ? (
 										<Columns2 className="size-3.5" />
@@ -625,7 +636,7 @@ function SentPage() {
 									<Kbd>P</Kbd>
 								</button>
 							</TooltipTrigger>
-							<TooltipContent>
+							<TooltipContent side="bottom">
 								{viewMode === "inline"
 									? "Switch to side panel"
 									: "Switch to inline"}

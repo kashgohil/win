@@ -3,7 +3,6 @@ import { ContactCardLazy } from "@/components/contacts/ContactCard";
 import { AccountSelector } from "@/components/mail/AccountSelector";
 import { AiSummary } from "@/components/mail/AiSummary";
 import { AttachmentList } from "@/components/mail/AttachmentList";
-import { ComposeSheet } from "@/components/mail/ComposeSheet";
 import { EmailActions } from "@/components/mail/EmailActions";
 import { EmailBody } from "@/components/mail/EmailBody";
 import {
@@ -12,6 +11,7 @@ import {
 } from "@/components/mail/KeyboardShortcutBar";
 import { MessageMetadata } from "@/components/mail/MessageMetadata";
 import { useAiSummarize } from "@/hooks/use-ai";
+import { openCompose } from "@/hooks/use-compose";
 import { useEmailDetailKeyboard } from "@/hooks/use-email-detail-keyboard";
 import { mailKeys, useMailThreadDetail } from "@/hooks/use-mail";
 import { recordThreadVisit } from "@/hooks/use-merge-suggestions";
@@ -60,10 +60,6 @@ function EmailDetail() {
 		...(category ? { category } : {}),
 	};
 	const { data, isPending } = useMailThreadDetail(emailId);
-	const [composeMode, setComposeMode] = useState<"reply" | "forward" | null>(
-		null,
-	);
-	const [composeEmailId, setComposeEmailId] = useState<string | null>(null);
 	const autoMarkedRef = useRef<string | null>(null);
 
 	const messages = data?.messages ?? [];
@@ -201,15 +197,34 @@ function EmailDetail() {
 		api.mail.threads({ threadId: emailId }).delete();
 	}, [emailId, queryClient, navigateBack]);
 
-	const handleReply = useCallback(() => {
-		setComposeEmailId(latestMessage?.id ?? null);
-		setComposeMode("reply");
-	}, [latestMessage]);
+	const handleReply = useCallback(
+		(msgId?: string) => {
+			const targetId = msgId ?? latestMessage?.id;
+			const msg = targetId
+				? (messages.find((m) => m.id === targetId) ?? latestMessage)
+				: latestMessage;
+			if (!msg) return;
+			openCompose({
+				mode: "reply",
+				emailId: msg.id,
+				fromAddress: msg.fromAddress ?? null,
+				subject: threadSubject ?? null,
+				originalBody: msg.bodyPlain ?? null,
+			});
+		},
+		[latestMessage, messages, threadSubject],
+	);
 
 	const handleForward = useCallback(() => {
-		setComposeEmailId(latestMessage?.id ?? null);
-		setComposeMode("forward");
-	}, [latestMessage]);
+		if (!latestMessage) return;
+		openCompose({
+			mode: "forward",
+			emailId: latestMessage.id,
+			fromAddress: latestMessage.fromAddress ?? null,
+			subject: threadSubject ?? null,
+			originalBody: latestMessage.bodyPlain ?? null,
+		});
+	}, [latestMessage, threadSubject]);
 
 	const handleNavigateAttachments = useCallback(
 		() => navigate({ to: "/module/mail/attachments" }),
@@ -224,7 +239,7 @@ function EmailDetail() {
 	}, [emailId, queryClient, navigateBack]);
 
 	useEmailDetailKeyboard({
-		disabled: composeMode !== null,
+		disabled: false,
 		onReply: handleReply,
 		onForward: handleForward,
 		onStar: handleStar,
@@ -346,10 +361,7 @@ function EmailDetail() {
 			) : (
 				<ConversationView
 					messages={messages}
-					onReplyTo={(msgId) => {
-						setComposeEmailId(msgId);
-						setComposeMode("reply");
-					}}
+					onReplyTo={(msgId) => handleReply(msgId)}
 				/>
 			)}
 
@@ -358,33 +370,7 @@ function EmailDetail() {
 				<ThreadSummaryButton messages={messages} />
 			)}
 
-			<ComposeSheet
-				open={composeMode !== null}
-				onOpenChange={(open) => {
-					if (!open) {
-						setComposeMode(null);
-						setComposeEmailId(null);
-					}
-				}}
-				mode={composeMode ?? "reply"}
-				emailId={composeEmailId ?? latestMessage?.id ?? emailId}
-				fromAddress={
-					(composeEmailId
-						? messages.find((m) => m.id === composeEmailId)?.fromAddress
-						: latestMessage?.fromAddress) ?? null
-				}
-				subject={threadSubject ?? null}
-				originalBody={
-					(composeEmailId
-						? messages.find((m) => m.id === composeEmailId)?.bodyPlain
-						: latestMessage?.bodyPlain) ?? null
-				}
-			/>
-
-			<KeyboardShortcutBar
-				shortcuts={EMAIL_DETAIL_SHORTCUTS}
-				visible={composeMode === null}
-			/>
+			<KeyboardShortcutBar shortcuts={EMAIL_DETAIL_SHORTCUTS} />
 		</div>
 	);
 }

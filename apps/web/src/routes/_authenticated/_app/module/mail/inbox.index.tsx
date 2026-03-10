@@ -2,7 +2,6 @@ import { MOTION_CONSTANTS } from "@/components/constant";
 import { AccountSelector } from "@/components/mail/AccountSelector";
 import { CATEGORIES } from "@/components/mail/category-colors";
 import { CategoryFilter } from "@/components/mail/CategoryFilter";
-import { ComposeSheet } from "@/components/mail/ComposeSheet";
 import {
 	INBOX_INLINE_SHORTCUTS,
 	INBOX_SHORTCUTS,
@@ -27,6 +26,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { openCompose } from "@/hooks/use-compose";
 import { useInboxKeyboard } from "@/hooks/use-inbox-keyboard";
 import {
 	mailKeys,
@@ -49,7 +49,6 @@ import {
 	MailOpen,
 	Merge,
 	Paperclip,
-	PenSquare,
 	Rows2,
 	Search,
 	Send,
@@ -186,8 +185,6 @@ function MailInbox() {
 	} = useSidepanelWidth();
 	const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
 	const [peekedThreadId, setPeekedThreadId] = useState<string | null>(null);
-	const [composeOpen, setComposeOpen] = useState(false);
-
 	const activeCategory = category ?? null;
 	const activeAccountIds = useMailAccountFilter((s) => s.activeAccountIds);
 	const accountIds = useMemo(
@@ -563,7 +560,7 @@ function MailInbox() {
 		onSelectEmail: handleKeyboardSelectThread,
 		onActivateHeader: handleActivateHeader,
 		onOpenSearch: handleOpenSearch,
-		onCompose: useCallback(() => setComposeOpen(true), []),
+		onCompose: useCallback(() => openCompose({ mode: "compose" }), []),
 		onNavigateAttachments: handleNavigateAttachments,
 		onNavigateSent: handleNavigateSent,
 		onToggleView: handleToggleView,
@@ -1017,61 +1014,87 @@ function MailInbox() {
 					Mail
 				</Link>
 
-				<div className="flex items-center gap-1.5">
-					<button
-						type="button"
-						onClick={() => setComposeOpen(true)}
-						className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-accent-red/40 bg-accent-red/10 hover:bg-accent-red/20 hover:border-accent-red/60 text-accent-red transition-all duration-150 cursor-pointer"
-					>
-						<PenSquare className="size-3" />
-						<Kbd>C</Kbd>
-					</button>
+				<div className="flex items-center gap-3">
+					<TooltipProvider sliding>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Link
+									to="/module/mail/attachments"
+									className={cn(
+										"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
+										keyboard.isActive &&
+											keyboard.activeSection === "header" &&
+											keyboard.focusedHeaderIndex === 1 &&
+											"ring-2 ring-foreground/30 text-foreground",
+									)}
+								>
+									<Paperclip className="size-3" />
+									<Kbd>A</Kbd>
+								</Link>
+							</TooltipTrigger>
+							<TooltipContent side="bottom">Attachments</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Link
+									to="/module/mail/sent"
+									search={{ starred: undefined, attachment: undefined }}
+									className={cn(
+										"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
+										keyboard.isActive &&
+											keyboard.activeSection === "header" &&
+											keyboard.focusedHeaderIndex === 2 &&
+											"ring-2 ring-foreground/30 text-foreground",
+									)}
+								>
+									<Send className="size-3" />
+									<Kbd>S</Kbd>
+								</Link>
+							</TooltipTrigger>
+							<TooltipContent side="bottom">Sent</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<button
+									type="button"
+									onClick={() => setSearchOpen(true)}
+									className={cn(
+										"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer",
+										keyboard.isActive &&
+											keyboard.activeSection === "header" &&
+											keyboard.focusedHeaderIndex === 3 &&
+											"ring-2 ring-foreground/30 text-foreground",
+									)}
+								>
+									<Search className="size-3" />
+									<Kbd>/</Kbd>
+								</button>
+							</TooltipTrigger>
+							<TooltipContent side="bottom">Search</TooltipContent>
+						</Tooltip>
 
-					<div className="w-px h-3.5 bg-border/40" />
-
-					<Link
-						to="/module/mail/attachments"
-						className={cn(
-							"inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
-							keyboard.isActive &&
-								keyboard.activeSection === "header" &&
-								keyboard.focusedHeaderIndex === 1 &&
-								"ring-2 ring-foreground/30 text-foreground",
-						)}
-					>
-						<Paperclip className="size-3" />
-						<Kbd>A</Kbd>
-					</Link>
-
-					<Link
-						to="/module/mail/sent"
-						search={{ starred: undefined, attachment: undefined }}
-						className={cn(
-							"inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
-							keyboard.isActive &&
-								keyboard.activeSection === "header" &&
-								keyboard.focusedHeaderIndex === 2 &&
-								"ring-2 ring-foreground/30 text-foreground",
-						)}
-					>
-						<Send className="size-3" />
-						<Kbd>S</Kbd>
-					</Link>
-
-					<button
-						type="button"
-						onClick={() => setSearchOpen(true)}
-						className={cn(
-							"inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer",
-							keyboard.isActive &&
-								keyboard.activeSection === "header" &&
-								keyboard.focusedHeaderIndex === 3 &&
-								"ring-2 ring-foreground/30 text-foreground",
-						)}
-					>
-						<Search className="size-3" />
-						<Kbd>/</Kbd>
-					</button>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<button
+									type="button"
+									onClick={toggleViewMode}
+									className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer"
+								>
+									{viewMode === "inline" ? (
+										<Columns2 className="size-3.5" />
+									) : (
+										<Rows2 className="size-3.5" />
+									)}
+									<Kbd>P</Kbd>
+								</button>
+							</TooltipTrigger>
+							<TooltipContent side="bottom">
+								{viewMode === "inline"
+									? "Switch to side panel"
+									: "Switch to inline"}
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 
 					<div
 						className={cn(
@@ -1107,31 +1130,7 @@ function MailInbox() {
 						</Tabs>
 					</div>
 
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<button
-									type="button"
-									onClick={toggleViewMode}
-									className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer"
-								>
-									{viewMode === "inline" ? (
-										<Columns2 className="size-3.5" />
-									) : (
-										<Rows2 className="size-3.5" />
-									)}
-									<Kbd>P</Kbd>
-								</button>
-							</TooltipTrigger>
-							<TooltipContent>
-								{viewMode === "inline"
-									? "Switch to side panel"
-									: "Switch to inline"}
-							</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
-
-					<div className="w-px h-3 bg-border/40" />
+					<div className="w-px h-3.5 bg-border/40" />
 
 					<AccountSelector />
 				</div>
@@ -1264,11 +1263,6 @@ function MailInbox() {
 						: INBOX_SHORTCUTS
 				}
 				visible={!searchOpen}
-			/>
-			<ComposeSheet
-				mode="compose"
-				open={composeOpen}
-				onOpenChange={setComposeOpen}
 			/>
 		</div>
 	);

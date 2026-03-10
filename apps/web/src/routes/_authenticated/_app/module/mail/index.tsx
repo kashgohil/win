@@ -1,5 +1,4 @@
 import { AccountSelector } from "@/components/mail/AccountSelector";
-import { ComposeSheet } from "@/components/mail/ComposeSheet";
 import {
 	KeyboardShortcutBar,
 	MAIL_HUB_SHORTCUTS,
@@ -11,6 +10,13 @@ import {
 import { SettingsSheet } from "@/components/mail/SettingsSheet";
 import ModulePage from "@/components/module/ModulePage";
 import { Kbd } from "@/components/ui/kbd";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { openCompose } from "@/hooks/use-compose";
 import { mailKeys } from "@/hooks/use-mail";
 import { api } from "@/lib/api";
 import {
@@ -26,7 +32,7 @@ import { useLiveQuery } from "@tanstack/react-db";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { TriageAction } from "@wingmnn/types";
-import { ArrowRight, Inbox, Paperclip, PenSquare, Send } from "lucide-react";
+import { ArrowRight, Inbox, Paperclip, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -86,15 +92,6 @@ function MailModule() {
 		}
 	}, [connected, error, navigate, queryClient]);
 
-	const [composeOpen, setComposeOpen] = useState(false);
-
-	// Listen for compose events from header actions
-	useEffect(() => {
-		const handler = () => setComposeOpen(true);
-		document.addEventListener("mail:compose", handler);
-		return () => document.removeEventListener("mail:compose", handler);
-	}, []);
-
 	// Keyboard shortcuts for mail hub
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
@@ -113,7 +110,7 @@ function MailModule() {
 			switch (e.key) {
 				case "c":
 					e.preventDefault();
-					setComposeOpen(true);
+					openCompose({ mode: "compose" });
 					break;
 				case "i":
 					e.preventDefault();
@@ -243,11 +240,6 @@ function MailModule() {
 			</ModulePage>
 
 			<KeyboardShortcutBar shortcuts={MAIL_HUB_SHORTCUTS} />
-			<ComposeSheet
-				mode="compose"
-				open={composeOpen}
-				onOpenChange={setComposeOpen}
-			/>
 		</>
 	);
 }
@@ -283,54 +275,54 @@ function MailHeaderActions() {
 
 	return (
 		<div className="flex items-center gap-3">
-			<button
-				type="button"
-				onClick={() => {
-					document.dispatchEvent(
-						new CustomEvent("mail:compose", { detail: true }),
-					);
-				}}
-				className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-accent-red/40 bg-accent-red/10 hover:bg-accent-red/20 hover:border-accent-red/60 text-accent-red transition-all duration-150 cursor-pointer"
-			>
-				<PenSquare className="size-3" />
-				<span className="font-body text-[12px]">Compose</span>
-				<Kbd>C</Kbd>
-			</button>
+			<TooltipProvider sliding>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Link
+							to="/module/mail/inbox"
+							search={{
+								view: undefined,
+								starred: undefined,
+								attachment: undefined,
+							}}
+							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
+						>
+							<Inbox className="size-3" />
+							<Kbd>I</Kbd>
+						</Link>
+					</TooltipTrigger>
+					<TooltipContent side="bottom">Inbox</TooltipContent>
+				</Tooltip>
 
-			<div className="w-px h-3.5 bg-border/40" />
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Link
+							to="/module/mail/sent"
+							search={{ starred: undefined, attachment: undefined }}
+							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
+						>
+							<Send className="size-3" />
 
-			<Link
-				to="/module/mail/inbox"
-				search={{
-					view: undefined,
-					starred: undefined,
-					attachment: undefined,
-				}}
-				className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
-			>
-				<Inbox className="size-3" />
-				<span className="font-body text-[12px]">Inbox</span>
-				<Kbd>I</Kbd>
-			</Link>
+							<Kbd>S</Kbd>
+						</Link>
+					</TooltipTrigger>
+					<TooltipContent side="bottom">Sent</TooltipContent>
+				</Tooltip>
 
-			<Link
-				to="/module/mail/sent"
-				search={{ starred: undefined, attachment: undefined }}
-				className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
-			>
-				<Send className="size-3" />
-				<span className="font-body text-[12px]">Sent</span>
-				<Kbd>S</Kbd>
-			</Link>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Link
+							to="/module/mail/attachments"
+							className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
+						>
+							<Paperclip className="size-3" />
 
-			<Link
-				to="/module/mail/attachments"
-				className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
-			>
-				<Paperclip className="size-3" />
-				<span className="font-body text-[12px]">Attachments</span>
-				<Kbd>A</Kbd>
-			</Link>
+							<Kbd>A</Kbd>
+						</Link>
+					</TooltipTrigger>
+					<TooltipContent side="bottom">Attachments</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
 
 			<div className="w-px h-3.5 bg-border/40" />
 

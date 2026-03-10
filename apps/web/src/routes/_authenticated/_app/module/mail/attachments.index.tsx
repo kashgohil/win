@@ -12,6 +12,12 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { env } from "@/env";
 import { useAttachmentsKeyboard } from "@/hooks/use-attachments-keyboard";
 import { useImageThumbnail } from "@/hooks/use-image-thumbnail";
@@ -473,41 +479,50 @@ function AttachmentsPage() {
 						</Link>
 
 						<div className="flex items-center gap-3">
-							<Link
-								to="/module/mail/inbox"
-								search={{
-									view: undefined,
-									starred: undefined,
-									attachment: undefined,
-								}}
-								className={cn(
-									"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
-									keyboard.isActive &&
-										keyboard.activeSection === "header" &&
-										keyboard.focusedHeaderIndex === 1 &&
-										"ring-2 ring-foreground/30 text-foreground",
-								)}
-							>
-								<Inbox className="size-3" />
-								<span className="font-body text-[12px]">Inbox</span>
-								<Kbd>I</Kbd>
-							</Link>
-
-							<Link
-								to="/module/mail/sent"
-								search={{ starred: undefined, attachment: undefined }}
-								className={cn(
-									"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
-									keyboard.isActive &&
-										keyboard.activeSection === "header" &&
-										keyboard.focusedHeaderIndex === 2 &&
-										"ring-2 ring-foreground/30 text-foreground",
-								)}
-							>
-								<Send className="size-3" />
-								<span className="font-body text-[12px]">Sent</span>
-								<Kbd>S</Kbd>
-							</Link>
+							<TooltipProvider sliding>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<Link
+											to="/module/mail/inbox"
+											search={{
+												view: undefined,
+												starred: undefined,
+												attachment: undefined,
+											}}
+											className={cn(
+												"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
+												keyboard.isActive &&
+													keyboard.activeSection === "header" &&
+													keyboard.focusedHeaderIndex === 1 &&
+													"ring-2 ring-foreground/30 text-foreground",
+											)}
+										>
+											<Inbox className="size-3" />
+											<Kbd>I</Kbd>
+										</Link>
+									</TooltipTrigger>
+									<TooltipContent side="bottom">Inbox</TooltipContent>
+								</Tooltip>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<Link
+											to="/module/mail/sent"
+											search={{ starred: undefined, attachment: undefined }}
+											className={cn(
+												"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
+												keyboard.isActive &&
+													keyboard.activeSection === "header" &&
+													keyboard.focusedHeaderIndex === 2 &&
+													"ring-2 ring-foreground/30 text-foreground",
+											)}
+										>
+											<Send className="size-3" />
+											<Kbd>S</Kbd>
+										</Link>
+									</TooltipTrigger>
+									<TooltipContent side="bottom">Sent</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
 
 							<div className="w-px h-3.5 bg-border/40" />
 
