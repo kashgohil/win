@@ -14,6 +14,7 @@ import {
 } from "@/hooks/use-contacts";
 import type { BriefingStat, ModuleData, TriageItem } from "@/lib/module-data";
 import { MODULE_DATA } from "@/lib/module-data";
+import { relativeTime } from "@/lib/utils";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -120,8 +121,8 @@ function CrmModule() {
 						? `${fu.contactName}${fu.context ? ` — ${fu.context.slice(0, 80)}` : ""}`
 						: fu.context?.slice(0, 100),
 				timestamp: fu.dueAt
-					? formatRelative(fu.dueAt)
-					: formatRelative(fu.createdAt),
+					? relativeTime(fu.dueAt)
+					: relativeTime(fu.createdAt),
 				urgent: fu.type === "meeting_prep",
 				actions: [
 					{
@@ -671,18 +672,3 @@ function MergeConfirmation({
 }
 
 /* ── Helpers ── */
-
-function formatRelative(dateStr: string): string {
-	const date = new Date(dateStr);
-	const now = new Date();
-	const diffMs = now.getTime() - date.getTime();
-	const diffMins = Math.round(diffMs / 60_000);
-
-	if (diffMins < 1) return "just now";
-	if (diffMins < 60) return `${diffMins}m ago`;
-	const diffHours = Math.round(diffMins / 60);
-	if (diffHours < 24) return `${diffHours}h ago`;
-	const diffDays = Math.round(diffHours / 24);
-	if (diffDays < 7) return `${diffDays}d ago`;
-	return date.toLocaleDateString();
-}

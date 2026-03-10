@@ -1,5 +1,5 @@
 import { useActivityLog } from "@/hooks/use-tasks";
-import { cn } from "@/lib/utils";
+import { cn, relativeTime } from "@/lib/utils";
 import {
 	AlertTriangle,
 	ArrowDownUp,
@@ -40,21 +40,6 @@ const ACTION_CONFIG: Record<
 		color: "text-emerald-500",
 	},
 };
-
-function formatRelative(iso: string): string {
-	const now = Date.now();
-	const then = new Date(iso).getTime();
-	const diff = Math.floor((now - then) / 1000);
-
-	if (diff < 60) return "just now";
-	if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-	if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-	if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
-	return new Date(iso).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-	});
-}
 
 export function ActivityLog({ taskId }: { taskId?: string }) {
 	const { data, isLoading, hasNextPage, fetchNextPage } = useActivityLog({
@@ -113,7 +98,7 @@ export function ActivityLog({ taskId }: { taskId?: string }) {
 							)}
 						</div>
 						<span className="font-mono text-[10px] text-grey-3 tabular-nums shrink-0">
-							{formatRelative(entry.createdAt)}
+							{relativeTime(entry.createdAt)}
 						</span>
 					</div>
 				);

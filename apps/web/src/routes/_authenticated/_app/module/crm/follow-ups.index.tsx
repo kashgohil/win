@@ -8,7 +8,7 @@ import {
 	useFollowUps,
 	useSnoozeFollowUp,
 } from "@/hooks/use-contacts";
-import { cn } from "@/lib/utils";
+import { cn, relativeTime } from "@/lib/utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	ArrowLeft,
@@ -308,7 +308,7 @@ function FollowUpCard({
 					)}
 				</div>
 				<span className="font-mono text-[10px] text-grey-3 shrink-0">
-					{fu.dueAt ? formatRelative(fu.dueAt) : formatRelative(fu.createdAt)}
+					{fu.dueAt ? relativeTime(fu.dueAt) : relativeTime(fu.createdAt)}
 				</span>
 			</div>
 
@@ -359,28 +359,4 @@ function formatCommitmentTitle(fu: FollowUp): string {
 
 function isPastDue(dateStr: string): boolean {
 	return new Date(dateStr) < new Date();
-}
-
-function formatRelative(dateStr: string): string {
-	const date = new Date(dateStr);
-	const now = new Date();
-	const diffMs = now.getTime() - date.getTime();
-	const diffMins = Math.round(diffMs / 60_000);
-
-	if (diffMins < 0) {
-		const futureMins = Math.abs(diffMins);
-		if (futureMins < 60) return `in ${futureMins}m`;
-		const futureHours = Math.round(futureMins / 60);
-		if (futureHours < 24) return `in ${futureHours}h`;
-		const futureDays = Math.round(futureHours / 24);
-		return `in ${futureDays}d`;
-	}
-
-	if (diffMins < 1) return "just now";
-	if (diffMins < 60) return `${diffMins}m ago`;
-	const diffHours = Math.round(diffMins / 60);
-	if (diffHours < 24) return `${diffHours}h ago`;
-	const diffDays = Math.round(diffHours / 24);
-	if (diffDays < 7) return `${diffDays}d ago`;
-	return date.toLocaleDateString();
 }
