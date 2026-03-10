@@ -105,28 +105,25 @@ export function RecipientInput({
 
 	return (
 		<div ref={containerRef} className="relative">
-			<label
-				htmlFor={id}
-				className="font-body text-[11px] uppercase tracking-wider text-grey-3 mb-1 block"
-			>
-				{label}
-			</label>
 			<div
 				className={cn(
-					"flex flex-wrap items-center gap-1 min-h-[38px] rounded-md border border-border/50 bg-secondary/10 px-2 py-1.5 transition-colors",
-					focused && "border-ring ring-1 ring-ring/50",
+					"flex items-center gap-2 py-1.5 border-b transition-colors flex-wrap",
+					focused ? "border-border/40" : "border-border/10",
 				)}
 				onClick={() => inputRef.current?.focus()}
 			>
+				<span className="font-body text-[12px] text-grey-3 shrink-0">
+					{label}
+				</span>
 				{values.map((addr) => (
 					<span
 						key={addr}
-						className="inline-flex items-center gap-1 rounded-full bg-secondary/40 px-2 py-0.5 font-mono text-[10px] text-foreground"
+						className="inline-flex items-center gap-1 rounded-full bg-secondary/30 px-2.5 py-0.5 font-mono text-[11px] text-foreground"
 					>
 						{addr}
 						<button
 							type="button"
-							className="hover:text-red-500 cursor-pointer"
+							className="hover:text-accent-red cursor-pointer"
 							onClick={(e) => {
 								e.stopPropagation();
 								removeRecipient(addr);
@@ -145,12 +142,12 @@ export function RecipientInput({
 					onFocus={() => setFocused(true)}
 					onKeyDown={handleKeyDown}
 					placeholder={values.length === 0 ? placeholder : ""}
-					className="flex-1 min-w-[120px] bg-transparent font-body text-[13px] text-foreground placeholder:text-grey-3 outline-none"
+					className="flex-1 min-w-[100px] bg-transparent font-body text-[13px] text-foreground placeholder:text-grey-3/40 outline-none"
 				/>
 			</div>
 
 			{showDropdown && (
-				<div className="absolute z-50 mt-1 w-full rounded-md border border-border/50 bg-background shadow-lg overflow-hidden">
+				<div className="absolute z-50 mt-1 w-full rounded-lg border border-border/40 bg-background shadow-lg overflow-hidden">
 					{suggestions.slice(0, 6).map((s, i) => (
 						<button
 							key={s.address}
@@ -158,8 +155,8 @@ export function RecipientInput({
 							className={cn(
 								"w-full text-left px-3 py-2 flex items-center gap-2 transition-colors cursor-pointer",
 								i === highlightIndex
-									? "bg-secondary/40"
-									: "hover:bg-secondary/20",
+									? "bg-secondary/30"
+									: "hover:bg-secondary/15",
 							)}
 							onMouseDown={(e) => {
 								e.preventDefault();
