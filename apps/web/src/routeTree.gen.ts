@@ -21,6 +21,7 @@ import { Route as AuthenticatedOnboardingStep2RouteImport } from './routes/_auth
 import { Route as AuthenticatedOnboardingStep1RouteImport } from './routes/_authenticated/onboarding/step1'
 import { Route as AuthenticatedOnboardingLaunchRouteImport } from './routes/_authenticated/onboarding/launch'
 import { Route as AuthenticatedAppProfileRouteImport } from './routes/_authenticated/_app/profile'
+import { Route as AuthenticatedAppNotificationsRouteImport } from './routes/_authenticated/_app/notifications'
 import { Route as AuthenticatedAppModuleTravelRouteImport } from './routes/_authenticated/_app/module/travel'
 import { Route as AuthenticatedAppModuleTaskRouteImport } from './routes/_authenticated/_app/module/task'
 import { Route as AuthenticatedAppModuleSocialRouteImport } from './routes/_authenticated/_app/module/social'
@@ -113,6 +114,12 @@ const AuthenticatedAppProfileRoute = AuthenticatedAppProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppNotificationsRoute =
+  AuthenticatedAppNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppModuleTravelRoute =
   AuthenticatedAppModuleTravelRouteImport.update({
     id: '/module/travel',
@@ -280,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedAppIndexRoute
   '/auth': typeof AuthRoute
   '/onboarding': typeof AuthenticatedOnboardingRouteWithChildren
+  '/notifications': typeof AuthenticatedAppNotificationsRoute
   '/profile': typeof AuthenticatedAppProfileRoute
   '/onboarding/launch': typeof AuthenticatedOnboardingLaunchRoute
   '/onboarding/step1': typeof AuthenticatedOnboardingStep1Route
@@ -318,6 +326,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedAppIndexRoute
   '/auth': typeof AuthRoute
+  '/notifications': typeof AuthenticatedAppNotificationsRoute
   '/profile': typeof AuthenticatedAppProfileRoute
   '/onboarding/launch': typeof AuthenticatedOnboardingLaunchRoute
   '/onboarding/step1': typeof AuthenticatedOnboardingStep1Route
@@ -355,6 +364,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/_app': typeof AuthenticatedAppRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRouteWithChildren
+  '/_authenticated/_app/notifications': typeof AuthenticatedAppNotificationsRoute
   '/_authenticated/_app/profile': typeof AuthenticatedAppProfileRoute
   '/_authenticated/onboarding/launch': typeof AuthenticatedOnboardingLaunchRoute
   '/_authenticated/onboarding/step1': typeof AuthenticatedOnboardingStep1Route
@@ -397,6 +407,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/onboarding'
+    | '/notifications'
     | '/profile'
     | '/onboarding/launch'
     | '/onboarding/step1'
@@ -435,6 +446,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/notifications'
     | '/profile'
     | '/onboarding/launch'
     | '/onboarding/step1'
@@ -471,6 +483,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/_app'
     | '/_authenticated/onboarding'
+    | '/_authenticated/_app/notifications'
     | '/_authenticated/_app/profile'
     | '/_authenticated/onboarding/launch'
     | '/_authenticated/onboarding/step1'
@@ -597,6 +610,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof AuthenticatedAppProfileRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/notifications': {
+      id: '/_authenticated/_app/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedAppNotificationsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/_app/module/travel': {
@@ -887,6 +907,7 @@ const AuthenticatedAppModuleTaskRouteWithChildren =
   )
 
 interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppNotificationsRoute: typeof AuthenticatedAppNotificationsRoute
   AuthenticatedAppProfileRoute: typeof AuthenticatedAppProfileRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppModuleCalRoute: typeof AuthenticatedAppModuleCalRouteWithChildren
@@ -902,6 +923,7 @@ interface AuthenticatedAppRouteChildren {
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppNotificationsRoute: AuthenticatedAppNotificationsRoute,
   AuthenticatedAppProfileRoute: AuthenticatedAppProfileRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppModuleCalRoute: AuthenticatedAppModuleCalRouteWithChildren,
