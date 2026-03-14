@@ -71,6 +71,42 @@ export function useAiCompose() {
 	});
 }
 
+export type EnhanceAction =
+	| "more-formal"
+	| "more-friendly"
+	| "more-concise"
+	| "more-detailed"
+	| "fix-grammar"
+	| "improve-clarity"
+	| "translate"
+	| "shorten"
+	| "expand";
+
+interface EnhanceInput {
+	text: string;
+	action: EnhanceAction;
+	language?: string;
+	context?: string;
+}
+
+export function useAiEnhance() {
+	return useMutation({
+		mutationFn: async (input: EnhanceInput) => {
+			const { data, error } = await api.ai.enhance.post(input);
+			if (error) {
+				const msg =
+					typeof error.value === "object" &&
+					error.value &&
+					"error" in error.value
+						? error.value.error
+						: "Enhancement failed";
+				throw new Error(msg);
+			}
+			return data;
+		},
+	});
+}
+
 export function useAiDraft() {
 	return useMutation({
 		mutationFn: async (input: DraftInput) => {
