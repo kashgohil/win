@@ -56,6 +56,7 @@ export const mailKeys = {
 		before?: string;
 		accountIds?: string[];
 		sentOnly?: boolean;
+		archivedOnly?: boolean;
 	}) => [...mailKeys.all, "threads", params] as const,
 	thread: (id: string) => [...mailKeys.all, "thread", id] as const,
 	accounts: () => [...mailKeys.all, "accounts"] as const,
@@ -247,6 +248,7 @@ export function useMailThreadsInfinite(params?: {
 	before?: string;
 	accountIds?: string[];
 	sentOnly?: boolean;
+	archivedOnly?: boolean;
 }) {
 	const pageSize = params?.limit ?? 30;
 
@@ -269,6 +271,7 @@ export function useMailThreadsInfinite(params?: {
 			before: params?.before,
 			accountIds: params?.accountIds,
 			sentOnly: params?.sentOnly,
+			archivedOnly: params?.archivedOnly,
 		}),
 		queryFn: async ({ pageParam }) => {
 			const { data, error } = await api.mail.threads.get({
@@ -292,6 +295,7 @@ export function useMailThreadsInfinite(params?: {
 					before: params?.before,
 					accountIds: params?.accountIds?.join(","),
 					sentOnly: params?.sentOnly ? "true" : undefined,
+					archivedOnly: params?.archivedOnly ? "true" : undefined,
 				},
 			});
 			if (error) throw new Error("Failed to load threads");
