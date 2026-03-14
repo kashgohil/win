@@ -43,6 +43,7 @@ export const INBOX_SHORTCUTS: ShortcutGroup[] = [
 	[
 		{ keys: ["C"], label: "compose" },
 		{ keys: ["H"], label: "snooze" },
+		{ keys: ["G"], label: "archived" },
 		{ keys: ["/"], label: "search" },
 		{ keys: ["["], label: "back" },
 	],
@@ -69,6 +70,7 @@ export const MAIL_HUB_SHORTCUTS: ShortcutGroup[] = [
 		{ keys: ["I"], label: "inbox" },
 		{ keys: ["S"], label: "sent" },
 		{ keys: ["A"], label: "attachments" },
+		{ keys: ["G"], label: "archived" },
 	],
 	[
 		{ keys: ["1-9"], label: "filter account" },
@@ -84,6 +86,7 @@ export const SENT_SHORTCUTS: ShortcutGroup[] = [
 	[
 		{ keys: ["I"], label: "inbox" },
 		{ keys: ["A"], label: "attachments" },
+		{ keys: ["G"], label: "archived" },
 	],
 	[
 		{ keys: ["/"], label: "search" },
@@ -111,7 +114,17 @@ export const ATTACHMENTS_SHORTCUTS: ShortcutGroup[] = [
 	[
 		{ keys: ["I"], label: "inbox" },
 		{ keys: ["S"], label: "sent" },
+		{ keys: ["G"], label: "archived" },
 	],
+];
+
+export const ARCHIVED_SHORTCUTS: ShortcutGroup[] = [
+	[
+		{ keys: ["I"], label: "inbox" },
+		{ keys: ["S"], label: "sent" },
+		{ keys: ["A"], label: "attachments" },
+	],
+	[{ keys: ["["], label: "back" }],
 ];
 
 function useIsTyping() {

@@ -204,6 +204,10 @@ function MailHub() {
 					e.preventDefault();
 					navigate({ to: "/module/mail/attachments" });
 					break;
+				case "g":
+					e.preventDefault();
+					navigate({ to: "/module/mail/archived" });
+					break;
 			}
 		};
 		document.addEventListener("keydown", handler);
