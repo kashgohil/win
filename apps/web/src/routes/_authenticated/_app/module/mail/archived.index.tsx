@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Inbox } from "lucide-react";
 import { motion } from "motion/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { z } from "zod";
 
 const PAGE_SIZE = 30;
@@ -77,23 +77,32 @@ function ArchivedPage() {
 			)
 				return;
 
-			if (e.key === "i") {
-				e.preventDefault();
-				navigate({ to: "/module/mail/inbox" });
-			}
-			if (e.key === "Escape") {
-				e.preventDefault();
-				navigate({ to: "/module/mail" });
+			switch (e.key) {
+				case "i":
+					e.preventDefault();
+					navigate({ to: "/module/mail/inbox" });
+					return;
+				case "s":
+					e.preventDefault();
+					navigate({
+						to: "/module/mail/sent",
+						search: { starred: undefined, attachment: undefined },
+					});
+					return;
+				case "a":
+					e.preventDefault();
+					navigate({ to: "/module/mail/attachments" });
+					return;
+				case "[":
+				case "Escape":
+					e.preventDefault();
+					navigate({ to: "/module/mail" });
+					return;
 			}
 		};
 		document.addEventListener("keydown", handler);
 		return () => document.removeEventListener("keydown", handler);
 	}, [navigate]);
-
-	const handleGoBack = useCallback(
-		() => navigate({ to: "/module/mail" }),
-		[navigate],
-	);
 
 	// ── Render ──
 
