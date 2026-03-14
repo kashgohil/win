@@ -62,7 +62,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 const PAGE_SIZE = 30;
-const HEADER_ITEMS = ["back", "attachments", "sent", "search", "view"] as const;
+const HEADER_ITEMS = ["back", "attachments", "sent", "archived", "search", "view"] as const;
 
 /* ── Cache helpers ── */
 
@@ -376,6 +376,8 @@ function MailInbox() {
 					to: "/module/mail/sent",
 					search: { starred: undefined, attachment: undefined },
 				});
+			} else if (item === "archived") {
+				navigate({ to: "/module/mail/archived" });
 			} else if (item === "search") {
 				setSearchOpen(true);
 			} else if (item === "view") {
@@ -569,6 +571,10 @@ function MailInbox() {
 		onCompose: useCallback(() => openCompose({ mode: "compose" }), []),
 		onNavigateAttachments: handleNavigateAttachments,
 		onNavigateSent: handleNavigateSent,
+		onNavigateArchived: useCallback(
+			() => navigate({ to: "/module/mail/archived" }),
+			[navigate],
+		),
 		onToggleView: handleToggleView,
 		onToggleViewMode: toggleViewMode,
 		onGoBack: handleGoBack,
@@ -1048,6 +1054,24 @@ function MailInbox() {
 						</Tooltip>
 						<Tooltip>
 							<TooltipTrigger asChild>
+								<Link
+									to="/module/mail/archived"
+									className={cn(
+										"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150",
+										keyboard.isActive &&
+											keyboard.activeSection === "header" &&
+											keyboard.focusedHeaderIndex === 3 &&
+											"ring-2 ring-foreground/30 text-foreground",
+									)}
+								>
+									<Archive className="size-3" />
+									<Kbd>G</Kbd>
+								</Link>
+							</TooltipTrigger>
+							<TooltipContent side="bottom">Archived</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
 								<button
 									type="button"
 									onClick={() => setSearchOpen(true)}
@@ -1055,7 +1079,7 @@ function MailInbox() {
 										"inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150 cursor-pointer",
 										keyboard.isActive &&
 											keyboard.activeSection === "header" &&
-											keyboard.focusedHeaderIndex === 3 &&
+											keyboard.focusedHeaderIndex === 4 &&
 											"ring-2 ring-foreground/30 text-foreground",
 									)}
 								>
@@ -1094,7 +1118,7 @@ function MailInbox() {
 							"rounded-lg transition-all duration-150",
 							keyboard.isActive &&
 								keyboard.activeSection === "header" &&
-								keyboard.focusedHeaderIndex === 4 &&
+								keyboard.focusedHeaderIndex === 5 &&
 								"ring-2 ring-foreground/30",
 						)}
 					>
