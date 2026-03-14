@@ -1,6 +1,10 @@
+import {
+	RichTextEditor,
+	type RichTextEditorRef,
+} from "@/components/ui/rich-text-editor";
 import { useCancelSend, useReplyDelayed } from "@/hooks/use-mail";
 import { Send } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
 interface QuickReplyFormProps {
@@ -19,14 +23,19 @@ export function QuickReplyForm({
 	const [body, setBody] = useState("");
 	const reply = useReplyDelayed();
 	const cancelSend = useCancelSend();
+	const editorRef = useRef<RichTextEditorRef>(null);
+	const previousFocusRef = useRef<Element | null>(null);
 
-	const handleSend = () => {
-		if (!body.trim()) return;
+	const handleSend = useCallback(() => {
+		const html = editorRef.current?.getHTML() ?? body;
+		const text = editorRef.current?.getText() ?? body;
+		if (!text.trim()) return;
 		reply.mutate(
-			{ id: emailId, body },
+			{ id: emailId, body: html },
 			{
 				onSuccess: (data) => {
 					setBody("");
+					editorRef.current?.clear();
 					onSent?.();
 					const jobId = data?.jobId;
 					if (jobId) {
@@ -49,16 +58,29 @@ export function QuickReplyForm({
 				onError: () => toast.error("Failed to send reply"),
 			},
 		);
-	};
+	}, [emailId, body, reply, cancelSend, onSent]);
 
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-		if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-			e.preventDefault();
-			handleSend();
-		}
-		// Stop propagation so keyboard shortcuts don't fire while typing
-		e.stopPropagation();
-	};
+	const handleEditorKeyDown = useCallback(
+		(e: KeyboardEvent) => {
+			if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+				e.preventDefault();
+				handleSend();
+			}
+			if (e.key === "Escape") {
+				e.preventDefault();
+				(document.activeElement as HTMLElement)?.blur();
+				if (previousFocusRef.current instanceof HTMLElement) {
+					previousFocusRef.current.focus();
+				}
+				previousFocusRef.current = null;
+			}
+			// Stop propagation so keyboard shortcuts don't fire while typing
+			e.stopPropagation();
+		},
+		[handleSend],
+	);
+
+	const isEmpty = editorRef.current?.isEmpty() ?? !body.trim();
 
 	return (
 		<div className="border-t border-border/30 px-4 py-3">
@@ -73,20 +95,27 @@ export function QuickReplyForm({
 				)}
 			</div>
 			<div className="flex gap-2">
-				<textarea
-					data-quick-reply
-					value={body}
-					onChange={(e) => setBody(e.target.value)}
-					onKeyDown={handleKeyDown}
-					placeholder="Quick reply..."
-					rows={2}
-					disabled={reply.isPending}
-					className="flex-1 resize-none rounded-md border border-border/40 bg-secondary/10 px-3 py-2 font-body text-[13px] text-foreground placeholder:text-grey-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 disabled:opacity-50"
-				/>
+				<div
+					className="flex-1"
+					onFocus={() => {
+						previousFocusRef.current = document.activeElement;
+					}}
+				>
+					<RichTextEditor
+						ref={editorRef}
+						value={body}
+						onChange={setBody}
+						placeholder="Quick reply..."
+						minimal
+						disabled={reply.isPending}
+						onKeyDown={handleEditorKeyDown}
+						editorClassName="min-h-[40px]"
+					/>
+				</div>
 				<button
 					type="button"
 					onClick={handleSend}
-					disabled={reply.isPending || !body.trim()}
+					disabled={reply.isPending || isEmpty}
 					className="self-end shrink-0 inline-flex items-center justify-center size-8 rounded-md bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
 				>
 					<Send className="size-3.5" />

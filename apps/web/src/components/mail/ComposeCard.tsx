@@ -2,7 +2,17 @@ import { MOTION_CONSTANTS } from "@/components/constant";
 import { RecipientInput } from "@/components/mail/RecipientInput";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import { useAiCompose, useAiDraft } from "@/hooks/use-ai";
+import {
+	AiDropdown,
+	RichTextEditor,
+	type RichTextEditorRef,
+} from "@/components/ui/rich-text-editor";
+import {
+	type EnhanceAction,
+	useAiCompose,
+	useAiDraft,
+	useAiEnhance,
+} from "@/hooks/use-ai";
 import type { ComposePayload } from "@/hooks/use-compose";
 import {
 	clearComposeDraft,
@@ -62,7 +72,7 @@ export function ComposeCard({
 	const [showOriginal, setShowOriginal] = useState(false);
 	const [selectedAccountId, setSelectedAccountId] = useState("");
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const bodyRef = useRef<HTMLTextAreaElement>(null);
+	const bodyRef = useRef<RichTextEditorRef>(null);
 	const prevPayloadRef = useRef<ComposePayload | null>(null);
 
 	const { data: accountsData } = useMailAccounts();
@@ -136,7 +146,23 @@ export function ComposeCard({
 	const compose = useComposeDelayed();
 	const cancelSend = useCancelSend();
 
+	const aiEnhance = useAiEnhance();
 	const isPending = reply.isPending || forward.isPending || compose.isPending;
+
+	const handleEnhanceAll = useCallback(
+		(action: EnhanceAction, language?: string) => {
+			const html = bodyRef.current?.getHTML() ?? body;
+			const text = bodyRef.current?.getText() ?? body;
+			if (!text.trim()) return;
+			aiEnhance.mutate(
+				{ text: html, action, language },
+				{
+					onSuccess: (data) => setBody(data.result),
+				},
+			);
+		},
+		[body, aiEnhance],
+	);
 
 	const MAX_TOTAL_SIZE = 10 * 1024 * 1024;
 
@@ -734,7 +760,12 @@ export function ComposeCard({
 								</button>
 							</div>
 
-							<div className="flex items-center gap-3">
+							<div className="flex items-center gap-2">
+								<AiDropdown
+									onAction={handleEnhanceAll}
+									isPending={aiEnhance.isPending}
+									scope="message"
+								/>
 								<Button
 									onClick={handleSend}
 									disabled={isPending || !body.trim()}
@@ -774,7 +805,7 @@ export function ComposeCard({
 import { forwardRef } from "react";
 
 const ComposeBody = forwardRef<
-	HTMLTextAreaElement,
+	RichTextEditorRef,
 	{
 		body: string;
 		onBodyChange: (text: string) => void;
@@ -792,25 +823,40 @@ const ComposeBody = forwardRef<
 	const lastBodyRef = useRef(body);
 	const mutateRef = useRef(aiCompose.mutate);
 	mutateRef.current = aiCompose.mutate;
+	const internalRef = useRef<RichTextEditorRef>(null);
+
+	// Merge forwarded ref and internal ref
+	const setRefs = useCallback(
+		(instance: RichTextEditorRef | null) => {
+			internalRef.current = instance;
+			if (typeof ref === "function") ref(instance);
+			else if (ref)
+				(ref as React.MutableRefObject<RichTextEditorRef | null>).current =
+					instance;
+		},
+		[ref],
+	);
+
+	const plainText = internalRef.current?.getText() ?? body;
 
 	useEffect(() => {
-		lastBodyRef.current = body;
+		lastBodyRef.current = plainText;
 		if (debounceRef.current) clearTimeout(debounceRef.current);
 		setSuggestion(null);
 
-		if (body.trim().length < 10) return;
+		if (plainText.trim().length < 10) return;
 
 		debounceRef.current = setTimeout(() => {
-			if (lastBodyRef.current !== body) return;
+			if (lastBodyRef.current !== plainText) return;
 			mutateRef.current(
 				{
-					body,
+					body: plainText,
 					subject: subject ?? undefined,
 					recipient: recipient ?? undefined,
 				},
 				{
 					onSuccess: (data) => {
-						if (lastBodyRef.current === body && data.suggestion) {
+						if (lastBodyRef.current === plainText && data.suggestion) {
 							setSuggestion(data.suggestion);
 						}
 					},
@@ -821,7 +867,7 @@ const ComposeBody = forwardRef<
 		return () => {
 			if (debounceRef.current) clearTimeout(debounceRef.current);
 		};
-	}, [body, subject, recipient]);
+	}, [plainText, subject, recipient]);
 
 	const acceptSuggestion = useCallback(() => {
 		if (suggestion) {
@@ -832,7 +878,7 @@ const ComposeBody = forwardRef<
 	}, [suggestion, body, onBodyChange]);
 
 	const handleKeyDown = useCallback(
-		(e: React.KeyboardEvent) => {
+		(e: KeyboardEvent) => {
 			if (e.key === "Tab" && suggestion) {
 				e.preventDefault();
 				acceptSuggestion();
@@ -843,16 +889,17 @@ const ComposeBody = forwardRef<
 
 	return (
 		<div className="relative flex-1 min-h-0">
-			<textarea
-				ref={ref}
+			<RichTextEditor
+				ref={setRefs}
 				value={body}
-				onChange={(e) => onBodyChange(e.target.value)}
-				onKeyDown={handleKeyDown}
+				onChange={onBodyChange}
 				placeholder="Write your message..."
-				className={cn(
-					"w-full resize-none bg-transparent font-body text-[13px] text-foreground placeholder:text-grey-3/40 outline-none leading-relaxed",
-					viewState === "full" ? "min-h-[300px]" : "min-h-[120px]",
-				)}
+				onKeyDown={handleKeyDown}
+				containerClassName="p-0!"
+				className="border-0 bg-transparent focus-within:ring-0 focus-within:border-0"
+				editorClassName={
+					viewState === "full" ? "min-h-[300px]" : "min-h-[120px]"
+				}
 			/>
 			<AnimatePresence>
 				{suggestion && (

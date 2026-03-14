@@ -2,13 +2,23 @@ import { MOTION_CONSTANTS } from "@/components/constant";
 import { RecipientInput } from "@/components/mail/RecipientInput";
 import { Button } from "@/components/ui/button";
 import {
+	AiDropdown,
+	RichTextEditor,
+	type RichTextEditorRef,
+} from "@/components/ui/rich-text-editor";
+import {
 	Sheet,
 	SheetContent,
 	SheetDescription,
 	SheetHeader,
 	SheetTitle,
 } from "@/components/ui/sheet";
-import { useAiCompose, useAiDraft } from "@/hooks/use-ai";
+import {
+	type EnhanceAction,
+	useAiCompose,
+	useAiDraft,
+	useAiEnhance,
+} from "@/hooks/use-ai";
 import {
 	clearComposeDraft,
 	getSavedDraft,
@@ -65,6 +75,7 @@ export function ComposeSheet(props: ComposeSheetProps) {
 	const [selectedAccountId, setSelectedAccountId] = useState(
 		props.defaultAccountId ?? "",
 	);
+	const composeEditorRef = useRef<RichTextEditorRef>(null);
 
 	const { data: accountsData } = useMailAccounts();
 	const accounts = accountsData?.accounts ?? [];
@@ -115,7 +126,23 @@ export function ComposeSheet(props: ComposeSheetProps) {
 	const compose = useComposeDelayed();
 	const cancelSend = useCancelSend();
 
+	const aiEnhance = useAiEnhance();
 	const isPending = reply.isPending || forward.isPending || compose.isPending;
+
+	const handleEnhanceAll = useCallback(
+		(action: EnhanceAction, language?: string) => {
+			const html = composeEditorRef.current?.getHTML() ?? body;
+			const text = composeEditorRef.current?.getText() ?? body;
+			if (!text.trim()) return;
+			aiEnhance.mutate(
+				{ text: html, action, language },
+				{
+					onSuccess: (data) => setBody(data.result),
+				},
+			);
+		},
+		[body, aiEnhance],
+	);
 
 	const MAX_TOTAL_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -257,6 +284,7 @@ export function ComposeSheet(props: ComposeSheetProps) {
 		setComposeSubject("");
 		setShowBcc(false);
 		setShowOriginal(false);
+		composeEditorRef.current?.clear();
 		clearComposeDraft();
 		onOpenChange(false);
 	};
@@ -433,6 +461,7 @@ export function ComposeSheet(props: ComposeSheetProps) {
 						onBodyChange={setBody}
 						subject={subjectForSuggestion}
 						recipient={recipientForSuggestion}
+						editorRef={composeEditorRef}
 					/>
 
 					{/* Signature preview (compose mode) */}
@@ -527,6 +556,11 @@ export function ComposeSheet(props: ComposeSheetProps) {
 						>
 							{isPending ? "Sending..." : sendLabel}
 						</Button>
+						<AiDropdown
+							onAction={handleEnhanceAll}
+							isPending={aiEnhance.isPending}
+							scope="message"
+						/>
 						<input
 							ref={fileInputRef}
 							type="file"
@@ -598,11 +632,13 @@ function ComposeWithSuggestion({
 	onBodyChange,
 	subject,
 	recipient,
+	editorRef,
 }: {
 	body: string;
 	onBodyChange: (text: string) => void;
 	subject: string | null;
 	recipient: string | null;
+	editorRef: React.RefObject<RichTextEditorRef | null>;
 }) {
 	const aiCompose = useAiCompose();
 	const [suggestion, setSuggestion] = useState<string | null>(null);
@@ -611,26 +647,29 @@ function ComposeWithSuggestion({
 	const mutateRef = useRef(aiCompose.mutate);
 	mutateRef.current = aiCompose.mutate;
 
+	// Use plain text for AI suggestion matching
+	const plainText = editorRef.current?.getText() ?? body;
+
 	// Debounced AI completion — trigger after 1.5s pause with 10+ chars
 	useEffect(() => {
-		lastBodyRef.current = body;
+		lastBodyRef.current = plainText;
 
 		if (debounceRef.current) clearTimeout(debounceRef.current);
 		setSuggestion(null);
 
-		if (body.trim().length < 10) return;
+		if (plainText.trim().length < 10) return;
 
 		debounceRef.current = setTimeout(() => {
-			if (lastBodyRef.current !== body) return;
+			if (lastBodyRef.current !== plainText) return;
 			mutateRef.current(
 				{
-					body,
+					body: plainText,
 					subject: subject ?? undefined,
 					recipient: recipient ?? undefined,
 				},
 				{
 					onSuccess: (data) => {
-						if (lastBodyRef.current === body && data.suggestion) {
+						if (lastBodyRef.current === plainText && data.suggestion) {
 							setSuggestion(data.suggestion);
 						}
 					},
@@ -641,7 +680,7 @@ function ComposeWithSuggestion({
 		return () => {
 			if (debounceRef.current) clearTimeout(debounceRef.current);
 		};
-	}, [body, subject, recipient]);
+	}, [plainText, subject, recipient]);
 
 	const acceptSuggestion = useCallback(() => {
 		if (suggestion) {
@@ -652,7 +691,7 @@ function ComposeWithSuggestion({
 	}, [suggestion, body, onBodyChange]);
 
 	const handleKeyDown = useCallback(
-		(e: React.KeyboardEvent) => {
+		(e: KeyboardEvent) => {
 			if (e.key === "Tab" && suggestion) {
 				e.preventDefault();
 				acceptSuggestion();
@@ -663,13 +702,15 @@ function ComposeWithSuggestion({
 
 	return (
 		<div className="relative flex-1 min-h-[120px]">
-			<textarea
+			<RichTextEditor
+				ref={editorRef}
 				value={body}
-				onChange={(e) => onBodyChange(e.target.value)}
-				onKeyDown={handleKeyDown}
+				onChange={onBodyChange}
 				placeholder="Write your message..."
-				rows={8}
-				className="w-full h-full min-h-[120px] resize-none rounded-md border border-border/50 bg-secondary/10 px-3 py-2 font-body text-[13px] text-foreground placeholder:text-grey-3 outline-none focus:border-ring focus:ring-1 focus:ring-ring/50"
+				onKeyDown={handleKeyDown}
+				className="border-0 bg-transparent rounded-none focus-within:ring-0 focus-within:border-0"
+				editorClassName="min-h-[120px]"
+				containerClassName="p-0!"
 			/>
 			<AnimatePresence>
 				{suggestion && (
