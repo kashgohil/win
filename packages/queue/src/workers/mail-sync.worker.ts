@@ -44,6 +44,7 @@ async function upsertSyncedEmails(
 				bodyPlain: e.bodyPlain,
 				bodyHtml: e.bodyHtml,
 				unsubscribeUrl: e.unsubscribeUrl,
+				isArchived: e.isArchived,
 			})),
 		)
 		.onConflictDoNothing({
