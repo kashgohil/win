@@ -287,6 +287,7 @@ export const mail = new Elysia({
 					? query.accountIds.split(",").filter(Boolean)
 					: undefined,
 				sentOnly: query.sentOnly === "true",
+				archivedOnly: query.archivedOnly === "true",
 			});
 
 			if (!result.ok) {
@@ -318,6 +319,7 @@ export const mail = new Elysia({
 				before: t.Optional(t.String()),
 				accountIds: t.Optional(t.String()),
 				sentOnly: t.Optional(t.String()),
+				archivedOnly: t.Optional(t.String()),
 			}),
 			response: {
 				200: threadListResponse,

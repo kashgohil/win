@@ -389,6 +389,7 @@ type FilterOptions = {
 	before?: string;
 	accountIds?: string[];
 	sentOnly?: boolean;
+	archivedOnly?: boolean;
 };
 
 function buildFilterConditions(
@@ -402,6 +403,12 @@ function buildFilterConditions(
 	conditions.push(
 		or(isNull(emails.triageStatus), not(eq(emails.triageStatus, "snoozed")))!,
 	);
+	// Archive filter
+	if (options.archivedOnly) {
+		conditions.push(eq(emails.isArchived, true));
+	} else {
+		conditions.push(eq(emails.isArchived, false));
+	}
 	if (options.accountIds && options.accountIds.length > 0) {
 		conditions.push(inArray(emails.emailAccountId, options.accountIds));
 	}
@@ -1351,7 +1358,10 @@ class MailService {
 			}
 
 			await ctx.provider.archive(ctx.accessToken, ctx.email.providerMessageId);
-			await db.delete(emails).where(eq(emails.id, emailId));
+			await db
+				.update(emails)
+				.set({ isArchived: true })
+				.where(eq(emails.id, emailId));
 			await invalidateCache(`mail:briefing:${userId}`);
 
 			return { ok: true, message: "Email archived" };
@@ -1962,12 +1972,15 @@ class MailService {
 				}
 			}
 
-			await db.delete(emails).where(
-				inArray(
-					emails.id,
-					threadEmails.map((e) => e.id),
-				),
-			);
+			await db
+				.update(emails)
+				.set({ isArchived: true })
+				.where(
+					inArray(
+						emails.id,
+						threadEmails.map((e) => e.id),
+					),
+				);
 			await invalidateCache(`mail:briefing:${userId}`);
 
 			return { ok: true, message: "Thread archived" };
