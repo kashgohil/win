@@ -322,12 +322,9 @@ export function useInboxKeyboard({
 				} else if (
 					activeSection === "emails" &&
 					emailCount > 0 &&
-					viewMode === "inline" &&
 					onToggleExpand
 				) {
 					onToggleExpand(focusedEmailIndex);
-				} else if (activeSection === "emails" && emailCount > 0) {
-					onOpenEmail(focusedEmailIndex);
 				}
 				return;
 			}

@@ -258,7 +258,6 @@ export function ThreadRow({
 	variant = "inbox",
 	linkSearch,
 	isExpanded,
-	onToggleExpand,
 	expandedContent,
 	compact,
 }: {
@@ -273,7 +272,6 @@ export function ThreadRow({
 	variant?: "inbox" | "sent";
 	linkSearch?: Record<string, unknown>;
 	isExpanded?: boolean;
-	onToggleExpand?: () => void;
 	expandedContent?: React.ReactNode;
 	compact?: boolean;
 }) {
@@ -449,7 +447,7 @@ export function ThreadRow({
 						</motion.div>
 
 						{/* Actions — animate in on hover */}
-						<TooltipProvider>
+						<TooltipProvider sliding>
 							<div className="col-start-1 row-start-1 flex items-center gap-0.5 pointer-events-none group-hover:pointer-events-auto">
 								<RowAction label="Archive" onClick={handleArchive}>
 									<Archive className="size-3" />
@@ -551,38 +549,21 @@ export function ThreadRow({
 				isExpanded && "bg-secondary/8",
 			)}
 		>
-			{onToggleExpand ? (
-				<div
-					role="link"
-					tabIndex={0}
-					onClick={onToggleExpand}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") onToggleExpand();
-					}}
-					className={cn(
-						"flex items-start gap-3 px-2 cursor-pointer",
-						compact ? "py-2.5" : "py-3.5",
-					)}
-				>
-					{rowContent}
-				</div>
-			) : (
-				<Link
-					to="/module/mail/inbox/$emailId"
-					params={{ emailId: thread.threadId }}
-					search={{
-						view: view ?? undefined,
-						category: category ?? undefined,
-						...linkSearch,
-					}}
-					className={cn(
-						"flex items-start gap-3 px-2 cursor-pointer",
-						compact ? "py-2.5" : "py-3.5",
-					)}
-				>
-					{rowContent}
-				</Link>
-			)}
+			<Link
+				to="/module/mail/inbox/$emailId"
+				params={{ emailId: thread.threadId }}
+				search={{
+					view: view ?? undefined,
+					category: category ?? undefined,
+					...linkSearch,
+				}}
+				className={cn(
+					"flex items-start gap-3 px-2 cursor-pointer",
+					compact ? "py-2.5" : "py-3.5",
+				)}
+			>
+				{rowContent}
+			</Link>
 
 			{/* Inline expansion panel */}
 			<AnimatePresence initial={false}>

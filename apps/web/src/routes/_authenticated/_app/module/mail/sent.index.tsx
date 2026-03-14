@@ -499,19 +499,6 @@ function SentPage() {
 									linkSearch={{ source: "sent" }}
 									compact={viewMode === "sidepanel"}
 									isExpanded={isThisExpanded}
-									onToggleExpand={
-										viewMode === "inline"
-											? () => {
-													setExpandedThreadId((prev) =>
-														prev === thread.threadId ? null : thread.threadId,
-													);
-												}
-											: viewMode === "sidepanel"
-												? () => {
-														setPeekedThreadId(thread.threadId);
-													}
-												: undefined
-									}
 									expandedContent={
 										isThisExpanded ? (
 											<ThreadPreview
