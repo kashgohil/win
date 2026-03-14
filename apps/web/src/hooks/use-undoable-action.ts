@@ -12,6 +12,8 @@ interface UndoableActionOptions {
 	apiCall: () => unknown;
 	/** Optional callback after action completes (e.g. navigate back) */
 	onComplete?: () => void;
+	/** Optional callback after the API call fires (e.g. invalidate related caches) */
+	onAfterApiCall?: () => void;
 }
 
 export function useUndoableAction() {
@@ -20,15 +22,22 @@ export function useUndoableAction() {
 	);
 
 	const execute = useCallback(
-		({ message, optimisticUpdate, apiCall, onComplete }: UndoableActionOptions) => {
+		({
+			message,
+			optimisticUpdate,
+			apiCall,
+			onComplete,
+			onAfterApiCall,
+		}: UndoableActionOptions) => {
 			const revert = optimisticUpdate();
 			const actionId = crypto.randomUUID();
 
 			onComplete?.();
 
-			const timer = setTimeout(() => {
+			const timer = setTimeout(async () => {
 				pendingTimers.current.delete(actionId);
-				apiCall();
+				await apiCall();
+				onAfterApiCall?.();
 			}, UNDO_DELAY);
 
 			pendingTimers.current.set(actionId, timer);
