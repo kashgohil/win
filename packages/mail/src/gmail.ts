@@ -585,6 +585,12 @@ function parseGmailMessage(msg: GmailMessage): SyncedEmail {
 		receivedAt: new Date(Number(msg.internalDate)),
 		isRead: !msg.labelIds.includes("UNREAD"),
 		isStarred: msg.labelIds.includes("STARRED"),
+		isArchived:
+			!msg.labelIds.includes("INBOX") &&
+			!msg.labelIds.includes("SENT") &&
+			!msg.labelIds.includes("DRAFT") &&
+			!msg.labelIds.includes("TRASH") &&
+			!msg.labelIds.includes("SPAM"),
 		hasAttachments: attachments.length > 0,
 		attachments,
 		labels: msg.labelIds,
