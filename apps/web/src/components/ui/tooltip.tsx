@@ -103,7 +103,7 @@ function SlidingFloat({
 				<motion.div
 					key="sliding-tooltip"
 					role="tooltip"
-					className="fixed top-0 left-0 pointer-events-none z-50"
+					className="fixed top-0 left-0 pointer-events-none z-[999]"
 					initial={{ opacity: 0, ...withEntryOffset(side, state) }}
 					animate={{ opacity: 1, x: state.x, y: state.y }}
 					exit={{ opacity: 0, ...withEntryOffset(side, lastPos) }}
