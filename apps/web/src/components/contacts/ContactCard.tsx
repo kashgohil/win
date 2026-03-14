@@ -77,6 +77,8 @@ export function ContactCard({
 			<HoverCardTrigger asChild>
 				<button
 					type="button"
+					onClick={(e) => e.stopPropagation()}
+					onMouseDown={(e) => e.stopPropagation()}
 					className="inline cursor-pointer hover:underline decoration-dotted underline-offset-2"
 				>
 					{children}
@@ -113,6 +115,8 @@ export function ContactCardLazy({
 			<HoverCardTrigger asChild>
 				<button
 					type="button"
+					onClick={(e) => e.stopPropagation()}
+					onMouseDown={(e) => e.stopPropagation()}
 					className="inline cursor-pointer hover:underline decoration-dotted underline-offset-2"
 				>
 					{children}
