@@ -6,6 +6,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { mailKeys } from "@/hooks/use-mail";
+import { useUndoableAction } from "@/hooks/use-undoable-action";
 import { api } from "@/lib/api";
 import { HighlightMatches } from "@/lib/highlight-text";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,6 @@ import {
 	Star,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { toast } from "sonner";
 import { CATEGORY_CONFIG } from "./category-colors";
 
 function formatTimestamp(iso: string): string {
@@ -210,12 +210,24 @@ export function EmailRow({
 		view?: "read";
 	};
 
+	const undoable = useUndoableAction();
+
 	const handleArchive = () => {
-		queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
-			removeEmailFromPages(old, email.id),
-		);
-		toast("Email archived");
-		api.mail.emails({ id: email.id }).archive.post();
+		undoable({
+			message: "Email archived",
+			optimisticUpdate: () => {
+				const prev = queryClient.getQueriesData({ queryKey: mailKeys.all });
+				queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+					removeEmailFromPages(old, email.id),
+				);
+				return () => {
+					for (const [key, data] of prev) {
+						queryClient.setQueryData(key, data);
+					}
+				};
+			},
+			apiCall: () => api.mail.emails({ id: email.id }).archive.post(),
+		});
 	};
 
 	const handleStar = () => {
@@ -227,10 +239,21 @@ export function EmailRow({
 	};
 
 	const handleToggleRead = () => {
-		queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
-			removeEmailFromPages(old, email.id),
-		);
-		api.mail.emails({ id: email.id }).read.patch();
+		undoable({
+			message: email.isRead ? "Marked as unread" : "Marked as read",
+			optimisticUpdate: () => {
+				const prev = queryClient.getQueriesData({ queryKey: mailKeys.all });
+				queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+					removeEmailFromPages(old, email.id),
+				);
+				return () => {
+					for (const [key, data] of prev) {
+						queryClient.setQueryData(key, data);
+					}
+				};
+			},
+			apiCall: () => api.mail.emails({ id: email.id }).read.patch(),
+		});
 	};
 
 	return (
