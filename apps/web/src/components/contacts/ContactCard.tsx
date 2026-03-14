@@ -1,8 +1,8 @@
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
+	HoverCard,
+	HoverCardContent,
+	HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { useStarContact } from "@/hooks/use-contacts";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Building2, Calendar, Phone, Star } from "lucide-react";
 import type { ReactNode } from "react";
+
+const HOVER_OPEN_DELAY = 300;
+const HOVER_CLOSE_DELAY = 300;
 
 /* ── Types ── */
 
@@ -70,38 +73,30 @@ export function ContactCard({
 	}
 
 	return (
-		<Popover>
-			<PopoverTrigger asChild>
+		<HoverCard openDelay={HOVER_OPEN_DELAY} closeDelay={HOVER_CLOSE_DELAY}>
+			<HoverCardTrigger asChild>
 				<button
 					type="button"
 					className="inline cursor-pointer hover:underline decoration-dotted underline-offset-2"
 				>
 					{children}
 				</button>
-			</PopoverTrigger>
-			<PopoverContent
+			</HoverCardTrigger>
+			<HoverCardContent
 				side={side}
 				align={align}
 				className="w-72 p-0 overflow-hidden"
 			>
 				{isLoading ? (
-					<div className="p-4 animate-pulse">
-						<div className="flex items-center gap-3">
-							<div className="size-10 rounded-full bg-secondary/30" />
-							<div>
-								<div className="h-4 w-28 bg-secondary/30 rounded" />
-								<div className="h-3 w-36 bg-secondary/20 rounded mt-1" />
-							</div>
-						</div>
-					</div>
+					<CardSkeleton />
 				) : contact ? (
 					<ContactCardContent
 						contact={contact}
 						onStar={() => starContact.mutate(contact.id)}
 					/>
 				) : null}
-			</PopoverContent>
-		</Popover>
+			</HoverCardContent>
+		</HoverCard>
 	);
 }
 
@@ -114,23 +109,23 @@ export function ContactCardLazy({
 	align = "start",
 }: ContactCardProps) {
 	return (
-		<Popover>
-			<PopoverTrigger asChild>
+		<HoverCard openDelay={HOVER_OPEN_DELAY} closeDelay={HOVER_CLOSE_DELAY}>
+			<HoverCardTrigger asChild>
 				<button
 					type="button"
 					className="inline cursor-pointer hover:underline decoration-dotted underline-offset-2"
 				>
 					{children}
 				</button>
-			</PopoverTrigger>
-			<PopoverContent
+			</HoverCardTrigger>
+			<HoverCardContent
 				side={side}
 				align={align}
 				className="w-72 p-0 overflow-hidden"
 			>
 				<LazyContent email={email} />
-			</PopoverContent>
-		</Popover>
+			</HoverCardContent>
+		</HoverCard>
 	);
 }
 
@@ -139,17 +134,7 @@ function LazyContent({ email }: { email: string }) {
 	const starContact = useStarContact();
 
 	if (isLoading) {
-		return (
-			<div className="p-4 animate-pulse">
-				<div className="flex items-center gap-3">
-					<div className="size-10 rounded-full bg-secondary/30" />
-					<div>
-						<div className="h-4 w-28 bg-secondary/30 rounded" />
-						<div className="h-3 w-36 bg-secondary/20 rounded mt-1" />
-					</div>
-				</div>
-			</div>
-		);
+		return <CardSkeleton />;
 	}
 
 	if (!contact) {
@@ -176,6 +161,22 @@ function LazyContent({ email }: { email: string }) {
 			contact={contact}
 			onStar={() => starContact.mutate(contact.id)}
 		/>
+	);
+}
+
+/* ── Skeleton ── */
+
+function CardSkeleton() {
+	return (
+		<div className="p-4 animate-pulse">
+			<div className="flex items-center gap-3">
+				<div className="size-10 rounded-full bg-secondary/30" />
+				<div>
+					<div className="h-4 w-28 bg-secondary/30 rounded" />
+					<div className="h-3 w-36 bg-secondary/20 rounded mt-1" />
+				</div>
+			</div>
+		</div>
 	);
 }
 
