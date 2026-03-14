@@ -43,6 +43,7 @@ import { Route as AuthenticatedAppModuleMailSentIndexRouteImport } from './route
 import { Route as AuthenticatedAppModuleMailInboxIndexRouteImport } from './routes/_authenticated/_app/module/mail/inbox.index'
 import { Route as AuthenticatedAppModuleMailDraftsIndexRouteImport } from './routes/_authenticated/_app/module/mail/drafts.index'
 import { Route as AuthenticatedAppModuleMailAttachmentsIndexRouteImport } from './routes/_authenticated/_app/module/mail/attachments.index'
+import { Route as AuthenticatedAppModuleMailArchivedIndexRouteImport } from './routes/_authenticated/_app/module/mail/archived.index'
 import { Route as AuthenticatedAppModuleCrmListIndexRouteImport } from './routes/_authenticated/_app/module/crm/list.index'
 import { Route as AuthenticatedAppModuleCrmFollowUpsIndexRouteImport } from './routes/_authenticated/_app/module/crm/follow-ups.index'
 import { Route as AuthenticatedAppModuleCalWeekIndexRouteImport } from './routes/_authenticated/_app/module/cal/week.index'
@@ -246,6 +247,12 @@ const AuthenticatedAppModuleMailAttachmentsIndexRoute =
     path: '/attachments/',
     getParentRoute: () => AuthenticatedAppModuleMailRoute,
   } as any)
+const AuthenticatedAppModuleMailArchivedIndexRoute =
+  AuthenticatedAppModuleMailArchivedIndexRouteImport.update({
+    id: '/archived/',
+    path: '/archived/',
+    getParentRoute: () => AuthenticatedAppModuleMailRoute,
+  } as any)
 const AuthenticatedAppModuleCrmListIndexRoute =
   AuthenticatedAppModuleCrmListIndexRouteImport.update({
     id: '/list/',
@@ -316,6 +323,7 @@ export interface FileRoutesByFullPath {
   '/module/cal/week/': typeof AuthenticatedAppModuleCalWeekIndexRoute
   '/module/crm/follow-ups/': typeof AuthenticatedAppModuleCrmFollowUpsIndexRoute
   '/module/crm/list/': typeof AuthenticatedAppModuleCrmListIndexRoute
+  '/module/mail/archived/': typeof AuthenticatedAppModuleMailArchivedIndexRoute
   '/module/mail/attachments/': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/module/mail/drafts/': typeof AuthenticatedAppModuleMailDraftsIndexRoute
   '/module/mail/inbox/': typeof AuthenticatedAppModuleMailInboxIndexRoute
@@ -351,6 +359,7 @@ export interface FileRoutesByTo {
   '/module/cal/week': typeof AuthenticatedAppModuleCalWeekIndexRoute
   '/module/crm/follow-ups': typeof AuthenticatedAppModuleCrmFollowUpsIndexRoute
   '/module/crm/list': typeof AuthenticatedAppModuleCrmListIndexRoute
+  '/module/mail/archived': typeof AuthenticatedAppModuleMailArchivedIndexRoute
   '/module/mail/attachments': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/module/mail/drafts': typeof AuthenticatedAppModuleMailDraftsIndexRoute
   '/module/mail/inbox': typeof AuthenticatedAppModuleMailInboxIndexRoute
@@ -394,6 +403,7 @@ export interface FileRoutesById {
   '/_authenticated/_app/module/cal/week/': typeof AuthenticatedAppModuleCalWeekIndexRoute
   '/_authenticated/_app/module/crm/follow-ups/': typeof AuthenticatedAppModuleCrmFollowUpsIndexRoute
   '/_authenticated/_app/module/crm/list/': typeof AuthenticatedAppModuleCrmListIndexRoute
+  '/_authenticated/_app/module/mail/archived/': typeof AuthenticatedAppModuleMailArchivedIndexRoute
   '/_authenticated/_app/module/mail/attachments/': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/_authenticated/_app/module/mail/drafts/': typeof AuthenticatedAppModuleMailDraftsIndexRoute
   '/_authenticated/_app/module/mail/inbox/': typeof AuthenticatedAppModuleMailInboxIndexRoute
@@ -436,6 +446,7 @@ export interface FileRouteTypes {
     | '/module/cal/week/'
     | '/module/crm/follow-ups/'
     | '/module/crm/list/'
+    | '/module/mail/archived/'
     | '/module/mail/attachments/'
     | '/module/mail/drafts/'
     | '/module/mail/inbox/'
@@ -471,6 +482,7 @@ export interface FileRouteTypes {
     | '/module/cal/week'
     | '/module/crm/follow-ups'
     | '/module/crm/list'
+    | '/module/mail/archived'
     | '/module/mail/attachments'
     | '/module/mail/drafts'
     | '/module/mail/inbox'
@@ -513,6 +525,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/module/cal/week/'
     | '/_authenticated/_app/module/crm/follow-ups/'
     | '/_authenticated/_app/module/crm/list/'
+    | '/_authenticated/_app/module/mail/archived/'
     | '/_authenticated/_app/module/mail/attachments/'
     | '/_authenticated/_app/module/mail/drafts/'
     | '/_authenticated/_app/module/mail/inbox/'
@@ -766,6 +779,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppModuleMailAttachmentsIndexRouteImport
       parentRoute: typeof AuthenticatedAppModuleMailRoute
     }
+    '/_authenticated/_app/module/mail/archived/': {
+      id: '/_authenticated/_app/module/mail/archived/'
+      path: '/archived'
+      fullPath: '/module/mail/archived/'
+      preLoaderRoute: typeof AuthenticatedAppModuleMailArchivedIndexRouteImport
+      parentRoute: typeof AuthenticatedAppModuleMailRoute
+    }
     '/_authenticated/_app/module/crm/list/': {
       id: '/_authenticated/_app/module/crm/list/'
       path: '/list'
@@ -857,6 +877,7 @@ const AuthenticatedAppModuleCrmRouteWithChildren =
 interface AuthenticatedAppModuleMailRouteChildren {
   AuthenticatedAppModuleMailIndexRoute: typeof AuthenticatedAppModuleMailIndexRoute
   AuthenticatedAppModuleMailInboxEmailIdRoute: typeof AuthenticatedAppModuleMailInboxEmailIdRoute
+  AuthenticatedAppModuleMailArchivedIndexRoute: typeof AuthenticatedAppModuleMailArchivedIndexRoute
   AuthenticatedAppModuleMailAttachmentsIndexRoute: typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   AuthenticatedAppModuleMailDraftsIndexRoute: typeof AuthenticatedAppModuleMailDraftsIndexRoute
   AuthenticatedAppModuleMailInboxIndexRoute: typeof AuthenticatedAppModuleMailInboxIndexRoute
@@ -868,6 +889,8 @@ const AuthenticatedAppModuleMailRouteChildren: AuthenticatedAppModuleMailRouteCh
     AuthenticatedAppModuleMailIndexRoute: AuthenticatedAppModuleMailIndexRoute,
     AuthenticatedAppModuleMailInboxEmailIdRoute:
       AuthenticatedAppModuleMailInboxEmailIdRoute,
+    AuthenticatedAppModuleMailArchivedIndexRoute:
+      AuthenticatedAppModuleMailArchivedIndexRoute,
     AuthenticatedAppModuleMailAttachmentsIndexRoute:
       AuthenticatedAppModuleMailAttachmentsIndexRoute,
     AuthenticatedAppModuleMailDraftsIndexRoute:
