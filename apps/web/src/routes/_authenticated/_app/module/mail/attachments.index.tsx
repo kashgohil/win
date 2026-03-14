@@ -455,6 +455,10 @@ function AttachmentsPage() {
 		onOpenSearch: handleOpenSearch,
 		onNavigateInbox: handleNavigateInbox,
 		onNavigateSent: handleNavigateSent,
+		onNavigateArchived: useCallback(
+			() => appNavigate({ to: "/module/mail/archived" }),
+			[appNavigate],
+		),
 		onGoBack: handleGoBack,
 	});
 

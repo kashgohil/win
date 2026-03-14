@@ -15,6 +15,7 @@ type UseAttachmentsKeyboardOptions = {
 	onOpenSearch?: () => void;
 	onNavigateInbox?: () => void;
 	onNavigateSent?: () => void;
+	onNavigateArchived?: () => void;
 	onGoBack?: () => void;
 };
 
@@ -47,6 +48,7 @@ export function useAttachmentsKeyboard({
 	onOpenSearch,
 	onNavigateInbox,
 	onNavigateSent,
+	onNavigateArchived,
 	onGoBack,
 }: UseAttachmentsKeyboardOptions): UseAttachmentsKeyboardReturn {
 	const [isActive, setIsActive] = useState(false);
@@ -165,6 +167,13 @@ export function useAttachmentsKeyboard({
 			if (key === "s") {
 				e.preventDefault();
 				onNavigateSent?.();
+				return;
+			}
+
+			// Global shortcut: g to navigate to archived
+			if (key === "g") {
+				e.preventDefault();
+				onNavigateArchived?.();
 				return;
 			}
 
@@ -310,6 +319,7 @@ export function useAttachmentsKeyboard({
 		onOpenSearch,
 		onNavigateInbox,
 		onNavigateSent,
+		onNavigateArchived,
 		onGoBack,
 		scrollAttachmentIntoView,
 		scrollSectionIntoView,

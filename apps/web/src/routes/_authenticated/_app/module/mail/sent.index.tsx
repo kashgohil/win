@@ -297,6 +297,10 @@ function SentPage() {
 					e.preventDefault();
 					navigate({ to: "/module/mail/attachments" });
 					return;
+				case "g":
+					e.preventDefault();
+					navigate({ to: "/module/mail/archived" });
+					return;
 				case "p":
 					e.preventDefault();
 					toggleViewMode();
