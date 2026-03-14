@@ -14,9 +14,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useMailThreadsInfinite } from "@/hooks/use-mail";
 import { useMailAccountFilter } from "@/hooks/use-mail-account-filter";
-import { cn } from "@/lib/utils";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Inbox } from "lucide-react";
+import { ArrowLeft, Inbox, Paperclip, Send } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef } from "react";
 import { z } from "zod";
@@ -185,53 +184,69 @@ function ArchivedPage() {
 				transition={{ duration: 0.3, ease: MOTION_CONSTANTS.EASE }}
 				className="mb-6 flex items-center justify-between"
 			>
-				<div className="flex items-center gap-4">
-					<Link
-						to="/module/mail"
-						className="inline-flex items-center gap-1.5 font-body text-[13px] text-grey-2 hover:text-foreground transition-colors"
-					>
-						<ArrowLeft className="size-3" />
-						Back to hub
-					</Link>
+				<Link
+					to="/module/mail"
+					className="group inline-flex items-center gap-1.5 font-body text-[13px] text-grey-3 hover:text-foreground transition-all duration-150 rounded-lg px-2 py-1 -mx-2"
+				>
+					<ArrowLeft className="size-3.5 group-hover:-translate-x-0.5 transition-transform duration-150" />
+					Mail
+				</Link>
 
+				<div className="flex items-center gap-3">
 					<TooltipProvider sliding>
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<Link
 									to="/module/mail/inbox"
-									className="p-1.5 rounded-md text-grey-3 hover:text-foreground hover:bg-secondary/30 transition-colors"
+									search={{
+										view: undefined,
+										starred: undefined,
+										attachment: undefined,
+									}}
+									className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
 								>
-									<Inbox className="size-4" />
+									<Inbox className="size-3" />
+									<Kbd>I</Kbd>
+								</Link>
+							</TooltipTrigger>
+							<TooltipContent side="bottom">Inbox</TooltipContent>
+						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Link
+									to="/module/mail/attachments"
+									className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
+								>
+									<Paperclip className="size-3" />
+									<Kbd>A</Kbd>
 								</Link>
 							</TooltipTrigger>
 							<TooltipContent side="bottom">
-								Inbox <Kbd>I</Kbd>
+								Attachments
 							</TooltipContent>
 						</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Link
+									to="/module/mail/sent"
+									search={{
+										starred: undefined,
+										attachment: undefined,
+									}}
+									className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-secondary/10 hover:bg-secondary/25 hover:border-border/60 text-grey-3 hover:text-foreground transition-all duration-150"
+								>
+									<Send className="size-3" />
+									<Kbd>S</Kbd>
+								</Link>
+							</TooltipTrigger>
+							<TooltipContent side="bottom">Sent</TooltipContent>
+						</Tooltip>
 					</TooltipProvider>
+
+					<div className="w-px h-3.5 bg-border/40" />
+
+					<AccountSelector />
 				</div>
-
-				<AccountSelector />
-			</motion.div>
-
-			{/* Title */}
-			<motion.div
-				initial={{ opacity: 0, y: 12 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{
-					duration: 0.5,
-					delay: 0.06,
-					ease: MOTION_CONSTANTS.EASE,
-				}}
-			>
-				<h1 className="font-display text-[clamp(1.25rem,2.5vw,1.75rem)] text-foreground leading-tight lowercase">
-					archived
-				</h1>
-				{threads.length > 0 && (
-					<p className="font-mono text-[11px] text-grey-3 mt-1">
-						{threads.length} thread{threads.length !== 1 && "s"}
-					</p>
-				)}
 			</motion.div>
 
 			{/* Thread list */}
