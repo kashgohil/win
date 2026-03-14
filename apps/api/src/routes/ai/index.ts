@@ -7,6 +7,8 @@ import {
 	completeComposeResponse,
 	draftBody,
 	draftResponse,
+	enhanceBody,
+	enhanceResponse,
 	errorResponse,
 	summarizeBody,
 	summarizeResponse,
@@ -98,6 +100,39 @@ export const aiRoutes = new Elysia({
 			detail: {
 				tags: ["AI"],
 				summary: "Get AI completion suggestion for email compose",
+			},
+		},
+	)
+
+	/* ── Enhance / rewrite text ── */
+
+	.post(
+		"/enhance",
+		async ({ body, set }) => {
+			const result = await aiService.enhanceText(
+				body.text,
+				body.action,
+				body.language,
+				body.context,
+			);
+			if (!result.ok) {
+				set.status = result.status;
+				return { error: result.error };
+			}
+			return { result: result.data };
+		},
+		{
+			auth: true,
+			body: enhanceBody,
+			response: {
+				200: enhanceResponse,
+				400: errorResponse,
+				500: errorResponse,
+				503: errorResponse,
+			},
+			detail: {
+				tags: ["AI"],
+				summary: "Enhance or rewrite text with AI",
 			},
 		},
 	)

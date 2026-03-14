@@ -307,6 +307,117 @@ export const aiService = {
 			return { ok: false, error: "AI draft generation failed", status: 500 };
 		}
 	},
+
+	async enhanceText(
+		text: string,
+		action: string,
+		language?: string,
+		context?: string,
+	): Promise<
+		{ ok: true; data: string } | { ok: false; error: string; status: number }
+	> {
+		const provider = getAiProvider();
+		if (!provider) {
+			return { ok: false, error: "AI provider not configured", status: 503 };
+		}
+
+		const prompt = ENHANCE_PROMPTS[action];
+		if (!prompt) {
+			return { ok: false, error: "Unknown enhancement action", status: 400 };
+		}
+
+		const userMessage = [
+			context ? `Context: ${context}` : null,
+			action === "translate" && language ? `Target language: ${language}` : null,
+			`Text:\n${text.slice(0, BODY_LIMIT)}`,
+		]
+			.filter(Boolean)
+			.join("\n");
+
+		try {
+			const result = await provider.complete(prompt, userMessage);
+			return { ok: true, data: result };
+		} catch (err) {
+			console.error(
+				"[ai] Text enhancement failed:",
+				err instanceof Error ? err.message : "Unknown error",
+			);
+			return { ok: false, error: "AI enhancement failed", status: 500 };
+		}
+	},
+};
+
+const ENHANCE_BASE = `You are an email writing assistant. Rewrite the given text according to the instructions below.
+
+## Rules
+- Output ONLY the rewritten text — no quotes, no labels, no explanation
+- Preserve the original meaning and key information
+- If the text contains HTML tags, preserve the HTML structure
+- Keep the same general length unless the action requires changing it`;
+
+const ENHANCE_PROMPTS: Record<string, string> = {
+	"more-formal": `${ENHANCE_BASE}
+
+## Action: Make more formal
+- Use professional language and tone
+- Remove colloquialisms and casual phrasing
+- Use complete sentences and proper structure`,
+
+	"more-friendly": `${ENHANCE_BASE}
+
+## Action: Make more friendly
+- Use warm, conversational tone
+- Add personal touches where appropriate
+- Keep it professional but approachable`,
+
+	"more-concise": `${ENHANCE_BASE}
+
+## Action: Make more concise
+- Cut unnecessary words and filler
+- Get to the point quickly
+- Reduce length by roughly 30-50%`,
+
+	"more-detailed": `${ENHANCE_BASE}
+
+## Action: Make more detailed
+- Expand on key points
+- Add specifics and elaboration
+- Increase length by roughly 30-50%`,
+
+	"fix-grammar": `${ENHANCE_BASE}
+
+## Action: Fix grammar and spelling
+- Correct grammatical errors, spelling mistakes, and punctuation
+- Do NOT change the tone, style, or meaning
+- Make minimal changes — only fix what's wrong`,
+
+	"improve-clarity": `${ENHANCE_BASE}
+
+## Action: Improve clarity
+- Restructure for better readability
+- Break up long sentences
+- Make the message easier to understand`,
+
+	"translate": `${ENHANCE_BASE}
+
+## Action: Translate
+- Translate the text to the target language specified
+- Preserve tone and formality level
+- If no target language is specified, translate to English`,
+
+	"shorten": `${ENHANCE_BASE}
+
+## Action: Shorten aggressively
+- Cut to roughly half the original length
+- Keep only the essential message
+- Remove pleasantries and filler`,
+
+	"expand": `${ENHANCE_BASE}
+
+## Action: Expand
+- Flesh out the message with more detail
+- Add appropriate context and transitions
+- Roughly double the length while keeping it natural`,
 };
 
 const COMPOSE_COMPLETE_PROMPT = `You are an email writing assistant. Continue the user's email naturally.

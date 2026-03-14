@@ -64,6 +64,27 @@ export const completeComposeResponse = t.Object({
 	suggestion: t.String(),
 });
 
+export const enhanceBody = t.Object({
+	text: t.String({ minLength: 1 }),
+	action: t.Union([
+		t.Literal("more-formal"),
+		t.Literal("more-friendly"),
+		t.Literal("more-concise"),
+		t.Literal("more-detailed"),
+		t.Literal("fix-grammar"),
+		t.Literal("improve-clarity"),
+		t.Literal("translate"),
+		t.Literal("shorten"),
+		t.Literal("expand"),
+	]),
+	language: t.Optional(t.String()),
+	context: t.Optional(t.String()),
+});
+
+export const enhanceResponse = t.Object({
+	result: t.String(),
+});
+
 export const errorResponse = t.Object({
 	error: t.String(),
 });
