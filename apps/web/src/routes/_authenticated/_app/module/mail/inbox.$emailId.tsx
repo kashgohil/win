@@ -10,25 +10,29 @@ import {
 	KeyboardShortcutBar,
 } from "@/components/mail/KeyboardShortcutBar";
 import { MessageMetadata } from "@/components/mail/MessageMetadata";
+import { QuickReplyForm } from "@/components/mail/QuickReplyForm";
 import { useAiSummarize } from "@/hooks/use-ai";
 import { openCompose } from "@/hooks/use-compose";
 import { useEmailDetailKeyboard } from "@/hooks/use-email-detail-keyboard";
 import { mailKeys, useMailThreadDetail } from "@/hooks/use-mail";
 import { recordThreadVisit } from "@/hooks/use-merge-suggestions";
 import { api } from "@/lib/api";
-import { cn, formatDate } from "@/lib/utils";
+import { mailAccountsCollection } from "@/lib/mail-collections";
+import { cn, relativeTime } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLiveQuery } from "@tanstack/react-db";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { SerializedEmailDetail } from "@wingmnn/types";
 import {
 	ArrowLeft,
-	ChevronRight,
+	ArrowUpDown,
 	Loader2,
+	Reply,
 	Sparkles,
 	Unlink,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -361,6 +365,7 @@ function EmailDetail() {
 			) : (
 				<ConversationView
 					messages={messages}
+					threadSubject={threadSubject ?? null}
 					onReplyTo={(msgId) => handleReply(msgId)}
 				/>
 			)}
@@ -425,151 +430,286 @@ function SingleMessageView({ email }: { email: SerializedEmailDetail }) {
 	);
 }
 
-/* ── Conversation view (multi-message) ── */
+/* ── Conversation view (chat-style multi-message) ── */
 
 function ConversationView({
 	messages,
+	threadSubject,
+	onReplyTo,
 }: {
 	messages: SerializedEmailDetail[];
+	threadSubject: string | null;
 	onReplyTo: (emailId: string) => void;
 }) {
-	// Latest message expanded by default, older ones collapsed
-	const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
-		const last = messages[messages.length - 1];
-		return new Set(last ? [last.id] : []);
-	});
+	const { data: accounts } = useLiveQuery(mailAccountsCollection);
+	const ownEmails = useMemo(
+		() => new Set(accounts.map((a) => a.email.toLowerCase())),
+		[accounts],
+	);
+	const [expandedId, setExpandedId] = useState<string | null>(null);
+	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+	const bottomRef = useRef<HTMLDivElement>(null);
 
-	const toggleExpanded = useCallback((id: string) => {
-		setExpandedIds((prev) => {
-			const next = new Set(prev);
-			if (next.has(id)) {
-				next.delete(id);
-			} else {
-				next.add(id);
-			}
-			return next;
-		});
-	}, []);
+	const isOwn = useCallback(
+		(addr: string | null) =>
+			!!addr && ownEmails.has(addr.toLowerCase()),
+		[ownEmails],
+	);
+
+	const sortedMessages = useMemo(() => {
+		if (sortOrder === "asc") return messages;
+		return [...messages].reverse();
+	}, [messages, sortOrder]);
+
+	const latestMessage = messages[messages.length - 1];
 
 	return (
-		<div className="space-y-1">
-			{messages.map((msg, i) => {
-				const isExpanded = expandedIds.has(msg.id);
+		<div className="flex flex-col gap-0.5">
+			{/* Sort toggle */}
+			<div className="flex items-center justify-end mb-2">
+				<button
+					type="button"
+					onClick={() =>
+						setSortOrder((o) => (o === "asc" ? "desc" : "asc"))
+					}
+					className="inline-flex items-center gap-1.5 font-mono text-[10px] text-grey-3 hover:text-foreground transition-colors cursor-pointer"
+				>
+					{sortOrder === "asc" ? "oldest first" : "newest first"}
+					<ArrowUpDown className="size-3" />
+				</button>
+			</div>
+
+			{sortedMessages.map((msg, i) => {
+				const sent = isOwn(msg.fromAddress);
+				const prevMsg = i > 0 ? sortedMessages[i - 1] : null;
+				const sameSenderAsPrev =
+					prevMsg?.fromAddress === msg.fromAddress;
+
+				// Show time separator if >1 hour gap
+				const showTimeSep =
+					prevMsg &&
+					Math.abs(
+						new Date(msg.receivedAt).getTime() -
+							new Date(prevMsg.receivedAt).getTime(),
+					) >
+						60 * 60 * 1000;
+
+				const isDetailExpanded = expandedId === msg.id;
+				const hasAttachments =
+					msg.attachments && msg.attachments.length > 0;
 
 				return (
-					<motion.div
-						key={msg.id}
-						initial={{ opacity: 0, y: 8 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{
-							duration: 0.35,
-							delay: Math.min(i * 0.04, 0.3),
-							ease: MOTION_CONSTANTS.EASE,
-						}}
-						className="rounded-lg border border-border/40 bg-secondary/5 overflow-hidden"
-					>
-						{/* Collapsed header */}
-						<button
-							type="button"
-							onClick={() => toggleExpanded(msg.id)}
+					<div key={msg.id}>
+						{/* Time separator */}
+						{showTimeSep && (
+							<div className="flex items-center gap-3 py-3">
+								<div className="flex-1 h-px bg-border/20" />
+								<span className="font-mono text-[10px] text-grey-3 uppercase tracking-wider">
+									{new Date(msg.receivedAt).toLocaleString("en-US", {
+										weekday: "short",
+										month: "short",
+										day: "numeric",
+										hour: "numeric",
+										minute: "2-digit",
+									})}
+								</span>
+								<div className="flex-1 h-px bg-border/20" />
+							</div>
+						)}
+
+						{/* Message bubble */}
+						<motion.div
+							initial={{ opacity: 0, y: 6 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{
+								duration: 0.3,
+								delay: Math.min(i * 0.03, 0.25),
+								ease: MOTION_CONSTANTS.EASE,
+							}}
 							className={cn(
-								"w-full flex items-center gap-3 px-4 py-3 text-left cursor-pointer hover:bg-secondary/15 transition-colors",
-								isExpanded && "border-b border-border/30",
+								"flex flex-col gap-1",
+								sent ? "items-end" : "items-start",
+								!sameSenderAsPrev && i > 0 && "mt-4",
 							)}
 						>
-							<div
-								className={cn(
-									"size-6 rounded-full flex items-center justify-center shrink-0 font-mono text-[9px] font-semibold",
-									msg.isRead
-										? "bg-secondary/50 text-grey-2"
-										: "bg-foreground text-background",
-								)}
-							>
-								{(msg.fromName || msg.fromAddress || "?")
-									.match(/[a-zA-Z0-9]/)?.[0]
-									?.toUpperCase() ?? "?"}
-							</div>
-
-							<div className="flex-1 min-w-0">
-								{msg.fromAddress ? (
-									<ContactCardLazy
-										email={msg.fromAddress}
-										side="bottom"
-										align="start"
-									>
-										<span className="font-body text-[13px] text-foreground font-medium truncate block">
-											{msg.fromName || msg.fromAddress || "Unknown"}
-										</span>
-									</ContactCardLazy>
-								) : (
-									<span className="font-body text-[13px] text-foreground font-medium truncate block">
-										Unknown
-									</span>
-								)}
-								{!isExpanded && msg.snippet && (
-									<span className="font-body text-[12px] text-grey-3 truncate block mt-0.5">
-										{msg.snippet}
-									</span>
-								)}
-							</div>
-
-							<span className="font-mono text-[11px] text-grey-3 shrink-0">
-								{formatDate(msg.receivedAt)}
-							</span>
-
-							<motion.div
-								animate={{ rotate: isExpanded ? 90 : 0 }}
-								transition={{
-									duration: 0.2,
-									ease: MOTION_CONSTANTS.EASE,
-								}}
-							>
-								<ChevronRight className="size-3.5 text-grey-3" />
-							</motion.div>
-						</button>
-
-						{/* Expanded content */}
-						<AnimatePresence initial={false}>
-							{isExpanded && (
-								<motion.div
-									initial={{ height: 0, opacity: 0 }}
-									animate={{ height: "auto", opacity: 1 }}
-									exit={{ height: 0, opacity: 0 }}
-									transition={{
-										height: {
-											duration: 0.3,
-											ease: MOTION_CONSTANTS.EASE,
-										},
-										opacity: {
-											duration: 0.2,
-											ease: "easeInOut",
-										},
-									}}
-									className="overflow-hidden"
-								>
-									<MessageMetadata email={msg} />
-
-									{msg.aiSummary && (
-										<div className="px-4">
-											<AiSummary summary={msg.aiSummary} />
-										</div>
+							{/* Sender name — only when sender changes */}
+							{!sameSenderAsPrev && (
+								<div
+									className={cn(
+										"flex items-center gap-2 px-1",
+										sent && "flex-row-reverse",
 									)}
-
-									<div className="px-4 py-4">
-										<EmailBody html={msg.bodyHtml} plain={msg.bodyPlain} />
+								>
+									{/* Avatar */}
+									<div
+										className={cn(
+											"size-6 rounded-full flex items-center justify-center shrink-0 font-mono text-[9px] font-semibold",
+											sent
+												? "bg-foreground text-background"
+												: "bg-secondary/60 text-grey-2",
+										)}
+									>
+										{(msg.fromName || msg.fromAddress || "?")
+											.match(/[a-zA-Z0-9]/)?.[0]
+											?.toUpperCase() ?? "?"}
 									</div>
 
-									{msg.attachments && msg.attachments.length > 0 && (
-										<div className="px-4 pb-4">
-											<AttachmentList attachments={msg.attachments} />
+									<div className="flex items-baseline gap-2">
+										{msg.fromAddress ? (
+											<ContactCardLazy
+												email={msg.fromAddress}
+												side="bottom"
+												align={sent ? "end" : "start"}
+											>
+												<span className="font-body text-[12px] text-grey-2 font-medium hover:text-foreground transition-colors cursor-pointer">
+													{sent
+														? "You"
+														: msg.fromName ||
+															msg.fromAddress}
+												</span>
+											</ContactCardLazy>
+										) : (
+											<span className="font-body text-[12px] text-grey-2 font-medium">
+												Unknown
+											</span>
+										)}
+										<span className="font-mono text-[10px] text-grey-3">
+											{relativeTime(msg.receivedAt)}
+										</span>
+									</div>
+								</div>
+							)}
+
+							{/* Bubble */}
+							<div
+								className={cn(
+									"group relative w-[95%]",
+									sent ? "pr-8" : "pl-8",
+								)}
+							>
+								<div
+									className={cn(
+										"rounded-2xl overflow-hidden transition-colors",
+										sent
+											? "bg-foreground/[0.06] rounded-tr-md"
+											: "bg-secondary/10 border border-border/30 rounded-tl-md",
+									)}
+								>
+									{/* Message body */}
+									<div className="px-4 py-3">
+										<EmailBody
+											html={msg.bodyHtml}
+											plain={msg.bodyPlain}
+										/>
+									</div>
+
+									{/* Inline attachments */}
+									{hasAttachments && (
+										<div className="px-3 pb-3">
+											<AttachmentList
+												attachments={msg.attachments}
+											/>
 										</div>
 									)}
-								</motion.div>
-							)}
-						</AnimatePresence>
-					</motion.div>
+
+									{/* AI summary (collapsed by default) */}
+									{msg.aiSummary && (
+										<AiSummary summary={msg.aiSummary} />
+									)}
+								</div>
+
+								{/* Timestamp + actions on hover */}
+								<div
+									className={cn(
+										"flex items-center gap-2 mt-1 px-1",
+										sent ? "justify-end" : "justify-start",
+									)}
+								>
+									{sameSenderAsPrev && (
+										<span className="font-mono text-[10px] text-grey-3/70">
+											{relativeTime(msg.receivedAt)}
+										</span>
+									)}
+
+									{/* Quick reply to this specific message */}
+									<button
+										type="button"
+										onClick={() => onReplyTo(msg.id)}
+										className="opacity-0 group-hover:opacity-100 inline-flex items-center gap-1 font-body text-[10px] text-grey-3 hover:text-foreground transition-all cursor-pointer"
+									>
+										<Reply className="size-3" />
+										reply
+									</button>
+
+									{/* Expand full metadata */}
+									<button
+										type="button"
+										onClick={() =>
+											setExpandedId(
+												isDetailExpanded ? null : msg.id,
+											)
+										}
+										className="opacity-0 group-hover:opacity-100 font-mono text-[10px] text-grey-3 hover:text-foreground transition-all cursor-pointer"
+									>
+										{isDetailExpanded ? "less" : "more"}
+									</button>
+								</div>
+
+								{/* Expanded metadata panel */}
+								<AnimatePresence initial={false}>
+									{isDetailExpanded && (
+										<motion.div
+											initial={{ height: 0, opacity: 0 }}
+											animate={{
+												height: "auto",
+												opacity: 1,
+											}}
+											exit={{ height: 0, opacity: 0 }}
+											transition={{
+												height: {
+													duration: 0.25,
+													ease: MOTION_CONSTANTS.EASE,
+												},
+												opacity: {
+													duration: 0.15,
+													ease: "easeInOut",
+												},
+											}}
+											className="overflow-hidden"
+										>
+											<div className="mt-1 rounded-lg border border-border/30 bg-secondary/5 overflow-hidden">
+												<MessageMetadata email={msg} />
+											</div>
+										</motion.div>
+									)}
+								</AnimatePresence>
+							</div>
+						</motion.div>
+					</div>
 				);
 			})}
+
+			{/* Quick reply at bottom */}
+			{latestMessage && (
+				<motion.div
+					initial={{ opacity: 0, y: 8 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{
+						duration: 0.3,
+						delay: 0.15,
+						ease: MOTION_CONSTANTS.EASE,
+					}}
+					className="mt-4 rounded-2xl border border-border/30 bg-secondary/5 overflow-hidden"
+				>
+					<QuickReplyForm
+						emailId={latestMessage.id}
+						fromAddress={latestMessage.fromAddress}
+						subject={threadSubject}
+					/>
+				</motion.div>
+			)}
+
+			<div ref={bottomRef} />
 		</div>
 	);
 }

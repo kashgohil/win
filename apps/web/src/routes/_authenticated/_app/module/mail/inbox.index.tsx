@@ -500,11 +500,17 @@ function MailInbox() {
 		(index: number) => {
 			const thread = threads[index];
 			if (!thread) return;
-			setExpandedThreadId((prev) =>
-				prev === thread.threadId ? null : thread.threadId,
-			);
+			if (viewMode === "sidepanel") {
+				setPeekedThreadId((prev) =>
+					prev === thread.threadId ? null : thread.threadId,
+				);
+			} else {
+				setExpandedThreadId((prev) =>
+					prev === thread.threadId ? null : thread.threadId,
+				);
+			}
 		},
-		[threads],
+		[threads, viewMode],
 	);
 
 	const handleCollapseExpand = useCallback(() => {
@@ -928,19 +934,6 @@ function MailInbox() {
 										onDropThread={handleDrop}
 										compact={viewMode === "sidepanel"}
 										isExpanded={isThisExpanded}
-										onToggleExpand={
-											viewMode === "inline"
-												? () => {
-														setExpandedThreadId((prev) =>
-															prev === thread.threadId ? null : thread.threadId,
-														);
-													}
-												: viewMode === "sidepanel"
-													? () => {
-															setPeekedThreadId(thread.threadId);
-														}
-													: undefined
-										}
 										expandedContent={
 											isThisExpanded ? (
 												<ThreadPreview
