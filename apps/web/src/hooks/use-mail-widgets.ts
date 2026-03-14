@@ -3,6 +3,7 @@ import { useCallback, useSyncExternalStore } from "react";
 /* ── Widget registry ── */
 
 export type MailWidgetId =
+	| "stats"
 	| "actionables"
 	| "category_breakdown"
 	| "auto_handled"
@@ -11,7 +12,12 @@ export type MailWidgetId =
 	| "recent_attachments"
 	| "saved_searches"
 	| "account_health"
-	| "quick_nav";
+	| "quick_nav"
+	| "response_time"
+	| "email_volume"
+	| "follow_ups"
+	| "labels_overview"
+	| "read_later";
 
 export interface MailWidgetDef {
 	id: MailWidgetId;
@@ -32,6 +38,14 @@ export interface MailWidgetEntry {
 }
 
 export const WIDGET_REGISTRY: MailWidgetDef[] = [
+	{
+		id: "stats",
+		label: "Stats",
+		description: "At-a-glance email metrics and counters",
+		pinned: true,
+		defaultWidth: 1,
+		minWidth: 0.5,
+	},
 	{
 		id: "actionables",
 		label: "Actionables",
@@ -96,6 +110,41 @@ export const WIDGET_REGISTRY: MailWidgetDef[] = [
 		defaultWidth: 1,
 		minWidth: 0.25,
 	},
+	{
+		id: "response_time",
+		label: "Response Time",
+		description: "Average reply time trends over the past week",
+		defaultWidth: 0.5,
+		minWidth: 0.25,
+	},
+	{
+		id: "email_volume",
+		label: "Email Volume",
+		description: "Incoming vs outgoing email activity chart",
+		defaultWidth: 0.5,
+		minWidth: 0.25,
+	},
+	{
+		id: "follow_ups",
+		label: "Follow-ups",
+		description: "Emails awaiting a reply from others",
+		defaultWidth: 0.5,
+		minWidth: 0.25,
+	},
+	{
+		id: "labels_overview",
+		label: "Labels",
+		description: "Email distribution across your labels",
+		defaultWidth: 0.5,
+		minWidth: 0.2,
+	},
+	{
+		id: "read_later",
+		label: "Read Later",
+		description: "Emails you've saved to read later",
+		defaultWidth: 0.5,
+		minWidth: 0.2,
+	},
 ];
 
 /* ── Row grouping ── */
@@ -123,6 +172,7 @@ export function groupIntoRows(entries: MailWidgetEntry[]): MailWidgetEntry[][] {
 /* ── Default layout ── */
 
 const DEFAULT_LAYOUT: MailWidgetEntry[] = [
+	{ id: "stats", width: 1 },
 	{ id: "actionables", width: 1 },
 	{ id: "category_breakdown", width: 0.5 },
 	{ id: "recent_threads", width: 0.5 },
@@ -233,35 +283,6 @@ export function useMailWidgets() {
 		setLayout(newLayout);
 	}, []);
 
-	/** Update widths of two adjacent widgets (used during resize drag) */
-	const updateWidths = useCallback(
-		(
-			leftId: MailWidgetId,
-			leftW: number,
-			rightId: MailWidgetId,
-			rightW: number,
-		) => {
-			const current = getLayout();
-			setLayout(
-				current.map((e) => {
-					if (e.id === leftId) return { ...e, width: leftW };
-					if (e.id === rightId) return { ...e, width: rightW };
-					return e;
-				}),
-			);
-		},
-		[],
-	);
-
-	/** Update a single widget's width (used when resizing a solo/last-in-row widget) */
-	const resizeWidget = useCallback((id: MailWidgetId, width: number) => {
-		const current = getLayout();
-		const def = defForId(id);
-		const min = def?.minWidth ?? 0.2;
-		const clamped = Math.max(min, Math.min(1, width));
-		setLayout(current.map((e) => (e.id === id ? { ...e, width: clamped } : e)));
-	}, []);
-
 	const resetLayout = useCallback(() => {
 		setLayout(DEFAULT_LAYOUT);
 	}, []);
@@ -273,8 +294,6 @@ export function useMailWidgets() {
 		enabledIds,
 		toggleWidget,
 		updateLayout,
-		updateWidths,
-		resizeWidget,
 		resetLayout,
 		registry: WIDGET_REGISTRY,
 	};
