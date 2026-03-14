@@ -53,12 +53,9 @@ export function RecentThreadsWidget() {
 						}}
 					>
 						<Link
-							to="/module/mail/inbox"
-							search={{
-								view: undefined,
-								starred: undefined,
-								attachment: undefined,
-							}}
+							to="/module/mail/inbox/$emailId"
+							params={{ emailId: thread.threadId }}
+							search={{ view: undefined }}
 							className="group flex items-center gap-3 rounded-md px-2 py-2 -mx-2 hover:bg-secondary/20 transition-colors cursor-pointer"
 						>
 							<MessageSquare className="size-3.5 text-grey-3 shrink-0" />

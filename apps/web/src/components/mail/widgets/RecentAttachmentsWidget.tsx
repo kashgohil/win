@@ -113,7 +113,7 @@ export function RecentAttachmentsWidget() {
 			})}
 			<Link
 				to="/module/mail/attachments"
-				className="inline-flex items-center gap-1.5 font-mono text-[11px] text-grey-3 hover:text-foreground tracking-[0.03em] transition-colors mt-1"
+				className="flex items-center justify-center gap-1.5 font-mono text-[11px] text-grey-3 hover:text-foreground tracking-[0.03em] transition-colors mt-3 pt-3 border-t border-border/30"
 			>
 				<Paperclip className="size-3" />
 				View all
