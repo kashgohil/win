@@ -1,5 +1,9 @@
 import { MOTION_CONSTANTS } from "@/components/constant";
 import { AccountSelector } from "@/components/mail/AccountSelector";
+import {
+	ARCHIVED_SHORTCUTS,
+	KeyboardShortcutBar,
+} from "@/components/mail/KeyboardShortcutBar";
 import { groupThreadsByTime, ThreadRow } from "@/components/mail/ThreadRow";
 import { Kbd } from "@/components/ui/kbd";
 import {
@@ -232,6 +236,8 @@ function ArchivedPage() {
 
 			{/* Thread list */}
 			{threadList}
+
+			<KeyboardShortcutBar shortcuts={ARCHIVED_SHORTCUTS} />
 		</div>
 	);
 }
