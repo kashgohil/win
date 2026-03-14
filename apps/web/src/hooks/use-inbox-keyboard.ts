@@ -19,6 +19,7 @@ type UseInboxKeyboardOptions = {
 	onCompose?: () => void;
 	onNavigateAttachments?: () => void;
 	onNavigateSent?: () => void;
+	onNavigateArchived?: () => void;
 	onToggleView?: () => void;
 	onToggleViewMode?: () => void;
 	onGoBack?: () => void;
@@ -69,6 +70,7 @@ export function useInboxKeyboard({
 	onCompose,
 	onNavigateAttachments,
 	onNavigateSent,
+	onNavigateArchived,
 	onToggleView,
 	onToggleViewMode,
 	onGoBack,
@@ -185,6 +187,13 @@ export function useInboxKeyboard({
 			if (key === "s") {
 				e.preventDefault();
 				onNavigateSent?.();
+				return;
+			}
+
+			// Global shortcut: g to navigate to archived
+			if (key === "g") {
+				e.preventDefault();
+				onNavigateArchived?.();
 				return;
 			}
 
@@ -400,6 +409,7 @@ export function useInboxKeyboard({
 		onCompose,
 		onNavigateAttachments,
 		onNavigateSent,
+		onNavigateArchived,
 		onToggleView,
 		onToggleViewMode,
 		onGoBack,
