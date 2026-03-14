@@ -16,6 +16,7 @@ import { openCompose } from "@/hooks/use-compose";
 import { useEmailDetailKeyboard } from "@/hooks/use-email-detail-keyboard";
 import { mailKeys, useMailThreadDetail } from "@/hooks/use-mail";
 import { recordThreadVisit } from "@/hooks/use-merge-suggestions";
+import { useUndoableAction } from "@/hooks/use-undoable-action";
 import { api } from "@/lib/api";
 import { mailAccountsCollection } from "@/lib/mail-collections";
 import { cn, relativeTime } from "@/lib/utils";
@@ -126,6 +127,8 @@ function EmailDetail() {
 
 	// ── Action handlers ──
 
+	const undoable = useUndoableAction();
+
 	const navigateBack = useCallback(
 		() =>
 			source === "sent"
@@ -162,44 +165,73 @@ function EmailDetail() {
 	}, [emailId]);
 
 	const handleArchive = useCallback(() => {
-		queryClient.setQueriesData(
-			{ queryKey: ["mail", "threads"] },
-			(old: any) => {
-				if (!old?.pages) return old;
-				return {
-					...old,
-					pages: old.pages.map((page: any) => ({
-						...page,
-						threads: page.threads?.filter((t: any) => t.threadId !== emailId),
-						total: Math.max(0, (page.total ?? 0) - 1),
-					})),
+		undoable({
+			message: "Thread archived",
+			optimisticUpdate: () => {
+				const prev = queryClient.getQueriesData({
+					queryKey: ["mail", "threads"],
+				});
+				queryClient.setQueriesData(
+					{ queryKey: ["mail", "threads"] },
+					(old: any) => {
+						if (!old?.pages) return old;
+						return {
+							...old,
+							pages: old.pages.map((page: any) => ({
+								...page,
+								threads: page.threads?.filter(
+									(t: any) => t.threadId !== emailId,
+								),
+								total: Math.max(0, (page.total ?? 0) - 1),
+							})),
+						};
+					},
+				);
+				return () => {
+					for (const [key, data] of prev) {
+						queryClient.setQueryData(key, data);
+					}
 				};
 			},
-		);
-		toast("Thread archived");
-		navigateBack();
-		api.mail.threads({ threadId: emailId }).archive.post();
-	}, [emailId, queryClient, navigateBack]);
+			apiCall: () =>
+				api.mail.threads({ threadId: emailId }).archive.post(),
+			onComplete: navigateBack,
+		});
+	}, [emailId, queryClient, navigateBack, undoable]);
 
 	const handleDelete = useCallback(() => {
-		queryClient.setQueriesData(
-			{ queryKey: ["mail", "threads"] },
-			(old: any) => {
-				if (!old?.pages) return old;
-				return {
-					...old,
-					pages: old.pages.map((page: any) => ({
-						...page,
-						threads: page.threads?.filter((t: any) => t.threadId !== emailId),
-						total: Math.max(0, (page.total ?? 0) - 1),
-					})),
+		undoable({
+			message: "Thread deleted",
+			optimisticUpdate: () => {
+				const prev = queryClient.getQueriesData({
+					queryKey: ["mail", "threads"],
+				});
+				queryClient.setQueriesData(
+					{ queryKey: ["mail", "threads"] },
+					(old: any) => {
+						if (!old?.pages) return old;
+						return {
+							...old,
+							pages: old.pages.map((page: any) => ({
+								...page,
+								threads: page.threads?.filter(
+									(t: any) => t.threadId !== emailId,
+								),
+								total: Math.max(0, (page.total ?? 0) - 1),
+							})),
+						};
+					},
+				);
+				return () => {
+					for (const [key, data] of prev) {
+						queryClient.setQueryData(key, data);
+					}
 				};
 			},
-		);
-		toast("Thread deleted");
-		navigateBack();
-		api.mail.threads({ threadId: emailId }).delete();
-	}, [emailId, queryClient, navigateBack]);
+			apiCall: () => api.mail.threads({ threadId: emailId }).delete(),
+			onComplete: navigateBack,
+		});
+	}, [emailId, queryClient, navigateBack, undoable]);
 
 	const handleReply = useCallback(
 		(msgId?: string) => {
