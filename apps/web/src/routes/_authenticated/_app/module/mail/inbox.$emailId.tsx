@@ -196,6 +196,8 @@ function EmailDetail() {
 			apiCall: () =>
 				api.mail.threads({ threadId: emailId }).archive.post(),
 			onComplete: navigateBack,
+			onAfterApiCall: () =>
+				queryClient.invalidateQueries({ queryKey: ["mail", "threads"] }),
 		});
 	}, [emailId, queryClient, navigateBack, undoable]);
 

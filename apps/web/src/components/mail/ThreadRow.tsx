@@ -313,6 +313,8 @@ export function ThreadRow({
 			},
 			apiCall: () =>
 				api.mail.threads({ threadId: thread.threadId }).archive.post(),
+			onAfterApiCall: () =>
+				queryClient.invalidateQueries({ queryKey: mailKeys.all }),
 		});
 	};
 

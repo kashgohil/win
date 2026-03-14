@@ -227,6 +227,8 @@ export function EmailRow({
 				};
 			},
 			apiCall: () => api.mail.emails({ id: email.id }).archive.post(),
+			onAfterApiCall: () =>
+				queryClient.invalidateQueries({ queryKey: mailKeys.all }),
 		});
 	};
 
