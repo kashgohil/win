@@ -7,6 +7,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { mailKeys } from "@/hooks/use-mail";
+import { useUndoableAction } from "@/hooks/use-undoable-action";
 import { api } from "@/lib/api";
 import { HighlightMatches } from "@/lib/highlight-text";
 import { cn } from "@/lib/utils";
@@ -22,7 +23,6 @@ import {
 	Star,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { toast } from "sonner";
 import { CATEGORY_CONFIG } from "./category-colors";
 
 function formatTimestamp(iso: string): string {
@@ -295,12 +295,25 @@ export function ThreadRow({
 		view?: "read";
 	};
 
+	const undoable = useUndoableAction();
+
 	const handleArchive = () => {
-		queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
-			removeThreadFromPages(old, thread.threadId),
-		);
-		toast("Thread archived");
-		api.mail.threads({ threadId: thread.threadId }).archive.post();
+		undoable({
+			message: "Thread archived",
+			optimisticUpdate: () => {
+				const prev = queryClient.getQueriesData({ queryKey: mailKeys.all });
+				queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+					removeThreadFromPages(old, thread.threadId),
+				);
+				return () => {
+					for (const [key, data] of prev) {
+						queryClient.setQueryData(key, data);
+					}
+				};
+			},
+			apiCall: () =>
+				api.mail.threads({ threadId: thread.threadId }).archive.post(),
+		});
 	};
 
 	const handleStar = () => {
@@ -312,10 +325,22 @@ export function ThreadRow({
 	};
 
 	const handleToggleRead = () => {
-		queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
-			removeThreadFromPages(old, thread.threadId),
-		);
-		api.mail.threads({ threadId: thread.threadId }).read.patch();
+		undoable({
+			message: thread.unreadCount > 0 ? "Marked as read" : "Marked as unread",
+			optimisticUpdate: () => {
+				const prev = queryClient.getQueriesData({ queryKey: mailKeys.all });
+				queryClient.setQueriesData({ queryKey: mailKeys.all }, (old: any) =>
+					removeThreadFromPages(old, thread.threadId),
+				);
+				return () => {
+					for (const [key, data] of prev) {
+						queryClient.setQueryData(key, data);
+					}
+				};
+			},
+			apiCall: () =>
+				api.mail.threads({ threadId: thread.threadId }).read.patch(),
+		});
 	};
 
 	const handleCheckboxClick = (e: React.MouseEvent) => {
