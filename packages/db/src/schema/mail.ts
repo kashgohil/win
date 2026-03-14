@@ -137,6 +137,7 @@ export const emails = pgTable(
 		threadGroupId: uuid("thread_group_id"),
 		unsubscribeUrl: text("unsubscribe_url"),
 		followUpAt: timestamp("follow_up_at", { withTimezone: true }),
+		isArchived: boolean("is_archived").default(false).notNull(),
 		followUpDismissed: boolean("follow_up_dismissed").default(false).notNull(),
 		relatedTaskId: uuid("related_task_id"),
 		relatedTaskReason: text("related_task_reason"),
@@ -161,6 +162,7 @@ export const emails = pgTable(
 		),
 		index("emails_user_thread_group_idx").on(table.userId, table.threadGroupId),
 		index("emails_follow_up_idx").on(table.userId, table.followUpAt),
+		index("emails_user_archived_idx").on(table.userId, table.isArchived),
 	],
 );
 
