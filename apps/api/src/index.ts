@@ -13,6 +13,7 @@ import { betterAuthPlugin } from "./plugins/auth";
 import { aiRoutes } from "./routes/ai";
 import { calendarRoutes } from "./routes/calendar";
 import { contactsRoutes } from "./routes/contacts";
+import { financeRoutes } from "./routes/finance";
 import { health } from "./routes/health";
 import { mail } from "./routes/mail";
 import { me } from "./routes/me";
@@ -59,6 +60,11 @@ const app = new Elysia({ name: "wingmnn-api" })
 						description: "Contacts module — CRM, relationships, interactions",
 					},
 					{
+						name: "Finance",
+						description:
+							"Finance module — expenses, income, recurring charges",
+					},
+					{
 						name: "Notifications",
 						description: "In-app notifications",
 					},
@@ -95,6 +101,7 @@ const app = new Elysia({ name: "wingmnn-api" })
 	.use(calendarRoutes)
 	.use(tasksRoutes)
 	.use(contactsRoutes)
+	.use(financeRoutes)
 	.use(aiRoutes)
 	.use(notificationsRoutes)
 	.use(me)
