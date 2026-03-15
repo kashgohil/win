@@ -1,3 +1,4 @@
+import { env } from "@/env";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
 	ArrowRight,
@@ -557,6 +558,7 @@ function HomePage() {
 
 	const [email, setEmail] = useState("");
 	const [formErr, setFormErr] = useState("");
+	const [submitting, setSubmitting] = useState(false);
 	const [submitted, setSubmitted] = useState(false);
 	const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -591,7 +593,7 @@ function HomePage() {
 	}, [phase, visibleNotifs]);
 
 	const handleSubmit = useCallback(
-		(e: React.FormEvent) => {
+		async (e: React.FormEvent) => {
 			e.preventDefault();
 			setFormErr("");
 			const t = email.trim();
@@ -603,8 +605,24 @@ function HomePage() {
 				setFormErr("That doesn't look right.");
 				return;
 			}
-			// TODO: wire to API
-			setSubmitted(true);
+			setSubmitting(true);
+			try {
+				const res = await fetch(`${env.VITE_API_URL}/waitlist`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ email: t, source: "homepage" }),
+				});
+				if (!res.ok) {
+					const data = await res.json().catch(() => null);
+					setFormErr(data?.error ?? "Something went wrong. Please try again.");
+					return;
+				}
+				setSubmitted(true);
+			} catch {
+				setFormErr("Network error. Please try again.");
+			} finally {
+				setSubmitting(false);
+			}
 		},
 		[email],
 	);
@@ -1319,9 +1337,11 @@ function HomePage() {
 								</div>
 								<button
 									type="submit"
-									className="inline-flex items-center gap-2 font-mono text-xs font-semibold text-white bg-accent-red py-4 h-12.5 px-6 border border-accent-red rounded-r-[5px] max-[500px]:rounded-[5px] max-[500px]:justify-center rounded-l-none cursor-pointer transition-colors duration-200 whitespace-nowrap hover:bg-red-dark"
+									disabled={submitting}
+									className="inline-flex items-center gap-2 font-mono text-xs font-semibold text-white bg-accent-red py-4 h-12.5 px-6 border border-accent-red rounded-r-[5px] max-[500px]:rounded-[5px] max-[500px]:justify-center rounded-l-none cursor-pointer transition-colors duration-200 whitespace-nowrap hover:bg-red-dark disabled:opacity-50 disabled:cursor-not-allowed"
 								>
-									Get early access <ArrowRight size={15} />
+									{submitting ? "Joining\u2026" : "Get early access"}{" "}
+									<ArrowRight size={15} />
 								</button>
 							</form>
 						</>
