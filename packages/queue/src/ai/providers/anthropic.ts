@@ -78,6 +78,49 @@ export class AnthropicProvider implements AiProvider {
 		return text.trim();
 	}
 
+	async completeWithImage(
+		systemPrompt: string,
+		userMessage: string,
+		image: { base64: string; mimeType: string },
+	): Promise<string> {
+		const response = await this.client.messages.create({
+			model: this.model,
+			max_tokens: 1024,
+			system: [
+				{
+					type: "text",
+					text: systemPrompt,
+					cache_control: { type: "ephemeral" },
+				},
+			],
+			messages: [
+				{
+					role: "user",
+					content: [
+						{
+							type: "image",
+							source: {
+								type: "base64",
+								media_type: image.mimeType as
+									| "image/jpeg"
+									| "image/png"
+									| "image/gif"
+									| "image/webp",
+								data: image.base64,
+							},
+						},
+						{ type: "text", text: userMessage },
+					],
+				},
+			],
+		});
+
+		const text =
+			response.content[0]?.type === "text" ? response.content[0].text : "";
+
+		return text.trim();
+	}
+
 	async classify(
 		email: EmailInput,
 		systemPrompt: string,

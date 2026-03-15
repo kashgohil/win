@@ -104,8 +104,27 @@ export interface CommitmentExtractResult {
 	}[];
 }
 
+export interface ReceiptExtractResult {
+	merchant: string;
+	amount: number;
+	currency: string;
+	category: string;
+	transactedAt: string;
+	description: string;
+	lineItems: { name: string; amount: number; quantity?: number }[] | null;
+	tax: number | null;
+	orderNumber: string | null;
+	isRecurring: boolean;
+	recurringInterval: "weekly" | "monthly" | "quarterly" | "yearly" | null;
+}
+
 export interface AiProvider {
 	complete(systemPrompt: string, userMessage: string): Promise<string>;
+	completeWithImage?(
+		systemPrompt: string,
+		userMessage: string,
+		image: { base64: string; mimeType: string },
+	): Promise<string>;
 	classify(
 		email: EmailInput,
 		systemPrompt: string,

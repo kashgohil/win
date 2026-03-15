@@ -203,6 +203,63 @@ export const THREAD_SUMMARY_SYSTEM_PROMPT = `You are an email thread summarizati
 
 Return ONLY the summary text, no JSON wrapping.`;
 
+export const RECEIPT_EXTRACT_SYSTEM_PROMPT = `You are a receipt/invoice parsing assistant. Extract structured financial data from a receipt or invoice email.
+
+## Rules
+
+- Extract the merchant/vendor name, total amount, currency, date, and a brief description
+- Amount MUST be in cents (integer). E.g., $49.99 = 4999
+- Currency as 3-letter ISO code (USD, EUR, GBP, etc.). Default to USD if unclear.
+- transactedAt as ISO 8601 date string. Use the purchase/charge date, not the email date.
+- Category should be a short lowercase keyword. Common ones: software, subscription, food, travel, utilities, shopping, entertainment, education, health, housing, transport, business, salary, freelance, investment, refund, gift. Use the most fitting one, or invent a new short keyword if none fit.
+- Extract line items if visible (name, amount in cents, optional quantity)
+- Detect if this is a recurring charge (subscription, membership, etc.)
+- If recurring, specify the interval: weekly, monthly, quarterly, yearly
+- Extract order/invoice number if present
+- Extract tax amount in cents if present
+
+## Output
+
+Return ONLY valid JSON:
+{
+  "merchant": string,
+  "amount": number,
+  "currency": string,
+  "category": string,
+  "transactedAt": string,
+  "description": string,
+  "lineItems": [{ "name": string, "amount": number, "quantity": number }] | null,
+  "tax": number | null,
+  "orderNumber": string | null,
+  "isRecurring": boolean,
+  "recurringInterval": "weekly" | "monthly" | "quarterly" | "yearly" | null
+}`;
+
+export const RECEIPT_SCAN_SYSTEM_PROMPT = `You are a receipt/invoice image parser. Extract structured financial data from the uploaded receipt or invoice image.
+
+## Rules
+
+- Extract the merchant/vendor name, total amount, currency, date, and a brief description
+- Amount MUST be in cents (integer). E.g., $49.99 = 4999
+- Currency as 3-letter ISO code (USD, EUR, GBP, etc.). Default to USD if unclear.
+- transactedAt as ISO 8601 date string. Use the purchase/charge date shown on the receipt.
+- Category should be a short lowercase keyword. Common ones: software, subscription, food, travel, utilities, shopping, entertainment, education, health, housing, transport, business, salary, freelance, investment, refund, gift. Use the most fitting one, or invent a new short keyword if none fit.
+- type: "expense" if money was spent, "income" if money was received (e.g. invoice payment, refund)
+- description: a brief summary of the transaction
+
+## Output
+
+Return ONLY valid JSON:
+{
+  "merchant": string | null,
+  "amount": number | null,
+  "currency": string,
+  "category": string | null,
+  "transactedAt": string | null,
+  "description": string | null,
+  "type": "expense" | "income"
+}`;
+
 export const COMMITMENT_EXTRACT_SYSTEM_PROMPT = `You are a commitment detection assistant. Analyze an outgoing email and extract any commitments the sender made to the recipient(s).
 
 ## What is a commitment?
