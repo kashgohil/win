@@ -1,4 +1,10 @@
-import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import {
+	Link,
+	createRootRoute,
+	HeadContent,
+	Scripts,
+} from "@tanstack/react-router";
+import { ArrowRight } from "lucide-react";
 
 import Footer from "../components/Footer";
 import Header from "../components/Header";
@@ -72,7 +78,34 @@ export const Route = createRootRoute({
 	}),
 
 	shellComponent: RootDocument,
+	notFoundComponent: NotFound,
 });
+
+function NotFound() {
+	return (
+		<main>
+			<section className="min-h-[calc(100vh-180px)] flex items-center justify-center px-(--page-px) bg-ink">
+				<div className="max-w-[480px] text-center">
+					<p className="font-mono text-xs font-semibold tracking-widest text-accent-red uppercase mb-4">
+						404
+					</p>
+					<h1 className="font-serif font-bold text-[clamp(2rem,4vw,3rem)] leading-[1.2] text-cream mb-4">
+						Page not found.
+					</h1>
+					<p className="font-serif text-base leading-[1.7] text-cream/50 mb-10">
+						The page you're looking for doesn't exist or has been moved.
+					</p>
+					<Link
+						to="/"
+						className="inline-flex items-center gap-2 font-mono text-xs font-semibold text-white bg-accent-red py-3.5 px-6 rounded-[5px] cursor-pointer transition-colors duration-200 hover:bg-red-dark"
+					>
+						Back to home <ArrowRight size={15} />
+					</Link>
+				</div>
+			</section>
+		</main>
+	);
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	return (
