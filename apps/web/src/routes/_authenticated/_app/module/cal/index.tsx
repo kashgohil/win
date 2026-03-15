@@ -50,7 +50,7 @@ function CalModule() {
 
 	useEffect(() => {
 		if (connected) {
-			toast.success("Google Calendar connected", {
+			toast("Google Calendar connected", {
 				description: "Syncing your events now",
 			});
 			navigate({ to: "/module/cal", search: {}, replace: true });

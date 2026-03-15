@@ -146,7 +146,7 @@ function ContactDetailPage() {
 	const handleDelete = () => {
 		deleteContact.mutate(contactId, {
 			onSuccess: () => {
-				toast.success("Contact deleted");
+				toast("Contact deleted");
 				navigate({ to: "/module/crm/list" });
 			},
 			onError: () => toast.error("Failed to delete contact"),
@@ -816,7 +816,7 @@ function EditContactSheet({
 			},
 			{
 				onSuccess: () => {
-					toast.success("Contact updated");
+					toast("Contact updated");
 					onClose();
 				},
 				onError: () => toast.error("Failed to update contact"),

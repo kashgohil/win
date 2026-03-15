@@ -64,7 +64,7 @@ export function CreateEventDialog({ defaultDate }: { defaultDate?: Date }) {
 			},
 			{
 				onSuccess: () => {
-					toast.success("Event created");
+					toast("Event created");
 					setOpen(false);
 					setTitle("");
 					setDescription("");

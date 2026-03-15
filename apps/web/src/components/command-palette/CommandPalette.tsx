@@ -425,7 +425,7 @@ export function CommandPalette({ modules }: CommandPaletteProps) {
 									},
 									{
 										onSuccess: () =>
-											toast.success(`Task "${aiParsed.title}" created`),
+											toast(`Task "${aiParsed.title}" created`),
 										onError: () => toast.error("Failed to create task"),
 									},
 								);
@@ -456,7 +456,7 @@ export function CommandPalette({ modules }: CommandPaletteProps) {
 								createTask.mutate(
 									{ title },
 									{
-										onSuccess: () => toast.success(`Task "${title}" created`),
+										onSuccess: () => toast(`Task "${title}" created`),
 										onError: () => toast.error("Failed to create task"),
 									},
 								);

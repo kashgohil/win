@@ -383,7 +383,7 @@ function TagSuggestions() {
 										},
 										{
 											onSuccess: () => {
-												toast.success(`Tag "${suggestion.name}" created`);
+												toast(`Tag "${suggestion.name}" created`);
 												setDismissed((prev) =>
 													new Set(prev).add(suggestion.name),
 												);
@@ -425,7 +425,7 @@ function CrmHeaderActions() {
 				onClick={() => {
 					discover.mutate(undefined, {
 						onSuccess: () =>
-							toast.success("Contact discovery started", {
+							toast("Contact discovery started", {
 								description:
 									"Scanning your emails and calendar for new contacts",
 							}),
@@ -475,7 +475,7 @@ function MergeSuggestions() {
 			},
 			{
 				onSuccess: () => {
-					toast.success("Contacts merged", {
+					toast("Contacts merged", {
 						description: `Merged into ${primary.name ?? primary.email}`,
 					});
 					setConfirmingMerge(null);

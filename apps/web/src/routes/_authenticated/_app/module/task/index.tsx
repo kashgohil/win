@@ -45,7 +45,7 @@ function TaskModule() {
 
 	useEffect(() => {
 		if (connected) {
-			toast.success(`${connected} connected`, {
+			toast(`${connected} connected`, {
 				description: "You can now sync your tasks",
 			});
 			navigate({ to: "/module/task", search: {}, replace: true });

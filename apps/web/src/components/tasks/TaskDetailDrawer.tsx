@@ -295,7 +295,7 @@ export function TaskDetailDrawer({
 														},
 														{
 															onSuccess: () =>
-																toast.success("Local changes will be pushed"),
+																toast("Local changes will be pushed"),
 														},
 													)
 												}
@@ -315,7 +315,7 @@ export function TaskDetailDrawer({
 														},
 														{
 															onSuccess: () =>
-																toast.success("External version accepted"),
+																toast("External version accepted"),
 														},
 													)
 												}
@@ -366,7 +366,7 @@ export function TaskDetailDrawer({
 														},
 														{
 															onSuccess: () =>
-																toast.success(`Moved to ${suggested.name}`),
+																toast(`Moved to ${suggested.name}`),
 														},
 													)
 												}

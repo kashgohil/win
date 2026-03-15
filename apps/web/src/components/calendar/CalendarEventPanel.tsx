@@ -96,7 +96,7 @@ export function CalendarEventPanel({
 			{
 				onSuccess: () => {
 					setTaskCreated(true);
-					toast.success("Task created from event");
+					toast("Task created from event");
 				},
 				onError: () => {
 					toast.error("Failed to create task");
@@ -265,7 +265,7 @@ export function CalendarEventPanel({
 							onClick={() => {
 								deleteEvent.mutate(event.id, {
 									onSuccess: () => {
-										toast.success("Event deleted");
+										toast("Event deleted");
 										handleOpenChange(false);
 									},
 									onError: () => {

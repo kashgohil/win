@@ -150,7 +150,7 @@ function MailHub() {
 
 	useEffect(() => {
 		if (connected) {
-			toast.success("Gmail connected — syncing your inbox...");
+			toast("Gmail connected — syncing your inbox...");
 			queryClient.invalidateQueries({ queryKey: mailKeys.accounts() });
 			navigate({ replace: true });
 		} else if (error) {
