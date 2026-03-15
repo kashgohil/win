@@ -25,7 +25,7 @@ const tabsListVariants = cva(
 );
 
 const tabsTriggerVariants = cva(
-	"relative z-10 inline-flex items-center justify-center whitespace-nowrap font-mono outline-none transition-colors text-grey-3 hover:text-grey-2 data-[state=active]:text-foreground focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none rounded-sm",
+	"relative z-10 inline-flex items-center justify-center whitespace-nowrap font-mono outline-none transition-colors text-grey-3 hover:text-grey-2 data-[state=active]:text-background focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none rounded-sm",
 	{
 		variants: {
 			size: {
@@ -121,7 +121,7 @@ function TabsList({
 			{indicator !== null && (
 				<motion.span
 					layout
-					className="absolute rounded-sm bg-background text-foreground shadow-xs"
+					className="absolute rounded-sm bg-foreground shadow-xs"
 					initial={false}
 					transition={{
 						type: "spring",

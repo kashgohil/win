@@ -101,6 +101,9 @@
 	--color-grey-3: #aaa;
 	--color-grey-3-5: #bbb;
 	--color-grey-4: #c8c3ba;
+	--color-success: #2d6a4f;
+	--color-warning: #b8860b;
+	--color-info: #4a6fa5;
 	--page-px: clamp(24px, 5vw, 80px);
 
 	/* ─── Shadcn semantic tokens ─── */
@@ -345,12 +348,12 @@ code {
 	padding: 12px 14px 12px 18px;
 	min-width: 280px;
 	max-width: 420px;
-	overflow: hidden;
 
 	/* surface */
 	background: var(--background);
-	border: 1px solid var(--border);
-	border-radius: var(--radius);
+	border: 1px solid var(--border) !important;
+	border-left-width: 3px !important;
+	border-radius: var(--radius) !important;
 	box-shadow:
 		0 1px 3px rgba(0, 0, 0, 0.04),
 		0 8px 24px rgba(0, 0, 0, 0.06),
@@ -362,101 +365,27 @@ code {
 	line-height: 1.45;
 	color: var(--foreground);
 
-	/* grain texture overlay — ambient, not a discrete animation */
-	&::before {
-		content: "";
-		position: absolute;
-		inset: 0;
-		background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-		background-size: 128px 128px;
-		opacity: 0.022;
-		pointer-events: none;
-		border-radius: inherit;
-		mix-blend-mode: multiply;
+	/* ── Variant borders — same color all sides, left just thicker ── */
+	&.toast-success {
+		border-color: var(--color-success) !important;
 	}
-
-	/* left accent rule — only visible on expanded or front toast */
-	&::after {
-		content: "";
-		position: absolute;
-		left: 0;
-		top: 6px;
-		bottom: 6px;
-		width: 2.5px;
-		background: var(--foreground);
-		border-radius: 0 2px 2px 0;
-		opacity: 0;
-		transition: opacity 0.2s ease;
+	&.toast-error {
+		border-color: var(--color-accent-red) !important;
 	}
-
-	&[data-front="true"]::after,
-	&[data-expanded="true"]::after {
-		opacity: 0.55;
+	&.toast-warning {
+		border-color: var(--color-warning) !important;
 	}
-
-	/* sonner close button override */
-	& [data-close-button] {
-		position: absolute !important;
-		top: 6px;
-		right: 6px;
-		width: 20px;
-		height: 20px;
-		border: none !important;
-		background: transparent !important;
-		color: var(--muted-foreground);
-		opacity: 0;
-		transition:
-			opacity 0.2s ease,
-			color 0.15s ease;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 4px;
-		padding: 0;
-		left: unset !important;
-		transform: none !important;
-
-		&:hover {
-			color: var(--foreground);
-			background: var(--muted) !important;
-		}
-
-		& svg {
-			width: 12px;
-			height: 12px;
-		}
+	&.toast-info {
+		border-color: var(--color-info) !important;
 	}
-
-	&:hover [data-close-button] {
-		opacity: 1;
+	&.toast-loading {
+		border-color: var(--muted-foreground) !important;
 	}
+}
 
-	/* ── Variant accent lines ── */
-	&.toast-success::after {
-		background: #2d6a4f;
-		opacity: 0.7;
-	}
-
-	&.toast-error::after {
-		background: var(--color-accent-red);
-		opacity: 0.8;
-	}
-
-	&.toast-warning::after {
-		background: #b8860b;
-		opacity: 0.7;
-	}
-
-	&.toast-info::after {
-		background: var(--muted-foreground);
-		opacity: 0.4;
-	}
-
-	&.toast-loading::after {
-		background: var(--muted-foreground);
-		opacity: 0.3;
-	}
+/* Kill sonner's built-in ::after hit-area that renders as a visible bar */
+[data-sonner-toast]::after {
+	display: none !important;
 }
 
 .dark .toast-editorial {
@@ -465,14 +394,6 @@ code {
 		0 8px 24px rgba(0, 0, 0, 0.2),
 		0 0 0 0.5px rgba(255, 255, 255, 0.04);
 
-	&::before {
-		opacity: 0.03;
-		mix-blend-mode: screen;
-	}
-
-	&.toast-success::after {
-		background: #52b788;
-	}
 }
 
 .toast-title {

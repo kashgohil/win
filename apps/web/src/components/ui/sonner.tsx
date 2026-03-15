@@ -75,7 +75,6 @@ function Toaster(props: ToasterProps) {
 					loading: "toast-loading",
 				},
 			}}
-			closeButton
 			{...props}
 		/>
 	);
