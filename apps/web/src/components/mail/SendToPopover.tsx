@@ -8,6 +8,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useExtractFromEmail } from "@/hooks/use-finance";
 import { useCreateTaskFromEmail } from "@/hooks/use-tasks";
 import {
 	CalendarPlus,
@@ -53,6 +54,7 @@ const sendToOptions = [
 export function SendToPopover({ emailId }: { emailId?: string }) {
 	const [open, setOpen] = useState(false);
 	const createTaskFromEmail = useCreateTaskFromEmail();
+	const extractExpense = useExtractFromEmail();
 
 	const handleAction = (key: string) => {
 		if (key === "task" && emailId) {
@@ -65,6 +67,28 @@ export function SendToPopover({ emailId }: { emailId?: string }) {
 				},
 				onError: () => {
 					toast.error("Failed to create task from email");
+				},
+			});
+			return;
+		}
+		if (key === "expense" && emailId) {
+			extractExpense.mutate(emailId, {
+				onSuccess: (data) => {
+					const txn = data as {
+						merchant?: string | null;
+						amount?: number;
+						currency?: string;
+					} | null;
+					toast("Expense tracked", {
+						description:
+							txn?.merchant
+								? `${txn.merchant} — ${((txn?.amount ?? 0) / 100).toLocaleString("en-US", { style: "currency", currency: txn?.currency ?? "USD" })}`
+								: undefined,
+					});
+					setOpen(false);
+				},
+				onError: () => {
+					toast.error("Failed to extract expense from email");
 				},
 			});
 			return;
@@ -97,7 +121,10 @@ export function SendToPopover({ emailId }: { emailId?: string }) {
 							key={opt.key}
 							type="button"
 							onClick={() => handleAction(opt.key)}
-							disabled={opt.key === "task" && createTaskFromEmail.isPending}
+							disabled={
+							(opt.key === "task" && createTaskFromEmail.isPending) ||
+							(opt.key === "expense" && extractExpense.isPending)
+						}
 							initial={{ opacity: 0, x: -4 }}
 							animate={{ opacity: 1, x: 0 }}
 							transition={{
@@ -113,7 +140,9 @@ export function SendToPopover({ emailId }: { emailId?: string }) {
 							<span className="font-body text-[13px] text-foreground/70 group-hover/item:text-foreground transition-colors duration-150">
 								{opt.key === "task" && createTaskFromEmail.isPending
 									? "Creating..."
-									: opt.label}
+									: opt.key === "expense" && extractExpense.isPending
+										? "Extracting..."
+										: opt.label}
 							</span>
 							<ChevronRight className="size-2.5 ml-auto text-grey-3/0 group-hover/item:text-grey-3 transition-all duration-150" />
 						</motion.button>
