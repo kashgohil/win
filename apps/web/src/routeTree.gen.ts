@@ -34,6 +34,7 @@ import { Route as AuthenticatedAppModuleCrmRouteImport } from './routes/_authent
 import { Route as AuthenticatedAppModuleCalRouteImport } from './routes/_authenticated/_app/module/cal'
 import { Route as AuthenticatedAppModuleTaskIndexRouteImport } from './routes/_authenticated/_app/module/task/index'
 import { Route as AuthenticatedAppModuleMailIndexRouteImport } from './routes/_authenticated/_app/module/mail/index'
+import { Route as AuthenticatedAppModuleFinIndexRouteImport } from './routes/_authenticated/_app/module/fin/index'
 import { Route as AuthenticatedAppModuleCrmIndexRouteImport } from './routes/_authenticated/_app/module/crm/index'
 import { Route as AuthenticatedAppModuleCalIndexRouteImport } from './routes/_authenticated/_app/module/cal/index'
 import { Route as AuthenticatedAppModuleCrmContactIdRouteImport } from './routes/_authenticated/_app/module/crm/$contactId'
@@ -44,6 +45,8 @@ import { Route as AuthenticatedAppModuleMailInboxIndexRouteImport } from './rout
 import { Route as AuthenticatedAppModuleMailDraftsIndexRouteImport } from './routes/_authenticated/_app/module/mail/drafts.index'
 import { Route as AuthenticatedAppModuleMailAttachmentsIndexRouteImport } from './routes/_authenticated/_app/module/mail/attachments.index'
 import { Route as AuthenticatedAppModuleMailArchivedIndexRouteImport } from './routes/_authenticated/_app/module/mail/archived.index'
+import { Route as AuthenticatedAppModuleFinTransactionsIndexRouteImport } from './routes/_authenticated/_app/module/fin/transactions.index'
+import { Route as AuthenticatedAppModuleFinRecurringIndexRouteImport } from './routes/_authenticated/_app/module/fin/recurring.index'
 import { Route as AuthenticatedAppModuleCrmListIndexRouteImport } from './routes/_authenticated/_app/module/crm/list.index'
 import { Route as AuthenticatedAppModuleCrmFollowUpsIndexRouteImport } from './routes/_authenticated/_app/module/crm/follow-ups.index'
 import { Route as AuthenticatedAppModuleCalWeekIndexRouteImport } from './routes/_authenticated/_app/module/cal/week.index'
@@ -193,6 +196,12 @@ const AuthenticatedAppModuleMailIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedAppModuleMailRoute,
   } as any)
+const AuthenticatedAppModuleFinIndexRoute =
+  AuthenticatedAppModuleFinIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAppModuleFinRoute,
+  } as any)
 const AuthenticatedAppModuleCrmIndexRoute =
   AuthenticatedAppModuleCrmIndexRouteImport.update({
     id: '/',
@@ -253,6 +262,18 @@ const AuthenticatedAppModuleMailArchivedIndexRoute =
     path: '/archived/',
     getParentRoute: () => AuthenticatedAppModuleMailRoute,
   } as any)
+const AuthenticatedAppModuleFinTransactionsIndexRoute =
+  AuthenticatedAppModuleFinTransactionsIndexRouteImport.update({
+    id: '/transactions/',
+    path: '/transactions/',
+    getParentRoute: () => AuthenticatedAppModuleFinRoute,
+  } as any)
+const AuthenticatedAppModuleFinRecurringIndexRoute =
+  AuthenticatedAppModuleFinRecurringIndexRouteImport.update({
+    id: '/recurring/',
+    path: '/recurring/',
+    getParentRoute: () => AuthenticatedAppModuleFinRoute,
+  } as any)
 const AuthenticatedAppModuleCrmListIndexRoute =
   AuthenticatedAppModuleCrmListIndexRouteImport.update({
     id: '/list/',
@@ -305,7 +326,7 @@ export interface FileRoutesByFullPath {
   '/module/cal': typeof AuthenticatedAppModuleCalRouteWithChildren
   '/module/crm': typeof AuthenticatedAppModuleCrmRouteWithChildren
   '/module/files': typeof AuthenticatedAppModuleFilesRoute
-  '/module/fin': typeof AuthenticatedAppModuleFinRoute
+  '/module/fin': typeof AuthenticatedAppModuleFinRouteWithChildren
   '/module/health': typeof AuthenticatedAppModuleHealthRoute
   '/module/mail': typeof AuthenticatedAppModuleMailRouteWithChildren
   '/module/notes': typeof AuthenticatedAppModuleNotesRoute
@@ -315,6 +336,7 @@ export interface FileRoutesByFullPath {
   '/module/crm/$contactId': typeof AuthenticatedAppModuleCrmContactIdRoute
   '/module/cal/': typeof AuthenticatedAppModuleCalIndexRoute
   '/module/crm/': typeof AuthenticatedAppModuleCrmIndexRoute
+  '/module/fin/': typeof AuthenticatedAppModuleFinIndexRoute
   '/module/mail/': typeof AuthenticatedAppModuleMailIndexRoute
   '/module/task/': typeof AuthenticatedAppModuleTaskIndexRoute
   '/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
@@ -323,6 +345,8 @@ export interface FileRoutesByFullPath {
   '/module/cal/week/': typeof AuthenticatedAppModuleCalWeekIndexRoute
   '/module/crm/follow-ups/': typeof AuthenticatedAppModuleCrmFollowUpsIndexRoute
   '/module/crm/list/': typeof AuthenticatedAppModuleCrmListIndexRoute
+  '/module/fin/recurring/': typeof AuthenticatedAppModuleFinRecurringIndexRoute
+  '/module/fin/transactions/': typeof AuthenticatedAppModuleFinTransactionsIndexRoute
   '/module/mail/archived/': typeof AuthenticatedAppModuleMailArchivedIndexRoute
   '/module/mail/attachments/': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/module/mail/drafts/': typeof AuthenticatedAppModuleMailDraftsIndexRoute
@@ -343,7 +367,6 @@ export interface FileRoutesByTo {
   '/onboarding/step4': typeof AuthenticatedOnboardingStep4Route
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
   '/module/files': typeof AuthenticatedAppModuleFilesRoute
-  '/module/fin': typeof AuthenticatedAppModuleFinRoute
   '/module/health': typeof AuthenticatedAppModuleHealthRoute
   '/module/notes': typeof AuthenticatedAppModuleNotesRoute
   '/module/social': typeof AuthenticatedAppModuleSocialRoute
@@ -351,6 +374,7 @@ export interface FileRoutesByTo {
   '/module/crm/$contactId': typeof AuthenticatedAppModuleCrmContactIdRoute
   '/module/cal': typeof AuthenticatedAppModuleCalIndexRoute
   '/module/crm': typeof AuthenticatedAppModuleCrmIndexRoute
+  '/module/fin': typeof AuthenticatedAppModuleFinIndexRoute
   '/module/mail': typeof AuthenticatedAppModuleMailIndexRoute
   '/module/task': typeof AuthenticatedAppModuleTaskIndexRoute
   '/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
@@ -359,6 +383,8 @@ export interface FileRoutesByTo {
   '/module/cal/week': typeof AuthenticatedAppModuleCalWeekIndexRoute
   '/module/crm/follow-ups': typeof AuthenticatedAppModuleCrmFollowUpsIndexRoute
   '/module/crm/list': typeof AuthenticatedAppModuleCrmListIndexRoute
+  '/module/fin/recurring': typeof AuthenticatedAppModuleFinRecurringIndexRoute
+  '/module/fin/transactions': typeof AuthenticatedAppModuleFinTransactionsIndexRoute
   '/module/mail/archived': typeof AuthenticatedAppModuleMailArchivedIndexRoute
   '/module/mail/attachments': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/module/mail/drafts': typeof AuthenticatedAppModuleMailDraftsIndexRoute
@@ -385,7 +411,7 @@ export interface FileRoutesById {
   '/_authenticated/_app/module/cal': typeof AuthenticatedAppModuleCalRouteWithChildren
   '/_authenticated/_app/module/crm': typeof AuthenticatedAppModuleCrmRouteWithChildren
   '/_authenticated/_app/module/files': typeof AuthenticatedAppModuleFilesRoute
-  '/_authenticated/_app/module/fin': typeof AuthenticatedAppModuleFinRoute
+  '/_authenticated/_app/module/fin': typeof AuthenticatedAppModuleFinRouteWithChildren
   '/_authenticated/_app/module/health': typeof AuthenticatedAppModuleHealthRoute
   '/_authenticated/_app/module/mail': typeof AuthenticatedAppModuleMailRouteWithChildren
   '/_authenticated/_app/module/notes': typeof AuthenticatedAppModuleNotesRoute
@@ -395,6 +421,7 @@ export interface FileRoutesById {
   '/_authenticated/_app/module/crm/$contactId': typeof AuthenticatedAppModuleCrmContactIdRoute
   '/_authenticated/_app/module/cal/': typeof AuthenticatedAppModuleCalIndexRoute
   '/_authenticated/_app/module/crm/': typeof AuthenticatedAppModuleCrmIndexRoute
+  '/_authenticated/_app/module/fin/': typeof AuthenticatedAppModuleFinIndexRoute
   '/_authenticated/_app/module/mail/': typeof AuthenticatedAppModuleMailIndexRoute
   '/_authenticated/_app/module/task/': typeof AuthenticatedAppModuleTaskIndexRoute
   '/_authenticated/_app/module/mail/inbox/$emailId': typeof AuthenticatedAppModuleMailInboxEmailIdRoute
@@ -403,6 +430,8 @@ export interface FileRoutesById {
   '/_authenticated/_app/module/cal/week/': typeof AuthenticatedAppModuleCalWeekIndexRoute
   '/_authenticated/_app/module/crm/follow-ups/': typeof AuthenticatedAppModuleCrmFollowUpsIndexRoute
   '/_authenticated/_app/module/crm/list/': typeof AuthenticatedAppModuleCrmListIndexRoute
+  '/_authenticated/_app/module/fin/recurring/': typeof AuthenticatedAppModuleFinRecurringIndexRoute
+  '/_authenticated/_app/module/fin/transactions/': typeof AuthenticatedAppModuleFinTransactionsIndexRoute
   '/_authenticated/_app/module/mail/archived/': typeof AuthenticatedAppModuleMailArchivedIndexRoute
   '/_authenticated/_app/module/mail/attachments/': typeof AuthenticatedAppModuleMailAttachmentsIndexRoute
   '/_authenticated/_app/module/mail/drafts/': typeof AuthenticatedAppModuleMailDraftsIndexRoute
@@ -438,6 +467,7 @@ export interface FileRouteTypes {
     | '/module/crm/$contactId'
     | '/module/cal/'
     | '/module/crm/'
+    | '/module/fin/'
     | '/module/mail/'
     | '/module/task/'
     | '/module/mail/inbox/$emailId'
@@ -446,6 +476,8 @@ export interface FileRouteTypes {
     | '/module/cal/week/'
     | '/module/crm/follow-ups/'
     | '/module/crm/list/'
+    | '/module/fin/recurring/'
+    | '/module/fin/transactions/'
     | '/module/mail/archived/'
     | '/module/mail/attachments/'
     | '/module/mail/drafts/'
@@ -466,7 +498,6 @@ export interface FileRouteTypes {
     | '/onboarding/step4'
     | '/onboarding'
     | '/module/files'
-    | '/module/fin'
     | '/module/health'
     | '/module/notes'
     | '/module/social'
@@ -474,6 +505,7 @@ export interface FileRouteTypes {
     | '/module/crm/$contactId'
     | '/module/cal'
     | '/module/crm'
+    | '/module/fin'
     | '/module/mail'
     | '/module/task'
     | '/module/mail/inbox/$emailId'
@@ -482,6 +514,8 @@ export interface FileRouteTypes {
     | '/module/cal/week'
     | '/module/crm/follow-ups'
     | '/module/crm/list'
+    | '/module/fin/recurring'
+    | '/module/fin/transactions'
     | '/module/mail/archived'
     | '/module/mail/attachments'
     | '/module/mail/drafts'
@@ -517,6 +551,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/module/crm/$contactId'
     | '/_authenticated/_app/module/cal/'
     | '/_authenticated/_app/module/crm/'
+    | '/_authenticated/_app/module/fin/'
     | '/_authenticated/_app/module/mail/'
     | '/_authenticated/_app/module/task/'
     | '/_authenticated/_app/module/mail/inbox/$emailId'
@@ -525,6 +560,8 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/module/cal/week/'
     | '/_authenticated/_app/module/crm/follow-ups/'
     | '/_authenticated/_app/module/crm/list/'
+    | '/_authenticated/_app/module/fin/recurring/'
+    | '/_authenticated/_app/module/fin/transactions/'
     | '/_authenticated/_app/module/mail/archived/'
     | '/_authenticated/_app/module/mail/attachments/'
     | '/_authenticated/_app/module/mail/drafts/'
@@ -716,6 +753,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppModuleMailIndexRouteImport
       parentRoute: typeof AuthenticatedAppModuleMailRoute
     }
+    '/_authenticated/_app/module/fin/': {
+      id: '/_authenticated/_app/module/fin/'
+      path: '/'
+      fullPath: '/module/fin/'
+      preLoaderRoute: typeof AuthenticatedAppModuleFinIndexRouteImport
+      parentRoute: typeof AuthenticatedAppModuleFinRoute
+    }
     '/_authenticated/_app/module/crm/': {
       id: '/_authenticated/_app/module/crm/'
       path: '/'
@@ -785,6 +829,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/module/mail/archived/'
       preLoaderRoute: typeof AuthenticatedAppModuleMailArchivedIndexRouteImport
       parentRoute: typeof AuthenticatedAppModuleMailRoute
+    }
+    '/_authenticated/_app/module/fin/transactions/': {
+      id: '/_authenticated/_app/module/fin/transactions/'
+      path: '/transactions'
+      fullPath: '/module/fin/transactions/'
+      preLoaderRoute: typeof AuthenticatedAppModuleFinTransactionsIndexRouteImport
+      parentRoute: typeof AuthenticatedAppModuleFinRoute
+    }
+    '/_authenticated/_app/module/fin/recurring/': {
+      id: '/_authenticated/_app/module/fin/recurring/'
+      path: '/recurring'
+      fullPath: '/module/fin/recurring/'
+      preLoaderRoute: typeof AuthenticatedAppModuleFinRecurringIndexRouteImport
+      parentRoute: typeof AuthenticatedAppModuleFinRoute
     }
     '/_authenticated/_app/module/crm/list/': {
       id: '/_authenticated/_app/module/crm/list/'
@@ -874,6 +932,26 @@ const AuthenticatedAppModuleCrmRouteWithChildren =
     AuthenticatedAppModuleCrmRouteChildren,
   )
 
+interface AuthenticatedAppModuleFinRouteChildren {
+  AuthenticatedAppModuleFinIndexRoute: typeof AuthenticatedAppModuleFinIndexRoute
+  AuthenticatedAppModuleFinRecurringIndexRoute: typeof AuthenticatedAppModuleFinRecurringIndexRoute
+  AuthenticatedAppModuleFinTransactionsIndexRoute: typeof AuthenticatedAppModuleFinTransactionsIndexRoute
+}
+
+const AuthenticatedAppModuleFinRouteChildren: AuthenticatedAppModuleFinRouteChildren =
+  {
+    AuthenticatedAppModuleFinIndexRoute: AuthenticatedAppModuleFinIndexRoute,
+    AuthenticatedAppModuleFinRecurringIndexRoute:
+      AuthenticatedAppModuleFinRecurringIndexRoute,
+    AuthenticatedAppModuleFinTransactionsIndexRoute:
+      AuthenticatedAppModuleFinTransactionsIndexRoute,
+  }
+
+const AuthenticatedAppModuleFinRouteWithChildren =
+  AuthenticatedAppModuleFinRoute._addFileChildren(
+    AuthenticatedAppModuleFinRouteChildren,
+  )
+
 interface AuthenticatedAppModuleMailRouteChildren {
   AuthenticatedAppModuleMailIndexRoute: typeof AuthenticatedAppModuleMailIndexRoute
   AuthenticatedAppModuleMailInboxEmailIdRoute: typeof AuthenticatedAppModuleMailInboxEmailIdRoute
@@ -936,7 +1014,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppModuleCalRoute: typeof AuthenticatedAppModuleCalRouteWithChildren
   AuthenticatedAppModuleCrmRoute: typeof AuthenticatedAppModuleCrmRouteWithChildren
   AuthenticatedAppModuleFilesRoute: typeof AuthenticatedAppModuleFilesRoute
-  AuthenticatedAppModuleFinRoute: typeof AuthenticatedAppModuleFinRoute
+  AuthenticatedAppModuleFinRoute: typeof AuthenticatedAppModuleFinRouteWithChildren
   AuthenticatedAppModuleHealthRoute: typeof AuthenticatedAppModuleHealthRoute
   AuthenticatedAppModuleMailRoute: typeof AuthenticatedAppModuleMailRouteWithChildren
   AuthenticatedAppModuleNotesRoute: typeof AuthenticatedAppModuleNotesRoute
@@ -952,7 +1030,7 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppModuleCalRoute: AuthenticatedAppModuleCalRouteWithChildren,
   AuthenticatedAppModuleCrmRoute: AuthenticatedAppModuleCrmRouteWithChildren,
   AuthenticatedAppModuleFilesRoute: AuthenticatedAppModuleFilesRoute,
-  AuthenticatedAppModuleFinRoute: AuthenticatedAppModuleFinRoute,
+  AuthenticatedAppModuleFinRoute: AuthenticatedAppModuleFinRouteWithChildren,
   AuthenticatedAppModuleHealthRoute: AuthenticatedAppModuleHealthRoute,
   AuthenticatedAppModuleMailRoute: AuthenticatedAppModuleMailRouteWithChildren,
   AuthenticatedAppModuleNotesRoute: AuthenticatedAppModuleNotesRoute,
